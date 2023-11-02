@@ -286,8 +286,8 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,$2";
     strSQL += " ,$3";
     strSQL += " ,$4";
-    strSQL += " ,(select * from fct_genera_asiento($1,$2,$3,$4))"; //mismo linea con parametros
-    //strSQL += " ,(select * from fct_genera_asiento('" + id_anfitrion + "','" + documento_id + "','" + periodo + "','" + id_libro + "'))";
+    //strSQL += " ,(select * from fct_genera_asiento($1,$2,$3,$4))"; //mismo linea con parametros
+    strSQL += " ,(select * from fct_genera_asiento('" + id_anfitrion + "','" + documento_id + "','" + periodo + "','" + id_libro + "'))";
     strSQL += " ,$5";
     strSQL += " ,$6";
     strSQL += " ,$8";
