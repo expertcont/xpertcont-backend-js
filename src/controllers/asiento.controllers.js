@@ -290,6 +290,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,(select * from fct_genera_asiento('" + id_anfitrion + "','" + documento_id + "','" + periodo + "','" + id_libro + "'))";
     strSQL += " ,$5";
     strSQL += " ,$6";
+    strSQL += " ,$7";
     strSQL += " ,$8";
     strSQL += " ,$9";
     strSQL += " ,$10";
