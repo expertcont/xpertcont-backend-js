@@ -332,6 +332,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ) RETURNING *";
 
     const handleNullOrUndefined = (value) => (value === null || value === undefined ? null : value);
+    const handleNullOrUndefinedNumber = (value) => (value === null || value === undefined ? 0 : value);
     try {
         console.log(strSQL);
         const result = await pool.query(strSQL, 
@@ -342,10 +343,10 @@ const crearAsiento = async (req,res,next)=> {
             handleNullOrUndefined(id_libro),        //04
 
             handleNullOrUndefined(glosa),           //05
-            handleNullOrUndefined(debe),            //06
-            handleNullOrUndefined(haber),           //07
-            handleNullOrUndefined(debe_me),         //08
-            handleNullOrUndefined(haber_me),        //09
+            handleNullOrUndefinedNumber(debe),            //06
+            handleNullOrUndefinedNumber(haber),           //07
+            handleNullOrUndefinedNumber(debe_me),         //08
+            handleNullOrUndefinedNumber(haber_me),        //09
             handleNullOrUndefined(mayorizado),      //10
 
             handleNullOrUndefined(ctrl_crea_us),    //11
