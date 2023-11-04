@@ -367,17 +367,17 @@ const crearAsiento = async (req,res,next)=> {
             handleNullOrUndefined(r_fecemi_ref),    //24
             
             handleNullOrUndefined(r_cuenta),        //25
-            handleNullOrUndefined(r_base001),       //26
-            handleNullOrUndefined(r_base002),       //27
-            handleNullOrUndefined(r_base003),       //28
-            handleNullOrUndefined(r_base004),       //29
-            handleNullOrUndefined(r_igv001),        //30
-            handleNullOrUndefined(r_igv002),        //31
-            handleNullOrUndefined(r_igv003),        //32
+            handleNullOrUndefinedNumber(r_base001),       //26
+            handleNullOrUndefinedNumber(r_base002),       //27
+            handleNullOrUndefinedNumber(r_base003),       //28
+            handleNullOrUndefinedNumber(r_base004),       //29
+            handleNullOrUndefinedNumber(r_igv001),        //30
+            handleNullOrUndefinedNumber(r_igv002),        //31
+            handleNullOrUndefinedNumber(r_igv003),        //32
             
-            handleNullOrUndefined(r_monto_icbp),    //33
-            handleNullOrUndefined(r_monto_otros),   //34
-            handleNullOrUndefined(r_monto_total),   //35
+            handleNullOrUndefinedNumber(r_monto_icbp),    //33
+            handleNullOrUndefinedNumber(r_monto_otros),   //34
+            handleNullOrUndefinedNumber(r_monto_total),   //35
             handleNullOrUndefined(r_moneda),        //36
             handleNullOrUndefined(r_tc),            //37
 
