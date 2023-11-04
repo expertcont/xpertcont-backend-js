@@ -335,8 +335,7 @@ const crearAsiento = async (req,res,next)=> {
     const handleNullOrUndefinedNumber = (value) => (value === null || value === undefined ? 0 : value);
     try {
         console.log(strSQL);
-        const result = await pool.query(strSQL, 
-        [   
+        const parametros = [   
             handleNullOrUndefined(id_anfitrion),    //01
             handleNullOrUndefined(documento_id),    //02
             handleNullOrUndefined(periodo),         //03
@@ -388,8 +387,9 @@ const crearAsiento = async (req,res,next)=> {
             handleNullOrUndefined(r_id_mediopago),  //42
             handleNullOrUndefined(r_voucher_banco), //43
             handleNullOrUndefined(r_cuenta10),      //44
-        ]
-        );
+        ];
+        console.log(parametros);
+        const result = await pool.query(strSQL, parametros);
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
