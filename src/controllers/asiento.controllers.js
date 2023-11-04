@@ -331,62 +331,85 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,$44";
     strSQL += " ) RETURNING *";
 
-    const handleNullOrUndefined = (value) => (value === null || value === undefined ? null : value);
-    const handleNullOrUndefinedNumber = (value) => (value === null || value === undefined ? 0 : Number(value));
+    const devuelveCadenaNull = (value) => {
+        //Obligatorio devuelve una cadena, asi sea undefined o null
+        if (value === undefined) {
+          return '';
+        } else {
+          return value;
+        }
+    };
+    const devuelveNumeroNull = (value) => {
+        //Obligatorio devuelve numero o null, asi sea (undefined - cadena vacia)
+        if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
+          return null;
+        } else {
+          return value;
+        }
+    };
+    const devuelveNumero = (value) => {
+        //Obligatorio devuelve numero o cero, asi sea (undefined - cadena vacia - null)
+        if (value === undefined || (typeof value === 'string' && value.trim() === '') || value === null) {
+          return 0;
+        } else {
+          return value;
+        }
+    };
+
     try {
         console.log(strSQL);
         const parametros = [   
-            handleNullOrUndefined(id_anfitrion),    //01
-            handleNullOrUndefined(documento_id),    //02
-            handleNullOrUndefined(periodo),         //03
-            handleNullOrUndefined(id_libro),        //04
+            id_anfitrion,    //01
+            documento_id,    //02
+            periodo,         //03
+            id_libro,        //04
 
-            handleNullOrUndefined(glosa),           //05
-            handleNullOrUndefinedNumber(debe),            //06
-            handleNullOrUndefinedNumber(haber),           //07
-            handleNullOrUndefinedNumber(debe_me),         //08
-            handleNullOrUndefinedNumber(haber_me),        //09
-            handleNullOrUndefined(mayorizado),      //10
+            devuelveCadenaNull(glosa),           //05
+            devuelveNumero(debe),            //06
+            devuelveNumero(haber),           //07
+            devuelveNumero(debe_me),         //08
+            devuelveNumero(haber_me),        //09
+            devuelveCadenaNull(mayorizado),      //10
 
-            handleNullOrUndefined(ctrl_crea_us),    //11
-            handleNullOrUndefined(r_id_documento),  //12
-            handleNullOrUndefined(r_documento_id),  //13
-            handleNullOrUndefined(r_razon_social),  //14
+            devuelveCadenaNull(ctrl_crea_us),    //11
+            devuelveCadenaNull(r_id_documento),  //12
+            devuelveCadenaNull(r_documento_id),  //13
+            devuelveCadenaNull(r_razon_social),  //14
 
-            handleNullOrUndefined(r_cod),           //15
-            handleNullOrUndefined(r_serie),         //16
-            handleNullOrUndefined(r_numero),        //17
-            handleNullOrUndefined(r_numero2),       //18
-            handleNullOrUndefined(r_fecemi),        //19
-            handleNullOrUndefined(r_fecvcto),       //20
+            devuelveCadenaNull(r_cod),           //15
+            devuelveCadenaNull(r_serie),         //16
+            devuelveCadenaNull(r_numero),        //17
+            devuelveCadenaNull(r_numero2),       //18
+            devuelveCadenaNull(r_fecemi),        //19
+            devuelveCadenaNull(r_fecvcto),       //20
 
-            handleNullOrUndefined(r_cod_ref),       //21
-            handleNullOrUndefined(r_serie_ref),     //22
-            handleNullOrUndefined(r_numero_ref),    //23
-            handleNullOrUndefined(r_fecemi_ref),    //24
+            devuelveCadenaNull(r_cod_ref),       //21
+            devuelveCadenaNull(r_serie_ref),     //22
+            devuelveCadenaNull(r_numero_ref),    //23
+            devuelveCadenaNull(r_fecemi_ref),    //24
             
-            handleNullOrUndefined(r_cuenta),        //25
-            handleNullOrUndefinedNumber(r_base001),       //26
-            handleNullOrUndefinedNumber(r_base002),       //27
-            handleNullOrUndefinedNumber(r_base003),       //28
-            handleNullOrUndefinedNumber(r_base004),       //29
-            handleNullOrUndefinedNumber(r_igv001),        //30
-            handleNullOrUndefinedNumber(r_igv002),        //31
-            handleNullOrUndefinedNumber(r_igv003),        //32
+            devuelveCadenaNull(r_cuenta),        //25
+            devuelveNumeroNull(r_base001),       //26
+            devuelveNumeroNull(r_base002),       //27
+            devuelveNumeroNull(r_base003),       //28
+            devuelveNumeroNull(r_base004),       //29
+            devuelveNumeroNull(r_igv001),        //30
+            devuelveNumeroNull(r_igv002),        //31
+            devuelveNumeroNull(r_igv003),        //32
             
-            handleNullOrUndefinedNumber(r_monto_icbp),    //33
-            handleNullOrUndefinedNumber(r_monto_otros),   //34
-            handleNullOrUndefinedNumber(r_monto_total),   //35
-            handleNullOrUndefined(r_moneda),        //36
-            handleNullOrUndefined(r_tc),            //37
+            devuelveNumeroNull(r_monto_icbp),    //33
+            devuelveNumeroNull(r_monto_otros),   //34
+            devuelveNumeroNull(r_monto_total),   //35
+            devuelveCadenaNull(r_moneda),        //36
+            devuelveNumeroNull(r_tc),            //37
 
-            handleNullOrUndefined(r_idbss),         //38
-            handleNullOrUndefined(r_id_pais),       //39
-            handleNullOrUndefined(r_id_aduana),     //40
-            handleNullOrUndefined(r_ano_dam),       //41
-            handleNullOrUndefined(r_id_mediopago),  //42
-            handleNullOrUndefined(r_voucher_banco), //43
-            handleNullOrUndefined(r_cuenta10),      //44
+            devuelveCadenaNull(r_idbss),         //38
+            devuelveCadenaNull(r_id_pais),       //39
+            devuelveCadenaNull(r_id_aduana),     //40
+            devuelveCadenaNull(r_ano_dam),       //41
+            devuelveCadenaNull(r_id_mediopago),  //42
+            devuelveCadenaNull(r_voucher_banco), //43
+            devuelveCadenaNull(r_cuenta10),      //44
         ];
         console.log(parametros);
         const result = await pool.query(strSQL, parametros);
