@@ -222,7 +222,7 @@ const crearAsiento = async (req,res,next)=> {
     //let datePieces = comprobante_original_fecemi.split("-");
     //const fechaArmada = new Date(datePieces[0],datePieces[1],datePieces[2]); //ok con hora 00:00:00
 
-    strSQL = "INSERT INTO mct_asiento";
+    strSQL = "INSERT INTO mct_asientocontable";
     strSQL +=  " (";
     strSQL += "  id_usuario";   //01
     strSQL += " ,documento_id"; //02
