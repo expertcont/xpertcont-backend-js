@@ -177,13 +177,13 @@ const crearAsiento = async (req,res,next)=> {
         r_serie,        //16
         r_numero,       //17
         r_numero2,      //18
-        r_fecemi,       //19
-        r_fecvcto,      //20
+        fecemi,       //19
+        fecvcto,      //20
 
         r_cod_ref,      //21
         r_serie_ref,    //22
         r_numero_ref,   //23
-        r_fecemi_ref,   //24
+        fecemi_ref,   //24
         
         r_cuenta,       //25
         r_base001,      //26
@@ -363,13 +363,12 @@ const crearAsiento = async (req,res,next)=> {
             documento_id,    //02
             periodo,         //03
             id_libro,        //04
-
-            devuelveCadenaNull(glosa),           //05
-            devuelveNumero(debe),            //06
-            devuelveNumero(haber),           //07
-            devuelveNumero(debe_me),         //08
-            devuelveNumero(haber_me),        //09
-            devuelveCadenaNull(mayorizado),      //10
+            devuelveCadenaNull(glosa),          //05
+            devuelveNumero(debe),               //06
+            devuelveNumero(haber),              //07
+            devuelveNumero(debe_me),            //08
+            devuelveNumero(haber_me),           //09
+            devuelveCadenaNull(mayorizado),     //10
 
             devuelveCadenaNull(ctrl_crea_us),    //11
             devuelveCadenaNull(r_id_documento),  //12
@@ -380,13 +379,13 @@ const crearAsiento = async (req,res,next)=> {
             devuelveCadenaNull(r_serie),         //16
             devuelveCadenaNull(r_numero),        //17
             devuelveCadenaNull(r_numero2),       //18
-            devuelveCadenaNull(r_fecemi),        //19
-            devuelveCadenaNull(r_fecvcto),       //20
+            devuelveCadenaNull(fecemi),        //19
+            devuelveCadenaNull(fecvcto),       //20
 
             devuelveCadenaNull(r_cod_ref),       //21
             devuelveCadenaNull(r_serie_ref),     //22
             devuelveCadenaNull(r_numero_ref),    //23
-            devuelveCadenaNull(r_fecemi_ref),    //24
+            devuelveCadenaNull(fecemi_ref),    //24
             
             devuelveCadenaNull(r_cuenta),        //25
             devuelveNumeroNull(r_base001),       //26
