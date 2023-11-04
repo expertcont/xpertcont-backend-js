@@ -332,7 +332,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ) RETURNING *";
 
     const handleNullOrUndefined = (value) => (value === null || value === undefined ? null : value);
-    const handleNullOrUndefinedNumber = (value) => (value === null || value === undefined ? 0 : value);
+    const handleNullOrUndefinedNumber = (value) => (value === null || value === undefined ? 0 : Number(value));
     try {
         console.log(strSQL);
         const parametros = [   
