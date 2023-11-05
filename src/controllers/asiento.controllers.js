@@ -1,4 +1,5 @@
 const pool = require('../db');
+const {devuelveCadenaNull,devuelveNumero} = require('../utils/libreria.utils');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //Solo Cabeceras
@@ -331,7 +332,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,$44";
     strSQL += " ) RETURNING *";
 
-    const devuelveCadenaNull = (value) => {
+    /*const devuelveCadenaNull = (value) => {
         //Obligatorio devuelve una cadena, asi sea undefined o null
         if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
           return null;
@@ -339,22 +340,6 @@ const crearAsiento = async (req,res,next)=> {
           return value;
         }
     };
-    /*const devuelveNumeroNull = (value) => {
-        //Obligatorio devuelve numero o null, asi sea (undefined - cadena vacia)
-        if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
-          return null;
-        } else {
-          return value;
-        }
-    };
-    const devuelveFechaNull = (value) => {
-        //Obligatorio devuelve una cadena, asi sea undefined o null
-        if (value === undefined || value.trim() === '') {
-          return null;
-        } else {
-          return value;
-        }
-    };*/
     const devuelveNumero = (value) => {
         //Obligatorio devuelve numero o cero, asi sea (undefined - cadena vacia - null)
         if (value === undefined || (typeof value === 'string' && value.trim() === '') || value === null) {
@@ -362,7 +347,7 @@ const crearAsiento = async (req,res,next)=> {
         } else {
           return value;
         }
-    };
+    };*/
 
     try {
         console.log(strSQL);
