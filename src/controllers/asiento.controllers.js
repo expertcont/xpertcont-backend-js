@@ -333,13 +333,13 @@ const crearAsiento = async (req,res,next)=> {
 
     const devuelveCadenaNull = (value) => {
         //Obligatorio devuelve una cadena, asi sea undefined o null
-        if (value === undefined) {
-          return '';
+        if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
+          return null;
         } else {
           return value;
         }
     };
-    const devuelveNumeroNull = (value) => {
+    /*const devuelveNumeroNull = (value) => {
         //Obligatorio devuelve numero o null, asi sea (undefined - cadena vacia)
         if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
           return null;
@@ -347,6 +347,14 @@ const crearAsiento = async (req,res,next)=> {
           return value;
         }
     };
+    const devuelveFechaNull = (value) => {
+        //Obligatorio devuelve una cadena, asi sea undefined o null
+        if (value === undefined || value.trim() === '') {
+          return null;
+        } else {
+          return value;
+        }
+    };*/
     const devuelveNumero = (value) => {
         //Obligatorio devuelve numero o cero, asi sea (undefined - cadena vacia - null)
         if (value === undefined || (typeof value === 'string' && value.trim() === '') || value === null) {
@@ -388,19 +396,19 @@ const crearAsiento = async (req,res,next)=> {
             devuelveCadenaNull(fecemi_ref),    //24
             
             devuelveCadenaNull(r_cuenta),        //25
-            devuelveNumeroNull(r_base001),       //26
-            devuelveNumeroNull(r_base002),       //27
-            devuelveNumeroNull(r_base003),       //28
-            devuelveNumeroNull(r_base004),       //29
-            devuelveNumeroNull(r_igv001),        //30
-            devuelveNumeroNull(r_igv002),        //31
-            devuelveNumeroNull(r_igv003),        //32
+            devuelveCadenaNull(r_base001),       //26
+            devuelveCadenaNull(r_base002),       //27
+            devuelveCadenaNull(r_base003),       //28
+            devuelveCadenaNull(r_base004),       //29
+            devuelveCadenaNull(r_igv001),        //30
+            devuelveCadenaNull(r_igv002),        //31
+            devuelveCadenaNull(r_igv003),        //32
             
-            devuelveNumeroNull(r_monto_icbp),    //33
-            devuelveNumeroNull(r_monto_otros),   //34
-            devuelveNumeroNull(r_monto_total),   //35
+            devuelveCadenaNull(r_monto_icbp),    //33
+            devuelveCadenaNull(r_monto_otros),   //34
+            devuelveCadenaNull(r_monto_total),   //35
             devuelveCadenaNull(r_moneda),        //36
-            devuelveNumeroNull(r_tc),            //37
+            devuelveCadenaNull(r_tc),            //37
 
             devuelveCadenaNull(r_idbss),         //38
             devuelveCadenaNull(r_id_pais),       //39
