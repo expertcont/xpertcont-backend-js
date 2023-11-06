@@ -14,6 +14,7 @@ const formapagoRoutes = require('./src/routes/formapago.routes');
 const seguridadRoutes = require('./src/routes/seguridad.routes');
 const contabilidadRoutes = require('./src/routes/contabilidad.routes');
 const cuentaRoutes = require('./src/routes/cuenta.routes');
+const tsunatRoutes = require('./src/routes/tsunat.routes');
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -34,6 +35,7 @@ app.use(formapagoRoutes);
 app.use(seguridadRoutes);
 app.use(contabilidadRoutes);
 app.use(cuentaRoutes);
+app.use(tsunatRoutes);
 
 app.use((err, req, res, next) => {
     return res.json({
