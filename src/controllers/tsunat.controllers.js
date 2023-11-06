@@ -29,7 +29,18 @@ const obtenerTodosAduana = async (req,res,next)=> {
 };
 const obtenerTodosComprobante = async (req,res,next)=> {
     try {
-        const todosReg = await pool.query("SELECT cod,nombre FROM mct_tcomprobante ORDER BY cod");
+        const {tipo} = req.params; //tipo = c(compras) v(ventas) o t(todos)
+        let strSQL;
+        strSQL = "SELECT cod,nombre FROM mct_tcomprobante";
+        if (tipo ==='c') {
+            strSQL += " WHERE c_compras = '1'";
+        }
+        if (tipo ==='v') {
+            strSQL += " WHERE c_ventas = '1'";
+        }
+        strSQL += " ORDER BY cod";
+
+        const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
     }
     catch(error){

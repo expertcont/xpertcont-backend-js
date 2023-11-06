@@ -6,7 +6,7 @@ const {obtenerTodosPais,obtenerTodosBss,obtenerTodosAduana,obtenerTodosComproban
 router.get('/pais', obtenerTodosPais);
 router.get('/bss', obtenerTodosBss);
 router.get('/aduana', obtenerTodosAduana);
-router.get('/comprobante', obtenerTodosComprobante);
+router.get('/comprobante/:tipo', obtenerTodosComprobante);//tipo='c', 'v', 't'
 router.get('/mediopago', obtenerTodosMedioPago);
 
 module.exports = router;
