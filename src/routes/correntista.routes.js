@@ -4,7 +4,7 @@ const router = Router();
 const {obtenerTodosCorrentistas,obtenerCorrentista,crearCorrentista,actualizarCorrentista,eliminarCorrentista} = require('../controllers/correntista.controllers')
 
 router.get('/correntista', obtenerTodosCorrentistas);
-router.get('/correntista/:id', obtenerCorrentista);
+router.get('/correntista/:id_usuario/:id', obtenerCorrentista);//separado por usuario
 router.post('/correntista', crearCorrentista);
 router.put('/correntista/:id', actualizarCorrentista);
 router.delete('/correntista/:id', eliminarCorrentista);

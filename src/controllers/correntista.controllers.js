@@ -1,9 +1,9 @@
 const pool = require('../db');
 
-const obtenerTodosCorrentistas = async (req,res,next)=> {
-    //console.log("select documento_id, razon_social, telefono from mad_correntistas order by razon_social");
+const obtenerTodosCorrentista = async (req,res,next)=> {
+    //console.log("select documento_id, razon_social, telefono from mad_correntista order by razon_social");
     try {
-        const todosReg = await pool.query("select * from mad_correntistas order by id_documento, razon_social");
+        const todosReg = await pool.query("select * from mad_correntista order by id_documento, razon_social");
         res.json(todosReg.rows);
     }
     catch(error){
@@ -14,8 +14,8 @@ const obtenerTodosCorrentistas = async (req,res,next)=> {
 };
 const obtenerCorrentista = async (req,res,next)=> {
     try {
-        const {id} = req.params;
-        const result = await pool.query("select * from mad_correntistas where documento_id = $1",[id]);
+        const {id_usuario, id} = req.params;
+        const result = await pool.query("SELECT * FROM mad_correntista WHERE id_usuario = $1 AND documento_id = $2",[id_usuario,id]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -45,7 +45,7 @@ const crearCorrentista = async (req,res,next)=> {
     } = req.body
 
     try {
-        const result = await pool.query("INSERT INTO mad_correntistas VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *", 
+        const result = await pool.query("INSERT INTO mad_correntista VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *", 
         [   
         documento_id,   //01
         id_documento,   //02    
@@ -70,7 +70,7 @@ const crearCorrentista = async (req,res,next)=> {
 const eliminarCorrentista = async (req,res,next)=> {
     try {
         const {id} = req.params;
-        const result = await pool.query("delete from mad_correntistas where documento_id = $1",[id]);
+        const result = await pool.query("delete from mad_correntista where documento_id = $1",[id]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
@@ -100,7 +100,7 @@ const actualizarCorrentista = async (req,res,next)=> {
                 //base            //11
             } = req.body
 
-        strSQL = " UPDATE mad_correntistas SET";
+        strSQL = " UPDATE mad_correntista SET";
         strSQL = strSQL + "  razon_social=$1";
         strSQL = strSQL + " ,codigo=$2";
         strSQL = strSQL + " ,contacto=$3";
@@ -142,7 +142,7 @@ const actualizarCorrentista = async (req,res,next)=> {
 };
 
 module.exports = {
-    obtenerTodosCorrentistas,
+    obtenerTodosCorrentista,
     obtenerCorrentista,
     crearCorrentista,
     eliminarCorrentista,
