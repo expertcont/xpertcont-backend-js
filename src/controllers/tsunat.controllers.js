@@ -56,6 +56,15 @@ const obtenerTodosMedioPago = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+const obtenerTodosIdDoc = async (req,res,next)=> {
+    try {
+        const todosReg = await pool.query("SELECT id_doc,nombre from mct_tdoc ORDER BY id_doc");
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
 
 
 module.exports = {
@@ -63,5 +72,6 @@ module.exports = {
     obtenerTodosBss,
     obtenerTodosAduana,
     obtenerTodosComprobante,
-    obtenerTodosMedioPago
+    obtenerTodosMedioPago,
+    obtenerTodosIdDoc
  }; 
