@@ -16,7 +16,7 @@ const obtenerCorrentista = async (req,res,next)=> {
     try {
         const {id_usuario, id} = req.params;
         
-        console.log([id_usuario,id]);
+        console.log(id_usuario,id);
         const result = await pool.query("SELECT * FROM mad_correntista WHERE id_usuario = $1 AND documento_id = $2",[id_usuario,id]);
 
         if (result.rows.length === 0)
