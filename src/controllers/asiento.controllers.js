@@ -170,7 +170,7 @@ const crearAsiento = async (req,res,next)=> {
         mayorizado,         //10
         //ctrl_crea,    // timestamp generado
         ctrl_crea_us,       //11
-        r_id_documento,     //12
+        r_id_doc,           //12
         r_documento_id,     //13
         r_razon_social,     //14
 
@@ -239,7 +239,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,mayorizado";   //10
     strSQL += " ,ctrl_crea";     //generado *
     strSQL += " ,ctrl_crea_us";     //11
-    strSQL += " ,r_id_documento";   //12
+    strSQL += " ,r_id_doc";   //12
     strSQL += " ,r_documento_id";   //13
     strSQL += " ,r_razon_social";   //14
 
@@ -332,23 +332,6 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,$44";
     strSQL += " ) RETURNING *";
 
-    /*const devuelveCadenaNull = (value) => {
-        //Obligatorio devuelve una cadena, asi sea undefined o null
-        if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
-          return null;
-        } else {
-          return value;
-        }
-    };
-    const devuelveNumero = (value) => {
-        //Obligatorio devuelve numero o cero, asi sea (undefined - cadena vacia - null)
-        if (value === undefined || (typeof value === 'string' && value.trim() === '') || value === null) {
-          return 0;
-        } else {
-          return value;
-        }
-    };*/
-
     try {
         console.log(strSQL);
         const parametros = [   
@@ -364,7 +347,7 @@ const crearAsiento = async (req,res,next)=> {
             devuelveCadenaNull(mayorizado),     //10
 
             devuelveCadenaNull(ctrl_crea_us),    //11
-            devuelveCadenaNull(r_id_documento),  //12
+            devuelveCadenaNull(r_id_doc),  //12
             devuelveCadenaNull(r_documento_id),  //13
             devuelveCadenaNull(r_razon_social),  //14
 
