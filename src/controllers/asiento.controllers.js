@@ -19,7 +19,7 @@ const obtenerTodosAsientosCompra = async (req,res,next)=> {
     strSQL = strSQL + " ,r_numero";                                             //10
     strSQL = strSQL + " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante"; //(07-08-09)
     strSQL = strSQL + " ,r_numero2";                                            //11
-    strSQL = strSQL + " ,r_id_documento";                                       //12
+    strSQL = strSQL + " ,r_id_doc";                                       //12
     strSQL = strSQL + " ,r_documento_id";                                       //13
     strSQL = strSQL + " ,r_razon_social";                                       //14
     strSQL = strSQL + " ,r_base001";                                            //15
@@ -445,7 +445,7 @@ const actualizarAsiento = async (req,res,next)=> {
                 num_asiento,    //05
                 //datos cuerpo 
                 glosa,          //06
-                r_id_documento, //07
+                r_id_doc, //07
                 r_documento_id, //08
                 r_condicion,    //09
                 r_estado,       //10
@@ -496,7 +496,7 @@ const actualizarAsiento = async (req,res,next)=> {
         var strSQL;
         strSQL = "UPDATE mct_asientocontable SET ";
         strSQL = strSQL + "  glosa = $6";
-        strSQL = strSQL + " ,r_id_documento = $7";
+        strSQL = strSQL + " ,r_id_doc = $7";
         strSQL = strSQL + " ,r_documento_id = $8";
 
         strSQL = strSQL + " ,r_cod = $11";
@@ -558,7 +558,7 @@ const actualizarAsiento = async (req,res,next)=> {
             num_asiento,    //05
             //datos cuerpo 
             glosa,          //06
-            r_id_documento, //07
+            r_id_doc, //07
             r_documento_id, //08
             r_condicion,    //09
             r_estado,       //10
