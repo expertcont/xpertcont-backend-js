@@ -550,7 +550,9 @@ const actualizarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " AND periodo = $42";
         strSQL = strSQL + " AND id_libro = $43";
         strSQL = strSQL + " AND num_asiento = $44";
- 
+        console.log(strSQL);
+        console.log(req.params);
+
         const result = await pool.query(strSQL,
         [   
             glosa,              //01
@@ -612,7 +614,7 @@ const actualizarAsiento = async (req,res,next)=> {
 
         if (result.rowCount === 0)
             return res.status(404).json({
-                message:"Venta no encontrada"
+                message:"Asiento no encontrado"
             });
 
         return res.sendStatus(204);
