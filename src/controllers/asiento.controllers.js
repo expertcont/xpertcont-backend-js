@@ -546,8 +546,8 @@ const actualizarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " ,r_cuenta10 = $39";
 
         strSQL = strSQL + " WHERE id_usuario = $40";
-        strSQL = strSQL + " AND ano = $41";
-        strSQL = strSQL + " AND mes = $42";
+        strSQL = strSQL + " AND documento_id = $41";
+        strSQL = strSQL + " AND periodo = $42";
         strSQL = strSQL + " AND id_libro = $43";
         strSQL = strSQL + " AND num_asiento = $44";
  
