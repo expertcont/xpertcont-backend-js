@@ -529,9 +529,9 @@ const actualizarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " ,r_igv002 = $25";
         strSQL = strSQL + " ,r_igv003 = $26";
         strSQL = strSQL + " ,r_monto_otros = $27";
-        strSQL = strSQL + " ,r_moneda = $28";
-        strSQL = strSQL + " ,r_monto_isc = $29";
-        strSQL = strSQL + " ,r_monto_icbp = $30";
+        strSQL = strSQL + " ,r_monto_isc = $28";
+        strSQL = strSQL + " ,r_monto_icbp = $29";
+        strSQL = strSQL + " ,r_moneda = $30";
         strSQL = strSQL + " ,r_monto_total = $31";
         strSQL = strSQL + " ,r_tc = $32";
         //datos bien
