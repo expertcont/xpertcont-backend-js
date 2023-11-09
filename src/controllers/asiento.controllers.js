@@ -197,8 +197,8 @@ const crearAsiento = async (req,res,next)=> {
 
         r_monto_icbp,   //33
         r_monto_otros,  //34
-        r_moneda,       //35
-        r_monto_total,  //36
+        r_monto_total,  //35
+        r_moneda,       //36        
         r_tc,           //37
         
         r_idbss,        //38
@@ -472,8 +472,8 @@ const actualizarAsiento = async (req,res,next)=> {
     
             r_monto_icbp,       //28
             r_monto_otros,      //29
-            r_moneda,           //30
-            r_monto_total,      //31
+            r_monto_total,      //30
+            r_moneda,           //31            
             r_tc,               //32
             
             r_idbss,            //33
@@ -531,8 +531,8 @@ const actualizarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " ,r_igv003 = $27";
         strSQL = strSQL + " ,r_monto_icbp = $28";
         strSQL = strSQL + " ,r_monto_otros = $29";
-        strSQL = strSQL + " ,r_moneda = $30";
-        strSQL = strSQL + " ,r_monto_total = $31";
+        strSQL = strSQL + " ,r_monto_total = $30";
+        strSQL = strSQL + " ,r_moneda = $31";
         strSQL = strSQL + " ,r_tc = $32";
         //datos bien
         strSQL = strSQL + " ,r_idbss = $33";
