@@ -513,7 +513,7 @@ const actualizarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " ,r_numero = $11";
         strSQL = strSQL + " ,r_numero2 = $12";
         strSQL = strSQL + " ,r_fecemi = $13";
-        strSQL = strSQL + " ,r_fecpagovct = $14";
+        strSQL = strSQL + " ,r_fecvcto = $14";
         strSQL = strSQL + " ,r_cod_ref = $15";
         strSQL = strSQL + " ,r_serie_ref = $16";
         strSQL = strSQL + " ,r_numero_ref = $17";
@@ -535,7 +535,7 @@ const actualizarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " ,r_monto_total = $31";
         strSQL = strSQL + " ,r_tc = $32";
         //datos bien
-        strSQL = strSQL + " ,r_id_bien = $33";
+        strSQL = strSQL + " ,r_idbss = $33";
         //datos compras exterior
         strSQL = strSQL + " ,r_id_pais = $34";
         strSQL = strSQL + " ,r_id_aduana = $35";
