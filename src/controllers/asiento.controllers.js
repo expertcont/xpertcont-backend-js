@@ -550,58 +550,53 @@ const actualizarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " AND periodo = $42";
         strSQL = strSQL + " AND id_libro = $43";
         strSQL = strSQL + " AND num_asiento = $44";
-        console.log(strSQL);
-        console.log(req.params);
 
-        const result = await pool.query(strSQL,
-        [   
-            glosa,              //01
-            debe,               //02
-            haber,              //03
-            debe_me,            //04
-            haber_me,           //05
-            ctrl_mod_us,        //06
+        const parametros = [   
+            devuelveCadenaNull(glosa),          //01
+            devuelveNumero(debe),               //02
+            devuelveNumero(haber),              //03
+            devuelveNumero(debe_me),            //04
+            devuelveNumero(haber_me),           //05
+
+            devuelveCadenaNull(ctrl_mod_us),     //06
+            devuelveCadenaNull(r_id_doc),        //07
+            devuelveCadenaNull(r_documento_id),  //08
+            devuelveCadenaNull(r_razon_social),  //09
+
+            devuelveCadenaNull(r_cod),           //10
+            devuelveCadenaNull(r_serie),         //11
+            devuelveCadenaNull(r_numero),        //12
+            devuelveCadenaNull(r_numero2),       //13
+            devuelveCadenaNull(fecemi),          //14
+            devuelveCadenaNull(fecvcto),         //15
+
+            devuelveCadenaNull(r_cod_ref),       //16
+            devuelveCadenaNull(r_serie_ref),     //17
+            devuelveCadenaNull(r_numero_ref),    //18
+            devuelveCadenaNull(fecemi_ref),      //19
             
-            r_id_doc,           //07
-            r_documento_id,     //08
-            r_razon_social,     //09
-    
-            r_cod,              //10
-            r_serie,            //11
-            r_numero,           //12
-            r_numero2,          //13
-            fecemi,             //14
-            fecvcto,            //15
-    
-            r_cod_ref,          //16
-            r_serie_ref,        //17
-            r_numero_ref,       //18
-            fecemi_ref,         //19
+            devuelveCadenaNull(r_cuenta),        //20
+            devuelveCadenaNull(r_base001),       //21
+            devuelveCadenaNull(r_base002),       //22
+            devuelveCadenaNull(r_base003),       //23
+            devuelveCadenaNull(r_base004),       //24
+            devuelveCadenaNull(r_igv001),        //25
+            devuelveCadenaNull(r_igv002),        //26
+            devuelveCadenaNull(r_igv003),        //27
             
-            r_cuenta,           //20
-            r_base001,          //21
-            r_base002,          //22
-            r_base003,          //23
-            r_base004,          //24
-            r_igv001,           //25
-            r_igv002,           //26
-            r_igv003,           //27
-    
-            r_monto_icbp,       //28
-            r_monto_otros,      //29
-            r_moneda,           //30
-            r_monto_total,      //31
-            r_tc,               //32
-            
-            r_idbss,            //33
-            //datos compras exterior
-            r_id_pais,          //34
-            r_id_aduana,        //35
-            r_ano_dam,          //36
-            //datos financiero
-            r_id_mediopago,     //37
-            r_voucher_banco,    //38
-            r_cuenta10,         //39 new efectivo o banco X
+            devuelveCadenaNull(r_monto_icbp),    //28
+            devuelveCadenaNull(r_monto_otros),   //29
+            devuelveCadenaNull(r_monto_total),   //30
+            devuelveCadenaNull(r_moneda),        //31
+            devuelveCadenaNull(r_tc),            //32
+
+            devuelveCadenaNull(r_idbss),         //33
+            devuelveCadenaNull(r_id_pais),       //34
+            devuelveCadenaNull(r_id_aduana),     //35
+            devuelveCadenaNull(r_ano_dam),       //36
+            devuelveCadenaNull(r_id_mediopago),  //37
+            devuelveCadenaNull(r_voucher_banco), //38
+            devuelveCadenaNull(r_cuenta10),      //39
 
             //Seccion parametros
             id_anfitrion,       //40
@@ -609,8 +604,12 @@ const actualizarAsiento = async (req,res,next)=> {
             periodo,            //42
             id_libro,           //43
             num_asiento,        //44
-        ]
-        );
+        ];
+
+        console.log(strSQL);
+        console.log(parametros);
+
+        const result = await pool.query(strSQL,parametros);
 
         if (result.rowCount === 0)
             return res.status(404).json({
