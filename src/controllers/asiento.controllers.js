@@ -438,173 +438,175 @@ const eliminarAsiento = async (req,res,next)=> {
 const actualizarAsiento = async (req,res,next)=> {
     try {
         const { //datos cabecera
-                id_usuario,     //01
-                ano,            //02
-                mes,            //03
-                id_libro,       //04
-                num_asiento,    //05
-                //datos cuerpo 
-                glosa,          //06
-                r_id_doc, //07
-                r_documento_id, //08
-                r_condicion,    //09
-                r_estado,       //10
-                r_cod,          //11
-                r_serie,        //12
-                r_numero,       //13
-                r_fecemi,       //14
-                r_fecpagovct,   //15
-                r_cod_ref,      //16
-                r_serie_ref,    //17
-                r_numero_ref,   //18
-                r_fecemi_ref,   //19
-                r_fecpagovct_ref, //20
-                r_cuenta,       //21
-                r_id_base,      //22
-                r_base001,      //23
-                r_base002,      //24
-                r_base003,      //25
-                r_base004,      //26
-                r_igv001,       //27
-                r_igv002,       //28
-                r_igv003,       //29
-                r_monto_otros,  //30
-                r_monto_isc,    //31
-                r_monto_icbp,   //32
-                r_monto_total,  //33
-                r_tc,           //34
-                //datos compras dolares
-                r_base_me,      //35
-                r_igv_me,       //36
-                r_total_me,     //37
-                r_id_bien,      //38
-                //datos compras exterior
-                r_id_pais,      //39
-                r_id_aduana,    //40
-                r_ano_dua,      //41
-                r_comprobante_nodomic,  //42
-                //datos detraccion
-                r_detraccion_num,       //43
-                r_detraccion_fecemi,    //44
-                r_monto_detraccion,     //45
-                //datos financiero
-                r_id_mediopago,         //46
-                r_voucher_banco,        //47
-                r_cuenta10,             //48 new efectivo o banco X
-            } = req.body;
+            glosa,              //01
+            debe,               //02
+            haber,              //03
+            debe_me,            //04
+            haber_me,           //05
+            ctrl_mod_us,        //06
+            
+            r_id_doc,           //07
+            r_documento_id,     //08
+            r_razon_social,     //09
+    
+            r_cod,              //10
+            r_serie,            //11
+            r_numero,           //12
+            r_numero2,          //13
+            fecemi,             //14
+            fecvcto,            //15
+    
+            r_cod_ref,          //16
+            r_serie_ref,        //17
+            r_numero_ref,       //18
+            fecemi_ref,         //19
+            
+            r_cuenta,           //20
+            r_base001,          //21
+            r_base002,          //22
+            r_base003,          //23
+            r_base004,          //24
+            r_igv001,           //25
+            r_igv002,           //26
+            r_igv003,           //27
+    
+            r_monto_icbp,       //28
+            r_monto_otros,      //29
+            r_moneda,           //30
+            r_monto_total,      //31
+            r_tc,               //32
+            
+            r_idbss,            //33
+            //datos compras exterior
+            r_id_pais,          //34
+            r_id_aduana,        //35
+            r_ano_dam,          //36
+            //datos financiero
+            r_id_mediopago,     //37
+            r_voucher_banco,    //38
+            r_cuenta10,         //39 new efectivo o banco X
+
+        } = req.body;
         
+        const {
+            id_anfitrion,       //40
+            documento_id,       //41
+            periodo,            //42
+            id_libro,           //43
+            num_asiento,        //44
+        } = req.params;
+
         var strSQL;
         strSQL = "UPDATE mct_asientocontable SET ";
-        strSQL = strSQL + "  glosa = $6";
+        strSQL = strSQL + "  glosa = $1";
+        strSQL = strSQL + " ,debe = $2";
+        strSQL = strSQL + " ,haber = $3";
+        strSQL = strSQL + " ,debe_me = $4";
+        strSQL = strSQL + " ,haber_me = $5";
+        strSQL = strSQL + " ,ctrl_mod = CURRENT_TIMESTAMP";
+        strSQL = strSQL + " ,ctrl_mod_us = $6";
         strSQL = strSQL + " ,r_id_doc = $7";
         strSQL = strSQL + " ,r_documento_id = $8";
 
-        strSQL = strSQL + " ,r_cod = $11";
-        strSQL = strSQL + " ,r_serie = $12";
-        strSQL = strSQL + " ,r_numero = $13";
-        strSQL = strSQL + " ,r_fecemi = $14";
-        strSQL = strSQL + " ,r_fecpagovct = $15";
-        strSQL = strSQL + " ,r_cod_ref = $16";
-        strSQL = strSQL + " ,r_serie_ref = $17";
-        strSQL = strSQL + " ,r_numero_ref = $18";
-        strSQL = strSQL + " ,r_fecemi_ref = $19";
-        strSQL = strSQL + " ,r_fecpagovct_ref = $20";
-        strSQL = strSQL + " ,r_cuenta = $21";
-        strSQL = strSQL + " ,r_id_base = $22";
-        strSQL = strSQL + " ,r_base001 = $23";
-        strSQL = strSQL + " ,r_base002 = $24";
-        strSQL = strSQL + " ,r_base003 = $25";
-        strSQL = strSQL + " ,r_base004 = $26";
-        strSQL = strSQL + " ,r_igv001 = $27";
-        strSQL = strSQL + " ,r_igv002 = $28";
-        strSQL = strSQL + " ,r_igv003 = $29";
-        strSQL = strSQL + " ,r_monto_otros = $30";
-        strSQL = strSQL + " ,r_monto_isc = $31";
-        strSQL = strSQL + " ,r_monto_icbp = $32";
-        strSQL = strSQL + " ,r_monto_total = $33";
-        strSQL = strSQL + " ,r_tc = $34";
-        //datos compra me
-        strSQL = strSQL + " ,r_base_me = $35";
-        strSQL = strSQL + " ,r_igv_me = $36";
-        strSQL = strSQL + " ,r_total_me = $37";
-        //datos bien
-        strSQL = strSQL + " ,r_id_bien = $38";
-        //datos compras exterior
-        strSQL = strSQL + " ,r_id_pais = $39";
-        strSQL = strSQL + " ,r_id_aduana = $40";
-        strSQL = strSQL + " ,r_ano_dua = $41";
-        strSQL = strSQL + " ,r_comprobante_nodomic = $42";
-        //datos detraccion
-        strSQL = strSQL + " ,r_detraccion_num = $43";
-        strSQL = strSQL + " ,r_detraccion_fecemi = $44";
-        strSQL = strSQL + " ,r_monto_detraccion = $45";
-        //datos financiero
-        strSQL = strSQL + " ,r_id_mediopago = $46";
-        strSQL = strSQL + " ,r_voucher_banco = $47";
-        strSQL = strSQL + " ,r_cuenta10 = $48";
+        strSQL = strSQL + " ,r_cod = $9";
+        strSQL = strSQL + " ,r_serie = $10";
+        strSQL = strSQL + " ,r_numero = $11";
+        strSQL = strSQL + " ,r_numero2 = $12";
+        strSQL = strSQL + " ,r_fecemi = $13";
+        strSQL = strSQL + " ,r_fecpagovct = $14";
+        strSQL = strSQL + " ,r_cod_ref = $15";
+        strSQL = strSQL + " ,r_serie_ref = $16";
+        strSQL = strSQL + " ,r_numero_ref = $17";
+        strSQL = strSQL + " ,r_fecemi_ref = $18";
 
-        strSQL = strSQL + " WHERE id_usuario = $1";
-        strSQL = strSQL + " AND ano = $2";
-        strSQL = strSQL + " AND mes = $3";
-        strSQL = strSQL + " AND id_libro = $4";
-        strSQL = strSQL + " AND num_asiento = $5";
+        strSQL = strSQL + " ,r_cuenta = $19";
+        
+        strSQL = strSQL + " ,r_base001 = $20";
+        strSQL = strSQL + " ,r_base002 = $21";
+        strSQL = strSQL + " ,r_base003 = $22";
+        strSQL = strSQL + " ,r_base004 = $23";
+        strSQL = strSQL + " ,r_igv001 = $24";
+        strSQL = strSQL + " ,r_igv002 = $25";
+        strSQL = strSQL + " ,r_igv003 = $26";
+        strSQL = strSQL + " ,r_monto_otros = $27";
+        strSQL = strSQL + " ,r_moneda = $28";
+        strSQL = strSQL + " ,r_monto_isc = $29";
+        strSQL = strSQL + " ,r_monto_icbp = $30";
+        strSQL = strSQL + " ,r_monto_total = $31";
+        strSQL = strSQL + " ,r_tc = $32";
+        //datos bien
+        strSQL = strSQL + " ,r_id_bien = $33";
+        //datos compras exterior
+        strSQL = strSQL + " ,r_id_pais = $34";
+        strSQL = strSQL + " ,r_id_aduana = $35";
+        strSQL = strSQL + " ,r_ano_dam = $36";
+        //datos financiero
+        strSQL = strSQL + " ,r_id_mediopago = $37";
+        strSQL = strSQL + " ,r_voucher_banco = $38";
+        strSQL = strSQL + " ,r_cuenta10 = $39";
+
+        strSQL = strSQL + " WHERE id_usuario = $40";
+        strSQL = strSQL + " AND ano = $41";
+        strSQL = strSQL + " AND mes = $42";
+        strSQL = strSQL + " AND id_libro = $43";
+        strSQL = strSQL + " AND num_asiento = $44";
  
         const result = await pool.query(strSQL,
         [   
-            id_usuario,     //01
-            ano,            //02
-            mes,            //03
-            id_libro,       //04
-            num_asiento,    //05
-            //datos cuerpo 
-            glosa,          //06
-            r_id_doc, //07
-            r_documento_id, //08
-            r_condicion,    //09
-            r_estado,       //10
-            r_cod,          //11
-            r_serie,        //12
-            r_numero,       //13
-            r_fecemi,       //14
-            r_fecpagovct,   //15
-            r_cod_ref,      //16
-            r_serie_ref,    //17
-            r_numero_ref,   //18
-            r_fecemi_ref,   //19
-            r_fecpagovct_ref, //20
-            r_cuenta,       //21
-            r_id_base,      //22
-            r_base001,      //23
-            r_base002,      //24
-            r_base003,      //25
-            r_base004,      //26
-            r_igv001,       //27
-            r_igv002,       //28
-            r_igv003,       //29
-            r_monto_otros,  //30
-            r_monto_isc,    //31
-            r_monto_icbp,   //32
-            r_monto_total,  //33
-            r_tc,           //34
-            //datos compras dolares
-            r_base_me,      //35
-            r_igv_me,       //36
-            r_total_me,     //37
-            //datos bien
-            r_id_bien,      //38
+            glosa,              //01
+            debe,               //02
+            haber,              //03
+            debe_me,            //04
+            haber_me,           //05
+            ctrl_mod_us,        //06
+            
+            r_id_doc,           //07
+            r_documento_id,     //08
+            r_razon_social,     //09
+    
+            r_cod,              //10
+            r_serie,            //11
+            r_numero,           //12
+            r_numero2,          //13
+            fecemi,             //14
+            fecvcto,            //15
+    
+            r_cod_ref,          //16
+            r_serie_ref,        //17
+            r_numero_ref,       //18
+            fecemi_ref,         //19
+            
+            r_cuenta,           //20
+            r_base001,          //21
+            r_base002,          //22
+            r_base003,          //23
+            r_base004,          //24
+            r_igv001,           //25
+            r_igv002,           //26
+            r_igv003,           //27
+    
+            r_monto_icbp,       //28
+            r_monto_otros,      //29
+            r_moneda,           //30
+            r_monto_total,      //31
+            r_tc,               //32
+            
+            r_idbss,            //33
             //datos compras exterior
-            r_id_pais,      //39
-            r_id_aduana,    //40
-            r_ano_dua,      //41
-            r_comprobante_nodomic,  //42
-            //datos detraccion
-            r_detraccion_num,       //43
-            r_detraccion_fecemi,    //44
-            r_monto_detraccion,     //45
+            r_id_pais,          //34
+            r_id_aduana,        //35
+            r_ano_dam,          //36
             //datos financiero
-            r_id_mediopago,         //46
-            r_voucher_banco,     //47
-            r_cuenta10,             //48 new efectivo o banco X
+            r_id_mediopago,     //37
+            r_voucher_banco,    //38
+            r_cuenta10,         //39 new efectivo o banco X
+
+            //Seccion parametros
+            id_anfitrion,       //40
+            documento_id,       //41
+            periodo,            //42
+            id_libro,           //43
+            num_asiento,        //44
         ]
         );
 
