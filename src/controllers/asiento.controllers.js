@@ -426,7 +426,7 @@ const crearAsientoExcel = async (req,res,next)=> {
         ];
     
         await pool.query('BEGIN'); // Inicia una transacción
-
+        console.log("BEGIN");
         // Crea la tabla temporal con la estructura de mct_temp_venta
         await pool.query(`CREATE TEMP TABLE mct_temp_venta (
           r_fecemi DATE,
@@ -453,7 +453,8 @@ const crearAsientoExcel = async (req,res,next)=> {
           r_numero_ref VARCHAR(22),
           r_fecemi_ref DATE
         )`);
-    
+        console.log("CREATE TEMP TABLE mct_temp_venta");
+        
         // Utiliza COPY para insertar datos en la tabla temporal
         await pool.query(`COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`);
         const stream = pool.query.copyFrom(`COPY mct_temp_venta TO STDOUT WITH CSV HEADER DELIMITER ','`);
