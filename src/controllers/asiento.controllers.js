@@ -408,7 +408,7 @@ const crearAsientoExcel = async (req,res,next)=> {
         } = req.body;
     
         const fileBuffer = req.file.buffer;
-    
+        console.log("fileBuffer: ", fileBuffer);
         // Parsea el archivo Excel
         const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
@@ -416,7 +416,7 @@ const crearAsientoExcel = async (req,res,next)=> {
     
         // Convierte la matriz de objetos en una cadena de texto con formato CSV
         const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
-    
+        console.log("csvData: ", csvData);
         const parametros = [   
             id_anfitrion,    //01
             documento_id,    //02
@@ -563,7 +563,7 @@ const crearAsientoExcel = async (req,res,next)=> {
         //res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
-        await client.query('ROLLBACK');
+        await pool.query('ROLLBACK');
         next(error)
     }
 };
