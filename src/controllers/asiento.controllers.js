@@ -408,7 +408,7 @@ const crearAsientoExcel = async (req,res,next)=> {
         } = req.body;
     
         const fileBuffer = req.file.buffer;
-        console.log("fileBuffer: ", fileBuffer);
+        //console.log("fileBuffer: ", fileBuffer);
         // Parsea el archivo Excel
         const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
@@ -416,7 +416,7 @@ const crearAsientoExcel = async (req,res,next)=> {
     
         // Convierte la matriz de objetos en una cadena de texto con formato CSV
         const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
-        console.log("csvData: ", csvData);
+        //console.log("csvData: ", csvData);
         const parametros = [   
             id_anfitrion,    //01
             documento_id,    //02
@@ -458,7 +458,7 @@ const crearAsientoExcel = async (req,res,next)=> {
         await pool.query(`COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`);
         const stream = pool.query.copyFrom(`COPY mct_temp_venta TO STDOUT WITH CSV HEADER DELIMITER ','`);
         stream.end(csvData);
-    
+        console.log("antes de  insert");
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
         strSQL = "INSERT INTO mct_asientocontable";
         strSQL +=  " (";
