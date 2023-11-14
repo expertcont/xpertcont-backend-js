@@ -417,13 +417,6 @@ const crearAsientoExcel = async (req,res,next)=> {
         // Convierte la matriz de objetos en una cadena de texto con formato CSV
         const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
         //console.log("csvData: ", csvData);
-        const parametros = [   
-            id_anfitrion,    //01
-            documento_id,    //02
-            periodo,         //03
-            id_libro,        //04
-            id_invitado,     //05        
-        ];
     
         await pool.query('BEGIN'); // Inicia una transacción
         console.log("BEGIN");
@@ -454,7 +447,7 @@ const crearAsientoExcel = async (req,res,next)=> {
           r_fecemi_ref DATE
         )`);
         console.log("CREATE TEMP TABLE mct_temp_venta");
-        
+
         // Utiliza COPY para insertar datos en la tabla temporal
         await pool.query(`COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`);
         const stream = pool.query.copyFrom(`COPY mct_temp_venta TO STDOUT WITH CSV HEADER DELIMITER ','`);
@@ -548,6 +541,13 @@ const crearAsientoExcel = async (req,res,next)=> {
         strSQL += " ,'EXCEL'";             //origen
 
         strSQL += " FROM mct_temp_venta";             //37
+        const parametros = [   
+            id_anfitrion,    //01
+            documento_id,    //02
+            periodo,         //03
+            id_libro,        //04
+            id_invitado,     //05        
+        ];
         
         console.log(strSQL);
         console.log(parametros);
@@ -564,6 +564,7 @@ const crearAsientoExcel = async (req,res,next)=> {
         //res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
+        console.log(error);
         await pool.query('ROLLBACK');
         next(error)
     }
