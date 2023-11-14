@@ -445,12 +445,25 @@ const crearAsientoExcel = async (req,res,next)=> {
         )`);
 
         // Utiliza COPY para insertar datos en la tabla temporal
-        await pool.query(`COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`);
-        console.log("1er copy");
+        /*await pool.query(`COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`);
         const stream = pool.query.copyFrom(`COPY mct_temp_venta TO STDOUT WITH CSV HEADER DELIMITER ','`);
-        console.log("2do copy");
-        stream.end(csvData);
-        console.log("despues de stream");
+        stream.end(csvData);*/
+
+        // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
+        const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
+        await pool.query(copyFromQuery);
+        console.log("await pool.query(copyFromQuery)", "llegara ???");
+        // Crear un flujo de salida para COPY TO
+        const copyToQuery = `COPY mct_temp_venta TO STDOUT WITH CSV HEADER DELIMITER ','`;
+        const stream = pool.query.copyTo(copyToQuery);
+        // Pipe (enviar) los datos del flujo de salida al flujo de entrada (csvData)
+        stream.pipe(csvData);
+        // Finalizar la carga de datos
+        stream.end();
+        // Verificar que la carga de datos haya finalizado
+        await new Promise((resolve) => stream.on('end', resolve));
+        console.log('Carga de datos finalizada.');
+
 
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
         strSQL = "INSERT INTO mct_asientocontable";
