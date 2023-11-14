@@ -1,6 +1,7 @@
 const pool = require('../db');
 const xlsx = require('xlsx');
 const {devuelveCadenaNull,devuelveNumero} = require('../utils/libreria.utils');
+const { Readable } = require('stream');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //Solo Cabeceras
@@ -452,18 +453,20 @@ const crearAsientoExcel = async (req,res,next)=> {
         // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
         const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
         await pool.query(copyFromQuery);
-        console.log("await pool.query(copyFromQuery)", "llegara ???");
+        console.log('await pool.query(copyFromQuery) .... PASA');
         // Crear un flujo de salida para COPY TO
         const copyToQuery = `COPY mct_temp_venta TO STDOUT WITH CSV HEADER DELIMITER ','`;
         const stream = pool.query.copyTo(copyToQuery);
+        // Convertir csvData en un readable stream antes de utilizar pipe
+        const csvStream = Readable.from(csvData);
         // Pipe (enviar) los datos del flujo de salida al flujo de entrada (csvData)
-        stream.pipe(csvData);
+        csvStream.pipe(stream);
         // Finalizar la carga de datos
         stream.end();
         // Verificar que la carga de datos haya finalizado
         await new Promise((resolve) => stream.on('end', resolve));
         console.log('Carga de datos finalizada.');
-
+        
 
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
         strSQL = "INSERT INTO mct_asientocontable";
