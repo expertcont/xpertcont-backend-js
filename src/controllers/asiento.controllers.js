@@ -605,36 +605,27 @@ const crearAsientoExcel = async (req,res,next)=> {
             nombre VARCHAR(255)
           )
         `);
-    
-        const copyFromStream = copyFrom(
-          `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`,
-          { pool:pool }
-        );
-    
-        const csvStream = Readable.from(csvData);
-        csvStream.pipe(copyFromStream);
-        copyFromStream.end();
-        console.log('copyFromStream.end() ... OK');
+        //////////////////////////////////////////////////////////
 
-        // Esperar a que se complete la carga de datos
-        ////////////////////////////////////////////////////////////
-        const copyComplete = new Promise((resolve, reject) => {
-            // Manejar el evento 'finish' en lugar de 'end'
-            copyFromStream.on('finish', () => {
-              console.log('Carga de datos finalizada.');
-              resolve();
-            });
-          
-            // Manejar el evento 'error'
-            copyFromStream.on('error', (err) => {
-              console.error('Error durante la carga de datos:', err);
-              reject(err);
-            });
-          });
-          
-        // Esperar a que la carga de datos se complete o falle
-        await copyComplete;
-        ////////////////////////////////////////////////////////////
+        // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
+        const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
+        const copyFromStream = copyFrom(copyFromQuery, { pool:pool });
+
+        // Convertir csvData en un readable stream antes de utilizar pipe
+        const csvStream = Readable.from(csvData);
+
+        // Pipe (enviar) los datos del flujo de salida al flujo de entrada (csvData)
+        csvStream.pipe(copyFromStream);
+        console.log("csvStream.pipe(copyFromStream)  ... ok");
+
+        // Manejar el evento 'finish' en lugar de 'end'
+        await new Promise((resolve, reject) => {
+        copyFromStream.on('finish', resolve);
+        copyFromStream.on('error', reject);
+        });
+
+        console.log('Carga de datos finalizada.');
+        /////////////////////////////////////////////////////////
 
         //await pool.query('DROP TABLE mct_temp_venta');
         await pool.query('COMMIT');
