@@ -616,9 +616,17 @@ const crearAsientoExcel = async (req,res,next)=> {
         copyFromStream.end();
         console.log('copyFromStream.end() ... OK');
 
-        await new Promise((resolve) => copyFromStream.on('end', resolve));
-        console.log('Carga de datos finalizada.');
-    
+        // Esperar a que se complete la carga de datos
+        await new Promise((resolve, reject) => {
+            copyFromStream.on('end', resolve);
+            copyFromStream.on('error', reject);
+            // Manejar el evento 'finish' en lugar de 'end'
+            copyFromStream.on('finish', () => {
+            console.log('Carga de datos finalizada.');
+            resolve();
+            });
+        });       
+        
         //await pool.query('DROP TABLE mct_temp_venta');
         await pool.query('COMMIT');
     
