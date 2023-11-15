@@ -609,7 +609,7 @@ const crearAsientoExcel = async (req,res,next)=> {
 
         // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
         const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
-        const copyFromStream = copyFrom(copyFromQuery, { pool:pool });
+        const copyFromStream = copyFrom(copyFromQuery, { pool });
 
         // Convertir csvData en un readable stream antes de utilizar pipe
         const csvStream = Readable.from(csvData);
