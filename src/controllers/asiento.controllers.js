@@ -458,15 +458,18 @@ const crearAsientoExcel = async (req,res,next)=> {
         // Manejar el evento 'finish' en lugar de 'end'
         await new Promise((resolve, reject) => {
             copyFromStream.on('finish', resolve);
+            console.log("copyFromStream.on('finish', resolve) ... ok ");
             copyFromStream.on('error', reject);
+            console.log("copyFromStream.on('error', reject) ... ok ");
             csvStream.pipe(copyFromStream);
+            console.log("csvStream.pipe(copyFromStream) ... ok ");
         });
 
         console.log('Carga de datos finalizada.');
         } finally {
         console.log('Finally.');
         }
-        
+
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
         strSQL = "INSERT INTO mct_asientocontable";
         strSQL +=  " (";
