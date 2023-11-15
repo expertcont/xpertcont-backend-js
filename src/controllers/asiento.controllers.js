@@ -399,7 +399,7 @@ const crearAsiento = async (req,res,next)=> {
     }
 };
 
-const crearAsientoExcel = async (req,res,next)=> {
+/*const crearAsientoExcel = async (req,res,next)=> {
     try {
         let strSQL;
         const { //datos cabecera
@@ -446,7 +446,7 @@ const crearAsientoExcel = async (req,res,next)=> {
           r_serie_ref VARCHAR(5),
           r_numero_ref VARCHAR(22)
         )`);
-        //******************************************************* */
+        /////////////////////////////////////////////////////////
         // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
         const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
         const copyFromStream = copyFrom(copyFromQuery, { pool: pool });
@@ -464,7 +464,7 @@ const crearAsientoExcel = async (req,res,next)=> {
         await copyComplete;
         console.log('Carga de datos finalizada.');
     
-        //******************************************************* */
+        //////////////////////////////////////////////////////////////
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
         strSQL = "INSERT INTO mct_asientocontable";
         strSQL +=  " (";
@@ -580,6 +580,56 @@ const crearAsientoExcel = async (req,res,next)=> {
         await pool.query('ROLLBACK');
         next(error)
     }
+};*/
+
+const crearAsientoExcel = async (req,res,next)=> {
+    try {
+        const fileBuffer = req.file.buffer;
+        const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+          header: 1,
+        });
+    
+        // Seleccionamos solo las columnas de interés (código y nombre)
+        const csvData = sheetData
+          .map((row) => [row[0], row[1]].join(','))
+          .join('\n');
+    
+        await pool.query('BEGIN');
+    
+        // Creamos la tabla temporal solo con las columnas necesarias
+        await pool.query(`
+          CREATE TEMP TABLE mct_temp_venta (
+            codigo VARCHAR(255),
+            nombre VARCHAR(255)
+          )
+        `);
+    
+        const copyFromStream = copyFrom(
+          `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`,
+          { pool }
+        );
+    
+        const csvStream = Readable.from(csvData);
+    
+        csvStream.pipe(copyFromStream);
+        copyFromStream.end();
+    
+        await new Promise((resolve) => copyFromStream.on('end', resolve));
+        console.log('Carga de datos finalizada.');
+    
+        //await pool.query('DROP TABLE mct_temp_venta');
+        await pool.query('COMMIT');
+    
+        res.status(200).json({
+          mensaje: 'Datos cargados desde Excel a la tabla temporal',
+        });
+      } catch (error) {
+        console.log(error);
+        await pool.query('ROLLBACK');
+        next(error);
+      }
 };
 
 const eliminarAsiento = async (req,res,next)=> {
