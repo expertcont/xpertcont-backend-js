@@ -457,7 +457,8 @@ const crearAsientoExcel = async (req,res,next)=> {
             await new Promise((resolve) => copyFromStream.on('end', resolve));
             console.log('Carga de datos finalizada.');
           } finally {
-            pool.release();
+            //pool.release();
+            console.log('Finally.');
           }
         
 
