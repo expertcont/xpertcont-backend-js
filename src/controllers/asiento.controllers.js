@@ -608,7 +608,7 @@ const crearAsientoExcel = async (req,res,next)=> {
     
         const copyFromStream = copyFrom(
           `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`,
-          { pool }
+          { pool:pool }
         );
     
         const csvStream = Readable.from(csvData);
@@ -617,16 +617,29 @@ const crearAsientoExcel = async (req,res,next)=> {
         console.log('copyFromStream.end() ... OK');
 
         // Esperar a que se complete la carga de datos
+        ////////////////////////////////////////////////////////////
         await new Promise((resolve, reject) => {
-            copyFromStream.on('end', resolve);
-            copyFromStream.on('error', reject);
             // Manejar el evento 'finish' en lugar de 'end'
             copyFromStream.on('finish', () => {
             console.log('Carga de datos finalizada.');
             resolve();
             });
-        });       
+            // Manejar el evento 'error'
+            copyFromStream.on('error', (err) => {
+            console.error('Error durante la carga de datos:', err);
+            reject(err);
+            });
         
+            // Finalizar la conexión al finalizar el flujo de escritura
+            copyFromStream.on('close', () => {
+            console.log('Conexión cerrada después de cargar datos.');
+            });
+        
+            // Iniciar el proceso de pipe
+            csvStream.pipe(copyFromStream);
+        });
+        ////////////////////////////////////////////////////////////
+
         //await pool.query('DROP TABLE mct_temp_venta');
         await pool.query('COMMIT');
     
