@@ -450,9 +450,11 @@ const crearAsientoExcel = async (req,res,next)=> {
         const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
         try {
             const copyFromStream = copyFrom(copyFromQuery, { pool: pool });
-            console.log('copyFrom .... LLEGA');
+            console.log('copyFrom .... ok');
             const csvStream = Readable.from(csvData);
+            console.log('Readable.from(csvData) .... ok');
             csvStream.pipe(copyFromStream);
+            console.log('pipe(copyFromStream) .... ok');
             copyFromStream.end();
             // Esperar a que se complete la carga de datos
             await new Promise((resolve) => copyFromStream.on('end', resolve));
