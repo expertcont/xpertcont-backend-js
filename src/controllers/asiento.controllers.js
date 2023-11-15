@@ -1,8 +1,8 @@
 const pool = require('../db');
 const xlsx = require('xlsx');
 const { Readable } = require('stream');
-const fastCsv = require('fast-csv');
-//const { from: copyFrom } = require('pg-copy-streams');
+//const fastCsv = require('fast-csv');
+const { from: copyFrom } = require('pg-copy-streams');
 const {devuelveCadenaNull,devuelveNumero} = require('../utils/libreria.utils');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
@@ -446,35 +446,26 @@ const crearAsientoExcel = async (req,res,next)=> {
           r_serie_ref VARCHAR(5),
           r_numero_ref VARCHAR(22)
         )`);
-
+        //******************************************************* */
         // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
         const csvStream = Readable.from(csvData);
 
-        const copyFromStream = pool.query.copyFrom(`COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`);
+        const copyFromStream = pool.query(copyFrom(`COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`));
 
-        const csvParserStream = csvStream.pipe(fastCsv.parse({ headers: true }));
-
-        csvParserStream.on('data', (data) => {
-        const csvRow = Object.values(data).join(',');
-        copyFromStream.write(`${csvRow}\n`);
-        });
-
-        csvParserStream.on('end', () => {
-        copyFromStream.end();
-        });
+        csvStream.pipe(copyFromStream);
 
         // Crear una promesa que se resolverá cuando la carga de datos haya terminado
         const copyComplete = new Promise((resolve, reject) => {
         copyFromStream.on('end', resolve);
         copyFromStream.on('error', reject);
         });
-        console.log('DEspues Promise');
+        console.log('Promise');
 
         // Esperar a que la carga de datos se complete o falle
         await copyComplete;
         console.log('Carga de datos finalizada.');
-
-
+        
+        //******************************************************* */
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
         strSQL = "INSERT INTO mct_asientocontable";
         strSQL +=  " (";
