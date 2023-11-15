@@ -457,8 +457,8 @@ const crearAsientoExcel = async (req,res,next)=> {
 
         // Manejar el evento 'finish' en lugar de 'end'
         await new Promise((resolve, reject) => {
-            copyFromStream.on('finish', resolve);
-            console.log("copyFromStream.on('finish', resolve) ... ok ");
+            copyFromStream.on('end', resolve);
+            console.log("copyFromStream.on('end', resolve) ... ok ");
             copyFromStream.on('error', reject);
             console.log("copyFromStream.on('error', reject) ... ok ");
             csvStream.pipe(copyFromStream);
