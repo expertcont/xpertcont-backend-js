@@ -449,21 +449,24 @@ const crearAsientoExcel = async (req,res,next)=> {
         // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
         const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
         try {
-            const copyFromStream = copyFrom(copyFromQuery, { pool: pool });
-            console.log('copyFrom .... ok');
-            const csvStream = Readable.from(csvData);
-            console.log('Readable.from(csvData) .... ok');
-            csvStream.pipe(copyFromStream);
-            console.log('pipe(copyFromStream) .... ok');
-            copyFromStream.end();
-            console.log('copyFromStream.end() .... ok');
-            // Esperar a que se complete la carga de datos
-            await new Promise((resolve) => copyFromStream.on('end', resolve));
-            console.log('Carga de datos finalizada.');
-            } finally {
-            console.log('Finally.');
-            }
+        const copyFromStream = copyFrom(copyFromQuery, { pool: pool });
+        console.log('copyFrom .... ok');
 
+        const csvStream = Readable.from(csvData);
+        console.log('Readable.from(csvData) .... ok');
+
+        // Manejar el evento 'finish' en lugar de 'end'
+        await new Promise((resolve, reject) => {
+            copyFromStream.on('finish', resolve);
+            copyFromStream.on('error', reject);
+            csvStream.pipe(copyFromStream);
+        });
+
+        console.log('Carga de datos finalizada.');
+        } finally {
+        console.log('Finally.');
+        }
+        
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
         strSQL = "INSERT INTO mct_asientocontable";
         strSQL +=  " (";
