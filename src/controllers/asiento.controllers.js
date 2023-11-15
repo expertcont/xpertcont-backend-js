@@ -456,6 +456,7 @@ const crearAsientoExcel = async (req,res,next)=> {
             csvStream.pipe(copyFromStream);
             console.log('pipe(copyFromStream) .... ok');
             copyFromStream.end();
+            console.log('copyFromStream.end() .... ok');
             // Esperar a que se complete la carga de datos
             await new Promise((resolve) => copyFromStream.on('end', resolve));
             console.log('Carga de datos finalizada.');
