@@ -612,10 +612,10 @@ const crearAsientoExcel = async (req,res,next)=> {
         );
     
         const csvStream = Readable.from(csvData);
-        console.log(csvData);
         csvStream.pipe(copyFromStream);
         copyFromStream.end();
-        
+        console.log('copyFromStream.end() ... OK');
+
         await new Promise((resolve) => copyFromStream.on('end', resolve));
         console.log('Carga de datos finalizada.');
     
