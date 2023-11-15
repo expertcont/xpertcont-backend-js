@@ -1,6 +1,7 @@
 const pool = require('../db');
 const xlsx = require('xlsx');
 const { Readable } = require('stream');
+const { from: copyFrom } = require('pg-copy-streams');
 const {devuelveCadenaNull,devuelveNumero} = require('../utils/libreria.utils');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
@@ -448,19 +449,17 @@ const crearAsientoExcel = async (req,res,next)=> {
         // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
         const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
         try {
-            const copyFromStream = pool.query.copyFrom(copyFromQuery);
-            console.log('DESPUES DE  pool.query.copyFrom(copyFromQuery)');
+            const copyFromStream = copyFrom(copyFromQuery, { pool: pool });
+            console.log('copyFrom .... LLEGA');
             const csvStream = Readable.from(csvData);
             csvStream.pipe(copyFromStream);
             copyFromStream.end();
             // Esperar a que se complete la carga de datos
             await new Promise((resolve) => copyFromStream.on('end', resolve));
             console.log('Carga de datos finalizada.');
-          } finally {
-            //pool.release();
+            } finally {
             console.log('Finally.');
-          }
-        
+            }
 
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
         strSQL = "INSERT INTO mct_asientocontable";
