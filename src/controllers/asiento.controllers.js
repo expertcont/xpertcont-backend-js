@@ -618,26 +618,22 @@ const crearAsientoExcel = async (req,res,next)=> {
 
         // Esperar a que se complete la carga de datos
         ////////////////////////////////////////////////////////////
-        await new Promise((resolve, reject) => {
+        const copyComplete = new Promise((resolve, reject) => {
             // Manejar el evento 'finish' en lugar de 'end'
             copyFromStream.on('finish', () => {
-            console.log('Carga de datos finalizada.');
-            resolve();
+              console.log('Carga de datos finalizada.');
+              resolve();
             });
+          
             // Manejar el evento 'error'
             copyFromStream.on('error', (err) => {
-            console.error('Error durante la carga de datos:', err);
-            reject(err);
+              console.error('Error durante la carga de datos:', err);
+              reject(err);
             });
-        
-            // Finalizar la conexión al finalizar el flujo de escritura
-            copyFromStream.on('close', () => {
-            console.log('Conexión cerrada después de cargar datos.');
-            });
-        
-            // Iniciar el proceso de pipe
-            csvStream.pipe(copyFromStream);
-        });
+          });
+          
+        // Esperar a que la carga de datos se complete o falle
+        await copyComplete;
         ////////////////////////////////////////////////////////////
 
         //await pool.query('DROP TABLE mct_temp_venta');
