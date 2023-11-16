@@ -585,47 +585,6 @@ const crearAsiento = async (req,res,next)=> {
     }
 };*/
 
-/*const crearAsientoExcel = async (req,res,next)=> {
-    try {
-        const fileBuffer = req.file.buffer;
-        const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
-          header: 1,
-        });
-    
-        // Seleccionamos solo las columnas de interés (código y nombre)
-        const csvData = sheetData
-          .map((row) => [row[0], row[1]].join(','))
-          .join('\n');
-    
-        await pool.query('BEGIN');
-    
-        // Creamos la tabla temporal solo con las columnas necesarias
-        await pool.query(`
-          CREATE TABLE mct_datos (
-            codigo VARCHAR(255),
-            nombre VARCHAR(255)
-          )
-        `);
-        //////////////////////////////////////////////////////////
-        console.log(csvData);
-        //aqui aumentar codigo para copiar csvData a tabla mct_datos
-
-        /////////////////////////////////////////////////////////
-
-        //await pool.query('DROP TABLE mct_datos');
-        await pool.query('COMMIT');
-        
-        res.status(200).json({
-          mensaje: 'CSV impreso',
-        });
-      } catch (error) {
-        console.log(error);
-        await pool.query('ROLLBACK');
-        next(error);
-      }
-};*/
 
 const crearAsientoExcel = async (req, res, next) => {
     try {
@@ -637,19 +596,27 @@ const crearAsientoExcel = async (req, res, next) => {
       });
   
       // Seleccionamos solo las columnas de interés (código y nombre)
-      const csvData = sheetData
+      /*const csvData = sheetData
         .map((row) => [row[0], row[1]].join(','))
-        .join('\n');
-  
+        .join('\n');*/
+      const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
+
       await pool.query('BEGIN');
   
       // Creamos la tabla temporal solo con las columnas necesarias
-      const createTableQuery = `
+      /*const createTableQuery = `
         CREATE TABLE mct_datos (
           codigo VARCHAR(255),
           nombre VARCHAR(255)
         )
-      `;
+      `;*/
+      const createTableQuery = `
+        DROP TABLE IF EXISTS mct_datos;
+        CREATE TABLE mct_datos (
+            codigo VARCHAR(255),
+            nombre VARCHAR(255)
+        );
+      `;      
       await pool.query(createTableQuery);
 
       /////////////////////////////////////////////////////////////
