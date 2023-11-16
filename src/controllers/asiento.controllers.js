@@ -607,6 +607,32 @@ const crearAsientoExcel = async (req,res,next)=> {
         `);
         //////////////////////////////////////////////////////////
         console.log(csvData);
+        //aqui aumentar codigo para copiar csvData a tabla mct_datos
+        // Insertamos los datos desde el CSV a la tabla mct_datos
+        const client = await pool.connect();
+        const done = async () => {
+        client.release();
+        };
+
+        const stream = client.query(
+        copyFrom('COPY mct_datos(codigo, nombre) FROM STDIN WITH CSV HEADER')
+        );
+
+        // Manejar errores de la transmisión
+        stream.on('error', (err) => {
+        console.error('Error en la transmisión de datos:', err);
+        done();
+        });
+
+        // Insertar datos en la transmisión
+        stream.write(csvData);
+
+        // Finalizar la transmisión
+        stream.end();
+
+        // Esperar a que la transmisión termine y luego liberar la conexión
+        await new Promise((resolve) => stream.on('end', resolve));
+        done();
         /////////////////////////////////////////////////////////
 
         //await pool.query('DROP TABLE mct_datos');
