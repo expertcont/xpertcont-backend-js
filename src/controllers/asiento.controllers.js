@@ -600,14 +600,17 @@ const crearAsientoExcel = async (req, res, next) => {
         .map((row) => [row[0], row[1]].join(','))
         .join('\n');*/
       //Seleccionamos todas las columnas y eliminamos comas antes de convertirlo  a CSV
-      const csvData = sheetData
+
+      const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
+
+      /*const csvData = sheetData
         .map(row => row.map(cell => {
         if (cell === undefined || cell === null || cell.toString().trim() === '') {
         return ' ';
         }
         return cell.toString().replace(/,/g, '');
         }).join(','))
-        .join('\n');
+        .join('\n');*/
 
       await pool.query('BEGIN');
   
