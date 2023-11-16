@@ -603,8 +603,8 @@ const crearAsientoExcel = async (req, res, next) => {
 
       //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
       //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? ' ' : cell)).join(',')).join('\n');
-      const csvData = sheetData
-        .map(row => row.map(cell => (cell === '' ? '__EMPTY__' : cell.toString().replace(/,/g, ''))).join(','))
+        const csvData = sheetData
+        .map(row => row.map(cell => (cell === '' ? null : cell.toString().replace(/,/g, ''))).join(','))
         .join('\n');
 
 
