@@ -626,71 +626,69 @@ const crearAsiento = async (req,res,next)=> {
 };*/
 
 const crearAsientoExcel = async (req, res, next) => {
-  try {
-    const fileBuffer = req.file.buffer;
-    const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
-      header: 1,
-    });
-
-    // Seleccionamos solo las columnas de interés (código y nombre)
-    const csvData = sheetData
-      .map((row) => [row[0], row[1]].join(','))
-      .join('\n');
-
-    await pool.query('BEGIN');
-
-    // Creamos la tabla temporal solo con las columnas necesarias
-    const createTableQuery = `
-      CREATE TABLE mct_datos (
-        codigo VARCHAR(255),
-        nombre VARCHAR(255)
-      )
-    `;
-    await pool.query(createTableQuery);
-
-    console.log(csvData);
-
-    // Insertamos los datos desde el CSV a la tabla mct_datos
-    
-    const insertDataQuery = `INSERT INTO mct_datos (codigo, nombre) VALUES ($1, $2)`;
-
-    const client = await pool.connect();
-    const done = async () => {
-      client.release();
-    };
-
-    await csv
-    .parseString(csvData, { headers: false, delimiter: ',' })
-    .on('data', async (row) => {
-        const values = [row[0], row[1]];
-        await client.query(insertDataQuery, values);
-    })
-    .on('end', async () => {
-        await pool.query('COMMIT');
-        done();
-        console.log('Datos insertados exitosamente en la base de datos.');
-        res.status(200).json({
-        mensaje: 'CSV impreso',
+    try {
+      const fileBuffer = req.file.buffer;
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        header: 1,
+      });
+  
+      // Seleccionamos solo las columnas de interés (código y nombre)
+      const csvData = sheetData
+        .map((row) => [row[0], row[1]].join(','))
+        .join('\n');
+  
+      await pool.query('BEGIN');
+  
+      // Creamos la tabla temporal solo con las columnas necesarias
+      const createTableQuery = `
+        CREATE TABLE mct_datos (
+          codigo VARCHAR(255),
+          nombre VARCHAR(255)
+        )
+      `;
+      await pool.query(createTableQuery);
+  
+      console.log(csvData);
+  
+      // Insertamos los datos desde el CSV a la tabla mct_datos
+      const insertDataQuery = `INSERT INTO mct_datos (codigo, nombre) VALUES ($1, $2)`;
+  
+      const client = await pool.connect();
+      const done = async () => {
+        client.release();
+      };
+  
+      await csv
+        .parseString(csvData, { headers: false, delimiter: ',' })
+        .on('data', async (row) => {
+          const values = [row[0], row[1]];
+          await client.query(insertDataQuery, values);
+        })
+        .on('end', async () => {
+          await pool.query('COMMIT');
+          console.log('Datos insertados exitosamente en la base de datos.');
+          done();
+          res.status(200).json({
+            mensaje: 'CSV impreso',
+          });
+        })
+        .on('error', async (error) => {
+          await pool.query('ROLLBACK');
+          done();
+          console.error('Error al insertar datos en la base de datos:', error);
+          next(error);
         });
-    })
-    .on('error', async (error) => {
-        await pool.query('ROLLBACK');
-        done();
-        console.error('Error al insertar datos en la base de datos:', error);
-        next(error);
-    });
-
-    //await pool.query('COMMIT');
-    console.log("llego despues commit");
-  } catch (error) {
-    console.log(error);
-    await pool.query('ROLLBACK');
-    next(error);
-  }
+  
+      console.log("llego despues commit");
+    } catch (error) {
+      console.log(error);
+      await pool.query('ROLLBACK');
+      next(error);
+    }
 };
-
+  
 const eliminarAsiento = async (req,res,next)=> {
     try {
         const {id_usuario, ano, mes, id_libro, num_asiento} = req.params;
