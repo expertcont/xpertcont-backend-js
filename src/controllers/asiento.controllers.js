@@ -596,16 +596,16 @@ const crearAsientoExcel = async (req, res, next) => {
       });
   
       // Seleccionamos solo las columnas de interés (código y nombre con numero columna)
-      /*const csvData = sheetData
+      const csvData = sheetData
         .map((row) => [row[0], row[1]].join(','))
-        .join('\n');*/
-      //Seleccionamos todas las columnas y eliminamos comas antes de convertirlo  a CSV
+        .join('\n');
 
+        //Seleccionamos todas las columnas y eliminamos comas antes de convertirlo  a CSV
       //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
       //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? ' ' : cell)).join(',')).join('\n');
-        const csvData = sheetData
+        /*const csvData = sheetData
         .map(row => row.map(cell => (cell === '' ? null : cell.toString().replace(/,/g, ''))).join(','))
-        .join('\n');
+        .join('\n');*/
 
 
       /*const csvData = sheetData
