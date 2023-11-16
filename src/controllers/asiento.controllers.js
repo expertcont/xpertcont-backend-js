@@ -626,12 +626,14 @@ const crearAsientoExcel = async (req,res,next)=> {
 
         // Insertar datos en la transmisión
         stream.write(csvData);
+        console.log("insertando");
 
         // Finalizar la transmisión
         stream.end();
 
         // Esperar a que la transmisión termine y luego liberar la conexión
         await new Promise((resolve) => stream.on('end', resolve));
+        console.log("Promise");
         done();
         /////////////////////////////////////////////////////////
 
