@@ -603,7 +603,7 @@ const crearAsientoExcel = async (req, res, next) => {
       const csvData = sheetData
       .map(row => row.map(cell => {
         if (cell === undefined || cell === null) {
-        return '';
+        return ' ';
         }
         const cellValue = cell.toString();
         return cellValue.replace(/,/g, ' ');
