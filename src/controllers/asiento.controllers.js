@@ -603,7 +603,8 @@ const crearAsientoExcel = async (req, res, next) => {
         const csvData = sheetData
         .map(row => [
             (row[0] || '').toString().replace(/,/g, ''),
-            (row[1] || '').toString().replace(/,/g, '')
+            (row[1] || '').toString().replace(/,/g, ''),
+            (row[2] || '').toString().replace(/,/g, '')
         ].join(','))
         .join('\n');
         
@@ -631,7 +632,8 @@ const crearAsientoExcel = async (req, res, next) => {
         DROP TABLE IF EXISTS mct_datos;
         CREATE TABLE mct_datos (
             codigo VARCHAR(255),
-            nombre VARCHAR(255)
+            nombre VARCHAR(255),
+            fecha DATE
         );
       `;      
       await pool.query(createTableQuery);
