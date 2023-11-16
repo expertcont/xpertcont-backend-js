@@ -653,42 +653,36 @@ const crearAsientoExcel = async (req, res, next) => {
     console.log(csvData);
 
     // Insertamos los datos desde el CSV a la tabla mct_datos
-    const insertDataQuery = `
-      INSERT INTO mct_datos (codigo, nombre) VALUES ($1, $2)
-    `;
+    /*
+    const insertDataQuery = `INSERT INTO mct_datos (codigo, nombre) VALUES ($1, $2)`;
 
     const client = await pool.connect();
     const done = async () => {
       client.release();
     };
 
-    try {
-      await csv
-        .parseString(csvData, { headers: false, delimiter: ',' })
-        .on('data', async (row) => {
-          const values = [row[0], row[1]];
-          await client.query(insertDataQuery, values);
-        })
-        .on('end', async () => {
-          await pool.query('COMMIT');
-          done();
-          console.log('Datos insertados exitosamente en la base de datos.');
-          res.status(200).json({
-            mensaje: 'CSV impreso',
-          });
-        })
-        .on('error', async (error) => {
-          await pool.query('ROLLBACK');
-          done();
-          console.error('Error al insertar datos en la base de datos:', error);
-          next(error);
+    await csv
+    .parseString(csvData, { headers: false, delimiter: ',' })
+    .on('data', async (row) => {
+        const values = [row[0], row[1]];
+        await client.query(insertDataQuery, values);
+    })
+    .on('end', async () => {
+        await pool.query('COMMIT');
+        done();
+        console.log('Datos insertados exitosamente en la base de datos.');
+        res.status(200).json({
+        mensaje: 'CSV impreso',
         });
-    } catch (error) {
-      console.log(error);
-      await pool.query('ROLLBACK');
-      done();
-      next(error);
-    }
+    })
+    .on('error', async (error) => {
+        await pool.query('ROLLBACK');
+        done();
+        console.error('Error al insertar datos en la base de datos:', error);
+        next(error);
+    });*/
+    await pool.query('COMMIT');
+    
   } catch (error) {
     console.log(error);
     await pool.query('ROLLBACK');
