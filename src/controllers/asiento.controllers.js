@@ -606,12 +606,12 @@ const crearAsientoExcel = async (req,res,next)=> {
           )
         `);
         //////////////////////////////////////////////////////////
-
+        console.log(csvData);
         /////////////////////////////////////////////////////////
 
-        await pool.query('DROP TABLE mct_datos');
+        //await pool.query('DROP TABLE mct_datos');
         await pool.query('COMMIT');
-        console.log(csvData);
+        
         res.status(200).json({
           mensaje: 'CSV impreso',
         });
