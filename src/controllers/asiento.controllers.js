@@ -4,7 +4,7 @@ const { Readable } = require('stream');
 //const fastCsv = require('fast-csv');
 //const csv = require('fast-csv');
 const {devuelveCadenaNull,devuelveNumero} = require('../utils/libreria.utils');
-const fs = require('node_fs');
+const fs = require('node:fs');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
 
