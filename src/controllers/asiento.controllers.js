@@ -2,7 +2,8 @@ const pool = require('../db');
 const xlsx = require('xlsx');
 const { Readable } = require('stream');
 //const fastCsv = require('fast-csv');
-const { from: copyFrom } = require('pg-copy-streams');
+const csv = require('fast-csv');
+//const { from: copyFrom } = require('pg-copy-streams');
 const {devuelveCadenaNull,devuelveNumero} = require('../utils/libreria.utils');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
@@ -582,7 +583,7 @@ const crearAsiento = async (req,res,next)=> {
     }
 };*/
 
-const crearAsientoExcel = async (req,res,next)=> {
+/*const crearAsientoExcel = async (req,res,next)=> {
     try {
         const fileBuffer = req.file.buffer;
         const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
@@ -608,37 +609,7 @@ const crearAsientoExcel = async (req,res,next)=> {
         //////////////////////////////////////////////////////////
         console.log(csvData);
         //aqui aumentar codigo para copiar csvData a tabla mct_datos
-        // Insertamos los datos desde el CSV a la tabla mct_datos
-        const client = await pool.connect();
-        const done = async () => {
-        client.release();
-        };
 
-        const stream = client.query(
-        copyFrom('COPY mct_datos(codigo, nombre) FROM STDIN WITH CSV HEADER')
-        );
-
-        // Manejar errores de la transmisión
-        stream.on('error', (err) => {
-        console.error('Error en la transmisión de datos:', err);
-        done();
-        });
-
-        // Insertar datos en la transmisión
-        stream.write(csvData);
-        console.log("stream.write(csvData) ... ok");
-
-        // Finalizar la transmisión
-        stream.end();
-        console.log("stream.end() ... ok");
-
-        // Esperar a que la transmisión termine y luego liberar la conexión
-        await Promise.all([
-            new Promise((resolve) => stream.once('finish', resolve)),
-            new Promise((_, reject) => stream.once('error', reject)),
-        ]);
-        console.log("Promise");
-        done();
         /////////////////////////////////////////////////////////
 
         //await pool.query('DROP TABLE mct_datos');
@@ -652,6 +623,77 @@ const crearAsientoExcel = async (req,res,next)=> {
         await pool.query('ROLLBACK');
         next(error);
       }
+};*/
+
+const crearAsientoExcel = async (req, res, next) => {
+  try {
+    const fileBuffer = req.file.buffer;
+    const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      header: 1,
+    });
+
+    // Seleccionamos solo las columnas de interés (código y nombre)
+    const csvData = sheetData
+      .map((row) => [row[0], row[1]].join(','))
+      .join('\n');
+
+    await pool.query('BEGIN');
+
+    // Creamos la tabla temporal solo con las columnas necesarias
+    const createTableQuery = `
+      CREATE TABLE mct_datos (
+        codigo VARCHAR(255),
+        nombre VARCHAR(255)
+      )
+    `;
+    await pool.query(createTableQuery);
+
+    console.log(csvData);
+
+    // Insertamos los datos desde el CSV a la tabla mct_datos
+    const insertDataQuery = `
+      INSERT INTO mct_datos (codigo, nombre) VALUES ($1, $2)
+    `;
+
+    const client = await pool.connect();
+    const done = async () => {
+      client.release();
+    };
+
+    try {
+      await csv
+        .parseString(csvData, { headers: false, delimiter: ',' })
+        .on('data', async (row) => {
+          const values = [row[0], row[1]];
+          await client.query(insertDataQuery, values);
+        })
+        .on('end', async () => {
+          await pool.query('COMMIT');
+          done();
+          console.log('Datos insertados exitosamente en la base de datos.');
+          res.status(200).json({
+            mensaje: 'CSV impreso',
+          });
+        })
+        .on('error', async (error) => {
+          await pool.query('ROLLBACK');
+          done();
+          console.error('Error al insertar datos en la base de datos:', error);
+          next(error);
+        });
+    } catch (error) {
+      console.log(error);
+      await pool.query('ROLLBACK');
+      done();
+      next(error);
+    }
+  } catch (error) {
+    console.log(error);
+    await pool.query('ROLLBACK');
+    next(error);
+  }
 };
 
 const eliminarAsiento = async (req,res,next)=> {
