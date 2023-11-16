@@ -654,14 +654,16 @@ const crearAsientoExcel = async (req, res, next) => {
 
       /////////////////////////////////////////////////////////////
       console.log(csvData);
-            
+      // Convertimos la cadena CSV a un flujo de lectura
+      const csvReadableStream = Readable.from([csvData]);
+
       // Insertamos los datos desde el CSV a la tabla mct_datos
       const client = await pool.connect();
       try {
         const ingestStream = client.query(copyFrom(`COPY mct_datos FROM STDIN WITH CSV HEADER DELIMITER ','`))
-        const sourceStream = fs.createReadStream(csvData)
+        //const sourceStream = fs.createReadStream(csvData)
         //console.log(sourceStream);
-        await pipeline(sourceStream, ingestStream)
+        await pipeline(csvReadableStream, ingestStream)
         console.log("await pipeline(sourceStream, ingestStream) ... ok");
       } finally {
         client.release()
