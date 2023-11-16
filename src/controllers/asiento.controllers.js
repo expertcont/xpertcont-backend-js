@@ -601,8 +601,9 @@ const crearAsientoExcel = async (req, res, next) => {
         .join('\n');*/
       //Seleccionamos todas las columnas y eliminamos comas antes de convertirlo  a CSV
       //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
-      const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell.replace(/,/g, ' '))).join(',')).join('\n');
-
+      const csvData = sheetData
+      .map(row => row.map(cell => ((cell && typeof cell === 'string') ? cell.replace(/,/g, ' ') : cell)).join(','))
+      .join('\n');
       await pool.query('BEGIN');
   
       // Creamos la tabla temporal solo con las columnas necesarias
