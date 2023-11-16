@@ -602,7 +602,10 @@ const crearAsientoExcel = async (req, res, next) => {
       //Seleccionamos todas las columnas y eliminamos comas antes de convertirlo  a CSV
 
       //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
-      const csvData = sheetData.map(row => row.map(cell => (cell === '' ? ' ' : cell)).join(',')).join('\n');
+      //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? ' ' : cell)).join(',')).join('\n');
+      const csvData = sheetData
+        .map(row => row.map(cell => (cell === '' ? '__EMPTY__' : cell.toString().replace(/,/g, ''))).join(','))
+        .join('\n');
 
 
       /*const csvData = sheetData
