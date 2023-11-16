@@ -617,8 +617,7 @@ const crearAsientoExcel = async (req, res, next) => {
         DROP TABLE IF EXISTS mct_datos;
         CREATE TABLE mct_datos (
             codigo VARCHAR(255),
-            nombre VARCHAR(255),
-            fecha DATE
+            nombre VARCHAR(255)
         );
       `;      
       await pool.query(createTableQuery);
