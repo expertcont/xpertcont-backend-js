@@ -600,49 +600,50 @@ const crearAsientoExcel = async (req, res, next) => {
         .map((row) => [row[0], row[1]].join(','))
         .join('\n');*/
       //Seleccionamos todas las columnas y eliminamos comas antes de convertirlo  a CSV
-      //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
       const csvData = sheetData
-      .map(row => row.map(cell => ((cell && typeof cell === 'string') ? cell.replace(/,/g, ' ') : cell)).join(','))
+      .map(row => row.map(cell => {
+        if (cell === undefined || cell === null) {
+        return '';
+        }
+        const cellValue = cell.toString();
+        return cellValue.replace(/,/g, ' ');
+      }).join(','))
       .join('\n');
+
       await pool.query('BEGIN');
   
       // Creamos la tabla temporal solo con las columnas necesarias
-      /*const createTableQuery = `
-        CREATE TABLE mct_datos (
-          codigo VARCHAR(255),
-          nombre VARCHAR(255)
-        )
-      `;*/
       const createTableQuery = `
         DROP TABLE IF EXISTS mct_datos;
         CREATE TABLE mct_datos (
             codigo VARCHAR(255),
-            nombre VARCHAR(255)
+            nombre VARCHAR(255),
+            fecha DATE
         );
       `;      
       await pool.query(createTableQuery);
 
       /////////////////////////////////////////////////////////////
-      console.log(csvData);
+      //console.log(csvData);
       // Convertimos la cadena CSV a un flujo de lectura
       const csvReadableStream = Readable.from([csvData]);
 
       // Insertamos los datos desde el CSV a la tabla mct_datos
+      //Origen Documentacion https://www.npmjs.com/package/pg-copy-streams
       const client = await pool.connect();
       try {
         const ingestStream = client.query(copyFrom(`COPY mct_datos FROM STDIN WITH CSV HEADER DELIMITER ','`))
         //const sourceStream = fs.createReadStream(csvData)
         //console.log(sourceStream);
         await pipeline(csvReadableStream, ingestStream)
-        console.log("await pipeline(sourceStream, ingestStream) ... ok");
       } finally {
         client.release();
-        console.log("client.release() ... ok");
       }
       //await pool.end()
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
-      console.log("final");
+      //console.log("final");
+      res.status(200).json({ mensaje: 'Hoja Excel insertado correctamente en base de datos' });
     } catch (error) {
       console.log(error);
       await pool.query('ROLLBACK');
