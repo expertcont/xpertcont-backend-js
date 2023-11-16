@@ -653,7 +653,7 @@ const crearAsientoExcel = async (req, res, next) => {
     console.log(csvData);
 
     // Insertamos los datos desde el CSV a la tabla mct_datos
-    /*
+    
     const insertDataQuery = `INSERT INTO mct_datos (codigo, nombre) VALUES ($1, $2)`;
 
     const client = await pool.connect();
@@ -680,9 +680,10 @@ const crearAsientoExcel = async (req, res, next) => {
         done();
         console.error('Error al insertar datos en la base de datos:', error);
         next(error);
-    });*/
-    await pool.query('COMMIT');
-    
+    });
+
+    //await pool.query('COMMIT');
+    console.log("llego despues commit");
   } catch (error) {
     console.log(error);
     await pool.query('ROLLBACK');
