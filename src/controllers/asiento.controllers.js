@@ -666,9 +666,11 @@ const crearAsientoExcel = async (req, res, next) => {
         await pipeline(csvReadableStream, ingestStream)
         console.log("await pipeline(sourceStream, ingestStream) ... ok");
       } finally {
-        client.release()
+        client.release();
+        console.log("client.release() ... ok");
       }
       //await pool.end()
+      await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
       console.log("final");
     } catch (error) {
