@@ -660,7 +660,7 @@ const crearAsientoExcel = async (req, res, next) => {
       try {
         const ingestStream = client.query(copyFrom(`COPY mct_datos FROM STDIN WITH CSV HEADER DELIMITER ','`))
         const sourceStream = fs.createReadStream(csvData)
-        console.log(sourceStream);
+        //console.log(sourceStream);
         await pipeline(sourceStream, ingestStream)
         console.log("await pipeline(sourceStream, ingestStream) ... ok");
       } finally {
