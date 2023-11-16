@@ -633,7 +633,10 @@ const crearAsientoExcel = async (req,res,next)=> {
         console.log("stream.end() ... ok");
 
         // Esperar a que la transmisión termine y luego liberar la conexión
-        await new Promise((resolve) => stream.on('end', resolve));
+        await new Promise((resolve, reject) => {
+            stream.on('end', resolve);
+            stream.on('error', reject);
+          });        
         console.log("Promise");
         done();
         /////////////////////////////////////////////////////////
