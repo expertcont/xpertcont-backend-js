@@ -600,38 +600,20 @@ const crearAsientoExcel = async (req,res,next)=> {
     
         // Creamos la tabla temporal solo con las columnas necesarias
         await pool.query(`
-          CREATE TEMP TABLE mct_temp_venta (
+          CREATE TABLE mct_datos (
             codigo VARCHAR(255),
             nombre VARCHAR(255)
           )
         `);
         //////////////////////////////////////////////////////////
 
-        // Utilizar COPY FROM para cargar datos desde el archivo en la tabla temporal
-        const copyFromQuery = `COPY mct_temp_venta FROM STDIN WITH CSV HEADER DELIMITER ','`;
-        const copyFromStream = copyFrom(copyFromQuery, { pool });
-
-        // Convertir csvData en un readable stream antes de utilizar pipe
-        const csvStream = Readable.from(csvData);
-
-        // Pipe (enviar) los datos del flujo de salida al flujo de entrada (csvData)
-        csvStream.pipe(copyFromStream);
-        console.log("csvStream.pipe(copyFromStream)  ... ok");
-
-        // Manejar el evento 'finish' en lugar de 'end'
-        await new Promise((resolve, reject) => {
-        copyFromStream.on('finish', resolve);
-        copyFromStream.on('error', reject);
-        });
-
-        console.log('Carga de datos finalizada.');
         /////////////////////////////////////////////////////////
 
-        //await pool.query('DROP TABLE mct_temp_venta');
+        await pool.query('DROP TABLE mct_datos');
         await pool.query('COMMIT');
-    
+        console.log(csvData);
         res.status(200).json({
-          mensaje: 'Datos cargados desde Excel a la tabla temporal',
+          mensaje: 'CSV impreso',
         });
       } catch (error) {
         console.log(error);
