@@ -4,9 +4,9 @@ const { Readable } = require('stream');
 //const fastCsv = require('fast-csv');
 //const csv = require('fast-csv');
 const {devuelveCadenaNull,devuelveNumero} = require('../utils/libreria.utils');
-import fs from 'node_fs';
-import { from as copyFrom } from 'pg-copy-streams'
-import { pipeline } from 'node:stream/promises'
+const fs = require('node_fs');
+const { from: copyFrom } = require('pg-copy-streams');
+const { pipeline } = require('node:stream/promises');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //Solo Cabeceras
