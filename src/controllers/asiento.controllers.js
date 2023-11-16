@@ -2,9 +2,11 @@ const pool = require('../db');
 const xlsx = require('xlsx');
 const { Readable } = require('stream');
 //const fastCsv = require('fast-csv');
-const csv = require('fast-csv');
-//const { from: copyFrom } = require('pg-copy-streams');
+//const csv = require('fast-csv');
 const {devuelveCadenaNull,devuelveNumero} = require('../utils/libreria.utils');
+import fs from 'node_fs';
+import { from as copyFrom } from 'pg-copy-streams'
+import { pipeline } from 'node:stream/promises'
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //Solo Cabeceras
@@ -649,39 +651,24 @@ const crearAsientoExcel = async (req, res, next) => {
         )
       `;
       await pool.query(createTableQuery);
-  
+
+      /////////////////////////////////////////////////////////////
       console.log(csvData);
-  
+            
       // Insertamos los datos desde el CSV a la tabla mct_datos
-      const insertDataQuery = `INSERT INTO mct_datos (codigo, nombre) VALUES ($1, $2)`;
-  
       const client = await pool.connect();
-      const done = async () => {
-        client.release();
-      };
-  
-      await csv
-        .parseString(csvData, { headers: false, delimiter: ',' })
-        .on('data', async (row) => {
-          const values = [row[0], row[1]];
-          await client.query(insertDataQuery, values);
-        })
-        .on('end', async () => {
-          await pool.query('COMMIT');
-          console.log('Datos insertados exitosamente en la base de datos.');
-          done();
-          res.status(200).json({
-            mensaje: 'CSV impreso',
-          });
-        })
-        .on('error', async (error) => {
-          await pool.query('ROLLBACK');
-          done();
-          console.error('Error al insertar datos en la base de datos:', error);
-          next(error);
-        });
-  
-      console.log("llego despues commit");
+      try {
+        const ingestStream = client.query(copyFrom(`COPY mct_datos FROM STDIN WITH CSV HEADER DELIMITER ','`))
+        const sourceStream = fs.createReadStream(csvData)
+        console.log(sourceStream);
+        await pipeline(sourceStream, ingestStream)
+        console.log("await pipeline(sourceStream, ingestStream) ... ok");
+      } finally {
+        client.release()
+      }
+      //await pool.end()
+      /////////////////////////////////////////////////////////////
+      console.log("final");
     } catch (error) {
       console.log(error);
       await pool.query('ROLLBACK');
