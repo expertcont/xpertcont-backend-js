@@ -594,8 +594,8 @@ const crearAsientoExcel = async (req, res, next) => {
         periodo,          //03
         id_libro,         //04
         id_invitado,      //05
-    } = req.body;
-    console.log('req.body: ',req.body);
+    } = req.body.datosCarga;
+    console.log('req.body: ',req.body.datosCarga);
 
     try {
       const fileBuffer = req.file.buffer;
