@@ -39,7 +39,12 @@ const devuelveCadenaNull = (value) => {
       const day = excelDate.getUTCDate();
       return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     }
-  
+    
+    // Si la fecha es una cadena vacía, representamos una fecha nula según lo que requiera tu base de datos
+    if (dateString.trim() === '') {
+      return 'NULL';  // O ajusta según lo que requiera tu base de datos para representar una fecha nula
+    }
+
     // Si no es un número, asumimos que ya está en el formato deseado (DD/MM/YYYY)
     const [day, month, year] = dateString.split('/');
     return `${year}-${month}-${day}`;
