@@ -17,8 +17,17 @@ const devuelveCadenaNull = (value) => {
     }
   };
   
+  function convertirFechaString(dateString) {
+    if (!dateString) {
+      return 'NULL';  // O ajusta según tus necesidades si quieres manejar fechas vacías de manera diferente
+    }
+  
+    const [day, month, year] = dateString.split('/');
+    return `${year}-${month}-${day}`;
+  }
   module.exports = {
     devuelveCadenaNull,
-    devuelveNumero
+    devuelveNumero,
+    convertirFechaString
   };
   
