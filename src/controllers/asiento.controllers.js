@@ -4,8 +4,6 @@ const { Readable } = require('stream');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete} = require('../utils/libreria.utils');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
-const multer = require('multer');
-const upload = multer();
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //Solo Cabeceras
@@ -586,14 +584,7 @@ const crearAsiento = async (req,res,next)=> {
 
 const crearAsientoExcel = async (req, res, next) => {
     let strSQL;
-    
-    /*const { //datos cabecera
-        id_anfitrion,     //01
-        documento_id,     //02
-        periodo,          //03
-        id_libro,         //04
-        id_invitado,      //05
-    } = datosCarga;*/
+    //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
     const datosCarga = JSON.parse(req.body.datosCarga);
     const {
         id_anfitrion,
@@ -603,12 +594,6 @@ const crearAsientoExcel = async (req, res, next) => {
         id_invitado,
     } = datosCarga;
     
-    console.log('datosCarga:', datosCarga);
-    console.log('id_anfitrion:', id_anfitrion);
-  
-    //id_anfitrion = req.body.datosCarga.id_anfitrion;
-    //console.log('id_anfitrion: ',id_anfitrion);
-
     try {
       const fileBuffer = req.file.buffer;
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
