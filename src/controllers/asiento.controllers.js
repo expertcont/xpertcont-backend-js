@@ -604,7 +604,8 @@ const crearAsientoExcel = async (req, res, next) => {
         .map((row,index) => [
             (row[0] || '').toString().replace(/,/g, ''),
             (row[1] || '').toString().replace(/,/g, ''),
-            index > 0 ? convertirFechaStringComplete(row[2]) : row[2]
+            index > 0 ? convertirFechaStringComplete(row[2]) : row[2],
+            row[3] || ''
 //            convertirFechaStringComplete(row[2])
         ].join(','))
         .join('\n');
@@ -634,7 +635,8 @@ const crearAsientoExcel = async (req, res, next) => {
         CREATE TABLE mct_datos (
             codigo VARCHAR(255),
             nombre VARCHAR(255),
-            fecha DATE
+            fecha DATE,
+            total numeric(14,2)
         );
       `;      
       await pool.query(createTableQuery);
