@@ -601,10 +601,11 @@ const crearAsientoExcel = async (req, res, next) => {
         .join('\n');*/
 
         const csvData = sheetData
-        .map(row => [
+        .map(row,index => [
             (row[0] || '').toString().replace(/,/g, ''),
             (row[1] || '').toString().replace(/,/g, ''),
-            convertirFechaStringComplete(row[2])
+            index > 0 ? convertirFechaStringComplete(row[2]) : row[2]
+//            convertirFechaStringComplete(row[2])
         ].join(','))
         .join('\n');
         console.log(csvData);
