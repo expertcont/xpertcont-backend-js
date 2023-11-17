@@ -28,6 +28,11 @@ const devuelveCadenaNull = (value) => {
 
   function convertirFechaStringComplete(dateString) {
     if (!dateString) {
+      console.log("NULL de !dateString");
+      return NULL;
+    }
+    if (dateString===undefined) {
+      console.log("NULL de undefined");
       return NULL;
     }
   
@@ -42,6 +47,7 @@ const devuelveCadenaNull = (value) => {
 
     // Si la fecha es una cadena vacía, representamos una fecha nula según lo que requiera tu base de datos
     if (dateString.trim() === '') {
+      console.log("NULL de vacio");
       return NULL;  // O ajusta según lo que requiera tu base de datos para representar una fecha nula
     }
 
