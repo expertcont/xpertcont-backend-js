@@ -24,10 +24,31 @@ const devuelveCadenaNull = (value) => {
   
     const [day, month, year] = dateString.split('/');
     return `${year}-${month}-${day}`;
-  }
+  };
+
+  function convertirFechaStringComplete(dateString) {
+    if (!dateString) {
+      return 'NULL';  // O ajusta según tus necesidades si quieres manejar fechas vacías de manera diferente
+    }
+  
+    // Si la fecha es un número, la tratamos como una fecha en formato Excel (número de días desde 1900-01-01)
+    if (typeof dateString === 'number') {
+      const excelDate = new Date((dateString - 1) * 86400000);  // 86400000 milisegundos por día
+      const year = excelDate.getUTCFullYear();
+      const month = excelDate.getUTCMonth() + 1;  // Los meses en JavaScript son de 0 a 11
+      const day = excelDate.getUTCDate();
+      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    }
+  
+    // Si no es un número, asumimos que ya está en el formato deseado (DD/MM/YYYY)
+    const [day, month, year] = dateString.split('/');
+    return `${year}-${month}-${day}`;
+  };
+  
   module.exports = {
     devuelveCadenaNull,
     devuelveNumero,
-    convertirFechaString
+    convertirFechaString,
+    convertirFechaStringComplete
   };
   

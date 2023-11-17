@@ -3,7 +3,7 @@ const xlsx = require('xlsx');
 const { Readable } = require('stream');
 //const fastCsv = require('fast-csv');
 //const csv = require('fast-csv');
-const {devuelveCadenaNull,devuelveNumero, convertirFechaString} = require('../utils/libreria.utils');
+const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete} = require('../utils/libreria.utils');
 const fs = require('node:fs');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
@@ -604,7 +604,7 @@ const crearAsientoExcel = async (req, res, next) => {
         .map(row => [
             (row[0] || '').toString().replace(/,/g, ''),
             (row[1] || '').toString().replace(/,/g, ''),
-            (convertirFechaString(row[2]) || '')
+            (convertirFechaStringComplete(row[2]) || '')
         ].join(','))
         .join('\n');
         
