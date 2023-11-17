@@ -1,10 +1,7 @@
 const pool = require('../db');
 const xlsx = require('xlsx');
 const { Readable } = require('stream');
-//const fastCsv = require('fast-csv');
-//const csv = require('fast-csv');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete} = require('../utils/libreria.utils');
-const fs = require('node:fs');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
 
@@ -585,9 +582,11 @@ const crearAsiento = async (req,res,next)=> {
     }
 };*/
 
-
+const upload = multer();
 const crearAsientoExcel = async (req, res, next) => {
     let strSQL;
+    await upload.single('archivoExcel')(req, res);
+    
     const datosCarga = req.body.datosCarga;
     const { //datos cabecera
         id_anfitrion,     //01
