@@ -4,6 +4,7 @@ const { Readable } = require('stream');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete} = require('../utils/libreria.utils');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
+const upload = multer();
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //Solo Cabeceras
@@ -582,11 +583,10 @@ const crearAsiento = async (req,res,next)=> {
     }
 };*/
 
-const upload = multer();
 const crearAsientoExcel = async (req, res, next) => {
     let strSQL;
     await upload.single('archivoExcel')(req, res);
-    
+
     const datosCarga = req.body.datosCarga;
     const { //datos cabecera
         id_anfitrion,     //01
