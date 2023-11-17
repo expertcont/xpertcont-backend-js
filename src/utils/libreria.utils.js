@@ -33,7 +33,7 @@ const devuelveCadenaNull = (value) => {
   
     // Si la fecha es un número, la tratamos como una fecha en formato Excel (número de días desde 1900-01-01)
     if (typeof dateString === 'number') {
-      const excelDate = new Date((dateString - 2) * 86400000 + Date.UTC(1899, 11, 30));
+      const excelDate = new Date((dateString - 1) * 86400000 + Date.UTC(1899, 11, 30));
       const year = excelDate.getUTCFullYear();
       const month = excelDate.getUTCMonth() + 1;  // Los meses en JavaScript son de 0 a 11
       const day = excelDate.getUTCDate();
