@@ -601,7 +601,7 @@ const crearAsientoExcel = async (req, res, next) => {
         .join('\n');*/
 
         const csvData = sheetData
-        .map(row,index => [
+        .map((row,index) => [
             (row[0] || '').toString().replace(/,/g, ''),
             (row[1] || '').toString().replace(/,/g, ''),
             index > 0 ? convertirFechaStringComplete(row[2]) : row[2]
