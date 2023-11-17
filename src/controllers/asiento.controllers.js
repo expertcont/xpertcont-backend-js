@@ -604,7 +604,7 @@ const crearAsientoExcel = async (req, res, next) => {
         .map(row => [
             (row[0] || '').toString().replace(/,/g, ''),
             (row[1] || '').toString().replace(/,/g, ''),
-            row[2] !== null ? convertirFechaStringComplete(row[2]) : ''
+            row[2] 
         ].join(','))
         .join('\n');
         console.log(csvData);
