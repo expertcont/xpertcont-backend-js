@@ -597,7 +597,7 @@ const crearAsientoExcel = async (req, res, next) => {
         id_invitado,      //05
     } = datosCarga;
     console.log('req.body: ',req.body);
-    
+    console.log('datosCarga: ',datosCarga);
     //id_anfitrion = req.body.datosCarga.id_anfitrion;
     console.log('id_anfitrion: ',id_anfitrion);
 
