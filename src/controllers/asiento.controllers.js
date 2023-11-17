@@ -682,6 +682,109 @@ const crearAsientoExcel = async (req, res, next) => {
         client.release();
       }
       //await pool.end()
+
+        //////////////////////////////////////////////////////////////
+        // Realiza la operación de inserción desde la tabla temporal a mct_venta
+        strSQL = "INSERT INTO mct_asientocontable";
+        strSQL +=  " (";
+        strSQL += "  id_usuario";   //01
+        strSQL += " ,documento_id"; //02
+        strSQL += " ,periodo";      //03
+        strSQL += " ,id_libro";     //04
+        strSQL += " ,num_asiento";  //05 generado *
+    
+        strSQL += " ,glosa";        //06
+        strSQL += " ,debe";         //07
+        strSQL += " ,haber";        //08
+        strSQL += " ,debe_me";      //09
+        strSQL += " ,haber_me";     //10
+        strSQL += " ,mayorizado";   //11
+        strSQL += " ,ctrl_crea";     //12 generado *
+        strSQL += " ,ctrl_crea_us";     //13
+        strSQL += " ,r_id_doc";         //14
+        strSQL += " ,r_documento_id";   //15
+        strSQL += " ,r_razon_social";   //16
+    
+        strSQL += " ,r_cod";        //17
+        strSQL += " ,r_serie";      //18
+        strSQL += " ,r_numero";     //19
+        strSQL += " ,r_numero2";    //20
+        strSQL += " ,r_fecemi";     //21
+        strSQL += " ,r_fecvcto";    //22
+        
+        strSQL += " ,r_cod_ref";    //23
+        strSQL += " ,r_serie_ref";  //24
+        strSQL += " ,r_numero_ref"; //25
+        strSQL += " ,r_fecemi_ref"; //26
+        
+        strSQL += " ,r_base001";    //27
+        strSQL += " ,r_base002";    //28
+        strSQL += " ,r_base003";    //29
+        strSQL += " ,r_base004";    //30
+        strSQL += " ,r_igv002";     //31
+        strSQL += " ,r_monto_icbp";     //32
+        strSQL += " ,r_monto_otros";    //33
+        strSQL += " ,r_monto_total";    //34
+        strSQL += " ,r_moneda";         //35
+        strSQL += " ,r_tc";             //36
+        strSQL += " ,origen";             //36
+        strSQL += " )";
+        strSQL += " SELECT ";
+        strSQL += "  $1";             //id_anfitrion
+        strSQL += " ,$2";             //documento_id
+        strSQL += " ,$3";             //periodo
+        strSQL += " ,$4";             //id_libro
+        strSQL += " ,fct_genera_asiento($1,$2,$3,$4)"; //num_asiento
+        strSQL += " ,'VENTA'";             //glosa
+        strSQL += " ,0";             //D
+        strSQL += " ,0";             //H
+        strSQL += " ,0";             //D $
+        strSQL += " ,0";             //H $
+        strSQL += " ,'0'";             //MAYORIZADO
+        strSQL += " ,CURRENT_TIMESTAMP";       //ctrl_crea
+        strSQL += " ,$5";             //id_invitado
+        strSQL += " ,r_id_doc";         //excel
+        strSQL += " ,r_documento_id";   //excel
+        strSQL += " ,r_razon_social";   //excel
+    
+        strSQL += " ,r_cod";        //excel
+        strSQL += " ,r_serie";      //excel
+        strSQL += " ,r_numero";     //excel
+        strSQL += " ,r_numero2";    //excel
+        strSQL += " ,r_fecemi";     //excel
+        strSQL += " ,r_fecvcto";    //excel
+        
+        strSQL += " ,r_cod_ref";    //excel
+        strSQL += " ,r_serie_ref";  //excel
+        strSQL += " ,r_numero_ref"; //excel
+        strSQL += " ,r_fecemi_ref"; //excel
+        
+        strSQL += " ,r_base001";    //excel
+        strSQL += " ,r_base002";    //excel
+        strSQL += " ,r_base003";    //excel
+        strSQL += " ,r_base004";    //excel
+        strSQL += " ,r_igv002";     //excel
+        strSQL += " ,r_monto_icbp";     //excel
+        strSQL += " ,r_monto_otros";    //excel
+        strSQL += " ,r_monto_total";    //excel
+        strSQL += " ,r_moneda";         //excel
+        strSQL += " ,r_tc";             //excel
+        strSQL += " ,'EXCEL'";             //origen
+
+        strSQL += " FROM mct_datos";             //37
+        const parametros = [   
+            id_anfitrion,    //01
+            documento_id,    //02
+            periodo,         //03
+            id_libro,        //04
+            id_invitado,     //05        
+        ];
+        
+        console.log(strSQL);
+        console.log(parametros);
+        await pool.query(strSQL, parametros);
+
+
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
       //console.log("final");
