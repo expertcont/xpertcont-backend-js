@@ -595,37 +595,41 @@ const crearAsientoExcel = async (req, res, next) => {
         header: 1,
       });
   
-      // Seleccionamos solo las columnas de interés (código y nombre con numero columna)
+      //Seleccion general todas las columnas y eliminamos comas antes de convertirlo  a CSV
+      //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
+      // Seleccion columna x columna de interés (código y nombre con numero columna)
       /*const csvData = sheetData
         .map((row) => [row[0], row[1]].join(','))
         .join('\n');*/
 
         const csvData = sheetData
         .map((row,index) => [
-            (row[0] || '').toString().replace(/,/g, ''),
-            (row[1] || '').toString().replace(/,/g, ''),
-            index > 0 ? convertirFechaStringComplete(row[2]) : row[2],
-            row[3] || ''
-//            convertirFechaStringComplete(row[2])
+            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
+            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
+            (row[2] || '').toString().replace(/,/g, ''),    //C cod
+            (row[3] || '').toString().replace(/,/g, ''),    //D serie
+            (row[4] || '').toString().replace(/,/g, ''),    //E numero
+            (row[5] || '').toString().replace(/,/g, ''),    //F numero2
+            (row[6] || '').toString().replace(/,/g, ''),    //G tipo
+            (row[7] || '').toString().replace(/,/g, ''),    //H documento_id
+            (row[8] || '').toString().replace(/,/g, ''),    //I razon social
+            (row[9] || ''),    //J export
+            (row[10] || ''),    //K base
+            (row[11] || ''),    //L igv
+            (row[12] || ''),    //M exo
+            (row[13] || ''),    //N inafect
+            (row[14] || ''),    //O icbp
+            (row[15] || ''),    //P otros
+            (row[16] || ''),    //Q total
+            (row[17] || ''),    //R moneda
+            (row[18] || ''),    //S tc
+            index > 0 ? convertirFechaStringComplete(row[19]) : row[19], //T emision ref
+            (row[20] || ''),    //U cod ref
+            (row[21] || ''),    //V serie ref
+            (row[22] || '')    //W num ref
         ].join(','))
         .join('\n');
         console.log(csvData);
-        //Seleccionamos todas las columnas y eliminamos comas antes de convertirlo  a CSV
-      //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
-      //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? ' ' : cell)).join(',')).join('\n');
-        /*const csvData = sheetData
-        .map(row => row.map(cell => (cell === '' ? null : cell.toString().replace(/,/g, ''))).join(','))
-        .join('\n');*/
-
-
-      /*const csvData = sheetData
-        .map(row => row.map(cell => {
-        if (cell === undefined || cell === null || cell.toString().trim() === '') {
-        return ' ';
-        }
-        return cell.toString().replace(/,/g, '');
-        }).join(','))
-        .join('\n');*/
 
       await pool.query('BEGIN');
   
@@ -633,12 +637,32 @@ const crearAsientoExcel = async (req, res, next) => {
       const createTableQuery = `
         DROP TABLE IF EXISTS mct_datos;
         CREATE TABLE mct_datos (
-            codigo VARCHAR(255),
-            nombre VARCHAR(255),
-            fecha DATE,
-            total numeric(14,2)
+            r_fecemi DATE,
+            r_fecvcto DATE,
+            r_cod VARCHAR(2),
+            r_serie VARCHAR(5),
+            r_numero VARCHAR(22),
+            r_numero2 VARCHAR(22),
+            r_id_doc VARCHAR(2),
+            r_documento_id VARCHAR(20),
+            r_razon_social VARCHAR(200),
+            r_base001 NUMERIC(14,2),
+            r_base002 NUMERIC(14,2),
+            r_igv002 NUMERIC(14,2),
+            r_base003 NUMERIC(14,2),
+            r_base004 NUMERIC(14,2),
+            r_monto_icbp NUMERIC(12,2),
+            r_monto_otros NUMERIC(14,2),
+            r_monto_total NUMERIC(14,2),
+            r_moneda VARCHAR(5),
+            r_tc NUMERIC(5,3),
+            r_fecemi_ref DATE,
+            r_cod_ref VARCHAR(2),
+            r_serie_ref VARCHAR(5),
+            r_numero_ref VARCHAR(22)
         );
-      `;      
+      `;  
+            
       await pool.query(createTableQuery);
 
       /////////////////////////////////////////////////////////////
