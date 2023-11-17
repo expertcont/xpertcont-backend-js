@@ -27,10 +27,10 @@ const devuelveCadenaNull = (value) => {
   };
 
   function convertirFechaStringComplete(dateString) {
-    if (!dateString) {
+    /*if (!dateString) {
       console.log("NULL de !dateString");
       return NULL;
-    }
+    }*/
     if (dateString===undefined) {
       console.log("NULL de undefined");
       return NULL;
