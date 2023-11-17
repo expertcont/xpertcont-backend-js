@@ -607,7 +607,7 @@ const crearAsientoExcel = async (req, res, next) => {
             (convertirFechaStringComplete(row[2]))
         ].join(','))
         .join('\n');
-        
+        console.log(csvData);
         //Seleccionamos todas las columnas y eliminamos comas antes de convertirlo  a CSV
       //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
       //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? ' ' : cell)).join(',')).join('\n');
