@@ -586,7 +586,7 @@ const crearAsiento = async (req,res,next)=> {
 
 const crearAsientoExcel = async (req, res, next) => {
     let strSQL;
-    await upload.single('archivoExcel')(req, res);
+    await upload.single('archivoExcel')(req, res, next);
 
     const datosCarga = req.body.datosCarga;
     const { //datos cabecera
