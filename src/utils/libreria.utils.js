@@ -33,7 +33,12 @@ const devuelveCadenaNull = (value) => {
     }*/
     if (dateString===undefined) {
       console.log("NULL de undefined");
-      return NULL;
+      return '';
+    }
+    // Si la fecha es una cadena vacía, representamos una fecha nula según lo que requiera tu base de datos
+    if (dateString.trim() === '') {
+      console.log("NULL de vacio");
+      return '';  // O ajusta según lo que requiera tu base de datos para representar una fecha nula
     }
   
     // Si la fecha es un número, la tratamos como una fecha en formato Excel (número de días desde 1900-01-01)
@@ -43,12 +48,6 @@ const devuelveCadenaNull = (value) => {
       const month = excelDate.getUTCMonth() + 1;  // Los meses en JavaScript son de 0 a 11
       const day = excelDate.getUTCDate();
       return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    }
-
-    // Si la fecha es una cadena vacía, representamos una fecha nula según lo que requiera tu base de datos
-    if (dateString.trim() === '') {
-      console.log("NULL de vacio");
-      return NULL;  // O ajusta según lo que requiera tu base de datos para representar una fecha nula
     }
 
     // Si no es un número, asumimos que ya está en el formato deseado (DD/MM/YYYY)
