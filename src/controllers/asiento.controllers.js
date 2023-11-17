@@ -595,13 +595,7 @@ const crearAsientoExcel = async (req, res, next) => {
         id_libro,         //04
         id_invitado,      //05
     } = req.body;
-    const parametros = [   
-        id_anfitrion,    //01
-        documento_id,    //02
-        periodo,         //03
-        id_libro,        //04
-        id_invitado,     //05        
-    ];
+    console.log('req.body: ',req.body);
 
     try {
       const fileBuffer = req.file.buffer;
@@ -786,13 +780,19 @@ const crearAsientoExcel = async (req, res, next) => {
         strSQL += " ,r_moneda";         //excel
         strSQL += " ,r_tc";             //excel
         strSQL += " ,'EXCEL'";             //origen
-
         strSQL += " FROM mct_datos";             //37
-        
+        const parametros = [   
+            id_anfitrion,    //01
+            documento_id,    //02
+            periodo,         //03
+            id_libro,        //04
+            id_invitado,     //05        
+        ];
+            
         console.log(strSQL);
-        console.log(parametros);
-        await pool.query(strSQL, parametros);
-
+        console.log('parametros arreglo:',parametros);
+        //await pool.query(strSQL, parametros);
+        const result = await pool.query(strSQL,parametros);
 
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
