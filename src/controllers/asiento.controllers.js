@@ -4,6 +4,7 @@ const { Readable } = require('stream');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete} = require('../utils/libreria.utils');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
+const multer = require('multer');
 const upload = multer();
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
