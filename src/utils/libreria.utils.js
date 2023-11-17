@@ -27,10 +27,6 @@ const devuelveCadenaNull = (value) => {
   };
 
   function convertirFechaStringComplete(dateString) {
-    /*if (!dateString) {
-      console.log("NULL de !dateString");
-      return NULL;
-    }*/
     if (dateString===undefined) {
       console.log("vacio de undefined");
       return '';
@@ -53,6 +49,7 @@ const devuelveCadenaNull = (value) => {
     // Si no es un número, asumimos que ya está en el formato deseado (DD/MM/YYYY)
     const [day, month, year] = dateString.split('/');
     return `${year}-${month}-${day}`;
+    //Aqui si es la cabecera(text = fecha, emision, etc), lo procesara como fecha, cuidado
   };
 
   module.exports = {
