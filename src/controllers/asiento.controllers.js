@@ -587,6 +587,15 @@ const crearAsiento = async (req,res,next)=> {
 
 
 const crearAsientoExcel = async (req, res, next) => {
+    let strSQL;
+    const { //datos cabecera
+        id_anfitrion,     //01
+        documento_id,     //02
+        periodo,          //03
+        id_libro,         //04
+        id_invitado,      //05
+    } = req.body;
+
     try {
       const fileBuffer = req.file.buffer;
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
