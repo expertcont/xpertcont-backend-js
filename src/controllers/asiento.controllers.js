@@ -597,9 +597,9 @@ const crearAsientoExcel = async (req, res, next) => {
     } = req.body.datosCarga;
     console.log('req.body.datosCarga: ',req.body.datosCarga);
     
-    id_anfitrion = req.body.datosCarga.id_anfitrion;
-    console.log('id_anfitrion: ',id_anfitrion);
-    
+    //id_anfitrion = req.body.datosCarga.id_anfitrion;
+    console.log('id_anfitrion: ',req.body.datosCarga.id_anfitrion);
+
     try {
       const fileBuffer = req.file.buffer;
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
