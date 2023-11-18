@@ -657,6 +657,7 @@ const crearAsientoExcelCompras = async (req, res, next) => {
             (row[7] || '').toString().replace(/,/g, ''),    //H tipo
             (row[8] || '').toString().replace(/,/g, ''),    //I documento_id
             (row[9] || '').toString().replace(/,/g, ''),    //J razon social
+
             (row[10] || ''),    //K BASE001
             (row[11] || ''),    //L igv001
             (row[12] || ''),    //M base002
@@ -741,6 +742,7 @@ const crearAsientoExcelCompras = async (req, res, next) => {
 
         //////////////////////////////////////////////////////////////
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
+        /*
         strSQL = "INSERT INTO mct_asientocontable";
         strSQL +=  " (";
         strSQL += "  id_usuario";   //01
@@ -792,52 +794,52 @@ const crearAsientoExcelCompras = async (req, res, next) => {
         strSQL += " ,origen";           //43
         strSQL += " )";
         strSQL += " SELECT ";
-        strSQL += "  $1";             //id_anfitrion
-        strSQL += " ,$2";             //documento_id
-        strSQL += " ,$3";             //periodo
-        strSQL += " ,$4";             //id_libro
-        strSQL += " ,fct_genera_asiento($1,$2,$3,$4)"; //num_asiento
-        strSQL += " ,'VENTA'";             //glosa
-        strSQL += " ,0";             //D
-        strSQL += " ,0";             //H
-        strSQL += " ,0";             //D $
-        strSQL += " ,0";             //H $
-        strSQL += " ,'0'";             //MAYORIZADO
-        strSQL += " ,CURRENT_TIMESTAMP";       //ctrl_crea
-        strSQL += " ,$5";             //id_invitado
-        strSQL += " ,r_id_doc";         //excel
-        strSQL += " ,r_documento_id";   //excel
-        strSQL += " ,r_razon_social";   //excel
+        strSQL += "  $1";             //01 id_anfitrion
+        strSQL += " ,$2";             //02 documento_id
+        strSQL += " ,$3";             //03 periodo
+        strSQL += " ,$4";             //04 id_libro
+        strSQL += " ,fct_genera_asiento($1,$2,$3,$4)"; //05 num_asiento
+        strSQL += " ,'VENTA'";          //06 glosa
+        strSQL += " ,0";                //07 D
+        strSQL += " ,0";                //08 H
+        strSQL += " ,0";                //09 D $
+        strSQL += " ,0";                //10 H $
+        strSQL += " ,'0'";              //11 MAYORIZADO
+        strSQL += " ,CURRENT_TIMESTAMP"; //12 ctrl_crea
+        strSQL += " ,$5";                //13 id_invitado
+        strSQL += " ,r_id_doc";          //14 excel
+        strSQL += " ,r_documento_id";    //15 excel
+        strSQL += " ,r_razon_social";    //16 excel
     
-        strSQL += " ,r_cod";        //excel
-        strSQL += " ,r_serie";      //excel
-        strSQL += " ,r_numero";     //excel
-        strSQL += " ,r_ano_dam";     //excel
-        strSQL += " ,r_numero2";    //excel
-        strSQL += " ,r_fecemi";     //excel
-        strSQL += " ,r_fecvcto";    //excel
+        strSQL += " ,r_cod";        //17 excel
+        strSQL += " ,r_serie";      //18 excel
+        strSQL += " ,r_numero";     //19 excel
+        strSQL += " ,r_ano_dam";    //20 excel
+        strSQL += " ,r_numero2";    //21 excel
+        strSQL += " ,r_fecemi";     //22 excel
+        strSQL += " ,r_fecvcto";    //23 excel
         
-        strSQL += " ,r_cod_ref";    //excel
-        strSQL += " ,r_serie_ref";  //excel
-        strSQL += " ,r_numero_ref"; //excel
-        strSQL += " ,r_fecemi_ref"; //excel
+        strSQL += " ,r_cod_ref";    //24 excel
+        strSQL += " ,r_serie_ref";  //25 excel
+        strSQL += " ,r_numero_ref"; //26 excel
+        strSQL += " ,r_fecemi_ref"; //27 excel
         
-        strSQL += " ,r_base001";    //excel
-        strSQL += " ,r_base002";    //excel
-        strSQL += " ,r_base003";    //excel
-        strSQL += " ,r_base004";    //excel
-        strSQL += " ,r_igv001";     //excel
-        strSQL += " ,r_igv002";     //excel
-        strSQL += " ,r_igv003";     //excel
-        strSQL += " ,r_monto_isc";     //excel
-        strSQL += " ,r_monto_icbp";     //excel
-        strSQL += " ,r_monto_otros";    //excel
-        strSQL += " ,r_monto_total";    //excel
-        strSQL += " ,r_moneda";         //excel
-        strSQL += " ,r_tc";             //excel
-        strSQL += " ,r_id_aduana";      //excel
-        strSQL += " ,r_idbss";          //excel
-        strSQL += " ,'EXCEL'";             //origen
+        strSQL += " ,r_base001";    //28 excel
+        strSQL += " ,r_base002";    //29 excel
+        strSQL += " ,r_base003";    //30 excel
+        strSQL += " ,r_base004";    //31 excel
+        strSQL += " ,r_igv001";     //32 excel
+        strSQL += " ,r_igv002";     //33 excel
+        strSQL += " ,r_igv003";     //34 excel
+        strSQL += " ,r_monto_isc";     //35 excel
+        strSQL += " ,r_monto_icbp";     //36 excel
+        strSQL += " ,r_monto_otros";    //37 excel
+        strSQL += " ,r_monto_total";    //38 excel
+        strSQL += " ,r_moneda";         //39 excel
+        strSQL += " ,r_tc";             //40 excel
+        strSQL += " ,r_id_aduana";      //41 excel
+        strSQL += " ,r_idbss";          //42 excel
+        strSQL += " ,'EXCEL'";          //43 origen
         strSQL += " FROM mct_datos";
         const parametros = [   
             id_anfitrion,    //01
@@ -850,7 +852,7 @@ const crearAsientoExcelCompras = async (req, res, next) => {
         console.log(strSQL);
         console.log('parametros arreglo:',parametros);
         await pool.query(strSQL, parametros);
-
+        */
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
       //console.log("final");
