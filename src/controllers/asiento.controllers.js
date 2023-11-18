@@ -453,14 +453,14 @@ const crearAsientoExcelVentas = async (req, res, next) => {
             (row[22] || '')    //W num ref
         ].join(','))
         .join('\n');
-        console.log(csvData);
+        //console.log(csvData);
 
       await pool.query('BEGIN');
   
       // Creamos la tabla temporal solo con las columnas necesarias
       const createTableQuery = `
         DROP TABLE IF EXISTS mct_datos;
-        CREATE TABLE mct_datos (
+        CREATE TEMP TABLE mct_datos (
             r_fecemi DATE,
             r_fecvcto DATE,
             r_cod VARCHAR(2),
@@ -603,10 +603,11 @@ const crearAsientoExcelVentas = async (req, res, next) => {
             id_invitado,     //05        
         ];
             
-        console.log(strSQL);
-        console.log('parametros arreglo:',parametros);
+        //console.log(strSQL);
+        //console.log('parametros arreglo:',parametros);
         await pool.query(strSQL, parametros);
 
+      await client.query(`DROP TABLE mct_datos`);
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
       //console.log("final");
@@ -680,14 +681,14 @@ const crearAsientoExcelCompras = async (req, res, next) => {
 
         ].join(','))
         .join('\n');
-        console.log(csvData);
+        //console.log(csvData);
 
       await pool.query('BEGIN');
   
       // Creamos la tabla temporal solo con las columnas necesarias
       const createTableQuery = `
         DROP TABLE IF EXISTS mct_datos;
-        CREATE TABLE mct_datos (
+        CREATE TEMP TABLE mct_datos (
             r_fecemi DATE,
             r_fecvcto DATE,
             r_cod VARCHAR(2),
@@ -719,7 +720,6 @@ const crearAsientoExcelCompras = async (req, res, next) => {
             r_idbss VARCHAR(5)
         );
       `;  
-            
       await pool.query(createTableQuery);
 
       /////////////////////////////////////////////////////////////
@@ -798,7 +798,7 @@ const crearAsientoExcelCompras = async (req, res, next) => {
         strSQL += " ,$3";             //03 periodo
         strSQL += " ,$4";             //04 id_libro
         strSQL += " ,fct_genera_asiento($1,$2,$3,$4)"; //05 num_asiento
-        strSQL += " ,'VENTA'";          //06 glosa
+        strSQL += " ,'COMPRA'";          //06 glosa
         strSQL += " ,0";                //07 D
         strSQL += " ,0";                //08 H
         strSQL += " ,0";                //09 D $
@@ -848,10 +848,11 @@ const crearAsientoExcelCompras = async (req, res, next) => {
             id_invitado,     //05        
         ];
             
-        console.log(strSQL);
-        console.log('parametros arreglo:',parametros);
+        //console.log(strSQL);
+        //console.log('parametros arreglo:',parametros);
         await pool.query(strSQL, parametros);
-
+      
+      await client.query(`DROP TABLE mct_datos`);
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
       //console.log("final");
