@@ -742,7 +742,6 @@ const crearAsientoExcelCompras = async (req, res, next) => {
 
         //////////////////////////////////////////////////////////////
         // Realiza la operación de inserción desde la tabla temporal a mct_venta
-        /*
         strSQL = "INSERT INTO mct_asientocontable";
         strSQL +=  " (";
         strSQL += "  id_usuario";   //01
@@ -852,7 +851,7 @@ const crearAsientoExcelCompras = async (req, res, next) => {
         console.log(strSQL);
         console.log('parametros arreglo:',parametros);
         await pool.query(strSQL, parametros);
-        */
+
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
       //console.log("final");
