@@ -716,7 +716,7 @@ const crearAsientoExcelCompras = async (req, res, next) => {
             r_serie_ref VARCHAR(5),
             r_id_aduana VARCHAR(5),
             r_numero_ref VARCHAR(22),
-            r_idbss VARCHAR(5),
+            r_idbss VARCHAR(5)
         );
       `;  
             
