@@ -674,8 +674,8 @@ const crearAsientoExcelCompras = async (req, res, next) => {
             index > 0 ? convertirFechaStringComplete(row[23]) : row[23], //X emision ref
             (row[24] || ''),    //Y cod ref
             (row[25] || ''),    //Z serie ref
-            (row[26] || '')    //AA cod aduana
-            (row[27] || '')    //AB numero ref
+            (row[26] || ''),    //AA cod aduana
+            (row[27] || ''),    //AB numero ref
             (row[28] || '')    //AC id_bss
 
         ].join(','))
