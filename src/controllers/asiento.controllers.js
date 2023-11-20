@@ -133,6 +133,122 @@ const obtenerTodosAsientosVenta = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
+const obtenerTodosAsientosCaja = async (req,res,next)=> {
+    //Solo Cabeceras
+    const {id_anfitrion, id_invitado, periodo, documento_id} = req.params;
+
+    let strSQL;
+    strSQL = "SELECT ";
+        //01 ruc gen        (campos vacios)
+        //02 razon gen      (campos vacios)
+        //03 periodo gen    (campos vacios)
+        //04 car sunat      (campos vacios)
+    strSQL = strSQL + "  cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
+    strSQL = strSQL + " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
+    strSQL = strSQL + " ,r_cod";                                                //07
+    strSQL = strSQL + " ,r_serie";                                              //08
+    strSQL = strSQL + " ,r_numero";                                             //09
+    strSQL = strSQL + " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante"; //(07-08-09)
+    strSQL = strSQL + " ,r_numero2";                                            //10
+    strSQL = strSQL + " ,r_id_doc";                                             //11
+    strSQL = strSQL + " ,r_documento_id";                                       //12
+    strSQL = strSQL + " ,r_razon_social";                                       //13
+    strSQL = strSQL + " ,r_base001 as export";                                  //14
+    strSQL = strSQL + " ,r_base002 as base";                                    //15
+    strSQL = strSQL + " ,r_igv002 as igv";                                      //16
+    strSQL = strSQL + " ,r_base003 as exonera";                                 //17
+    strSQL = strSQL + " ,r_base004 as inafecta";                                //18
+    strSQL = strSQL + " ,r_monto_icbp";                                         //19
+    strSQL = strSQL + " ,r_monto_otros";                                        //20
+    strSQL = strSQL + " ,r_monto_total";                                        //21
+    strSQL = strSQL + " ,r_moneda";                                             //22
+    strSQL = strSQL + " ,r_tc";                                                 //23
+    strSQL = strSQL + " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//24
+    strSQL = strSQL + " ,r_cod_ref";                                            //25
+    strSQL = strSQL + " ,r_serie_ref";                                          //26
+    strSQL = strSQL + " ,r_numero_ref";                                         //27
+    
+    strSQL = strSQL + " ,id_libro";
+    strSQL = strSQL + " ,num_asiento";
+    strSQL = strSQL + " ,glosa";
+    strSQL = strSQL + " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref)::varchar(50) as comprobante_ref"; //(07-08-09)
+
+    strSQL = strSQL + " FROM";
+    strSQL = strSQL + " mct_asientocontable ";
+    strSQL = strSQL + " WHERE id_usuario = '" + id_anfitrion + "'";
+    strSQL = strSQL + " AND documento_id = '" + documento_id + "'";
+    strSQL = strSQL + " AND periodo = '" + periodo + "'";
+    strSQL = strSQL + " AND id_libro = '001'"; //caja
+    strSQL = strSQL + " ORDER BY num_asiento DESC";
+    console.log(strSQL);
+    try {
+        const todosReg = await pool.query(strSQL);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+    //res.send('Listado de todas los zonas');
+};
+
+const obtenerTodosAsientosDiario = async (req,res,next)=> {
+    //Solo Cabeceras
+    const {id_anfitrion, id_invitado, periodo, documento_id} = req.params;
+
+    let strSQL;
+    strSQL = "SELECT ";
+        //01 ruc gen        (campos vacios)
+        //02 razon gen      (campos vacios)
+        //03 periodo gen    (campos vacios)
+        //04 car sunat      (campos vacios)
+    strSQL = strSQL + "  cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
+    strSQL = strSQL + " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
+    strSQL = strSQL + " ,r_cod";                                                //07
+    strSQL = strSQL + " ,r_serie";                                              //08
+    strSQL = strSQL + " ,r_numero";                                             //09
+    strSQL = strSQL + " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante"; //(07-08-09)
+    strSQL = strSQL + " ,r_numero2";                                            //10
+    strSQL = strSQL + " ,r_id_doc";                                             //11
+    strSQL = strSQL + " ,r_documento_id";                                       //12
+    strSQL = strSQL + " ,r_razon_social";                                       //13
+    strSQL = strSQL + " ,r_base001 as export";                                  //14
+    strSQL = strSQL + " ,r_base002 as base";                                    //15
+    strSQL = strSQL + " ,r_igv002 as igv";                                      //16
+    strSQL = strSQL + " ,r_base003 as exonera";                                 //17
+    strSQL = strSQL + " ,r_base004 as inafecta";                                //18
+    strSQL = strSQL + " ,r_monto_icbp";                                         //19
+    strSQL = strSQL + " ,r_monto_otros";                                        //20
+    strSQL = strSQL + " ,r_monto_total";                                        //21
+    strSQL = strSQL + " ,r_moneda";                                             //22
+    strSQL = strSQL + " ,r_tc";                                                 //23
+    strSQL = strSQL + " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//24
+    strSQL = strSQL + " ,r_cod_ref";                                            //25
+    strSQL = strSQL + " ,r_serie_ref";                                          //26
+    strSQL = strSQL + " ,r_numero_ref";                                         //27
+    
+    strSQL = strSQL + " ,id_libro";
+    strSQL = strSQL + " ,num_asiento";
+    strSQL = strSQL + " ,glosa";
+    strSQL = strSQL + " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref)::varchar(50) as comprobante_ref"; //(07-08-09)
+
+    strSQL = strSQL + " FROM";
+    strSQL = strSQL + " mct_asientocontable ";
+    strSQL = strSQL + " WHERE id_usuario = '" + id_anfitrion + "'";
+    strSQL = strSQL + " AND documento_id = '" + documento_id + "'";
+    strSQL = strSQL + " AND periodo = '" + periodo + "'";
+    strSQL = strSQL + " AND id_libro = '005'"; //diario
+    strSQL = strSQL + " ORDER BY num_asiento DESC";
+    console.log(strSQL);
+    try {
+        const todosReg = await pool.query(strSQL);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+    //res.send('Listado de todas los zonas');
+};
+
 const obtenerTodosAsientosPlan = async (req,res,next)=> {
     //Modo Detalles 
     //Version analizado, util para formato excel
@@ -1180,6 +1296,8 @@ const anularAsiento = async (req,res,next)=> {
 module.exports = {
     obtenerTodosAsientosCompra,
     obtenerTodosAsientosVenta,
+    obtenerTodosAsientosCaja,
+    obtenerTodosAsientosDiario,
     obtenerTodosAsientosPlan,
     obtenerAsiento,
     crearAsiento,
