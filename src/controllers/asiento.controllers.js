@@ -122,7 +122,7 @@ const obtenerTodosAsientosVenta = async (req,res,next)=> {
     strSQL = strSQL + " AND periodo = '" + periodo + "'";
     strSQL = strSQL + " AND id_libro = '014'"; //ventas
     strSQL = strSQL + " ORDER BY num_asiento DESC";
-    //console.log(strSQL);
+    console.log(strSQL);
     try {
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
