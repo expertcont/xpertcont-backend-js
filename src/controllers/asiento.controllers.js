@@ -1040,7 +1040,7 @@ const crearAsientoExcelCompras = async (req, res, next) => {
 
 const eliminarAsiento = async (req,res,next)=> {
     try {
-        const {id_usuario, documento_id, periodo, id_libro, num_asiento} = req.params;
+        const {id_anfitrion, documento_id, periodo, id_libro, num_asiento} = req.params;
         var strSQL;
         var result;
         var result2;
@@ -1052,10 +1052,10 @@ const eliminarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " AND periodo = $3";
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND num_asiento = $5";
-        console.log(strSQL);
-        console.log([id_usuario,documento_id,periodo,id_libro,num_asiento]);
+        //console.log(strSQL);
+        //console.log([id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
 
-        result = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,num_asiento]);
+        result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
         if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Detalle no encontrado"
@@ -1068,9 +1068,9 @@ const eliminarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " AND periodo = $3";
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND num_asiento = $5";
-        console.log(strSQL);
-        console.log([id_usuario,documento_id,periodo,id_libro,num_asiento]);
-        result2 = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,num_asiento]);
+        //console.log(strSQL);
+        //console.log([id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
+        result2 = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
         if (result2.rowCount === 0)
             return res.status(404).json({
                 message:"ASiento no encontrado"
