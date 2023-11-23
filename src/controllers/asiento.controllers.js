@@ -1052,6 +1052,8 @@ const eliminarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " AND periodo = $3";
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND num_asiento = $5";
+        console.log(strSQL);
+        console.log([id_usuario,documento_id,periodo,id_libro,num_asiento]);
 
         result = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,num_asiento]);
         if (result.rowCount === 0)
