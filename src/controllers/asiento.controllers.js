@@ -1084,7 +1084,7 @@ const eliminarAsiento = async (req,res,next)=> {
 };
 const eliminarAsientoOrigen = async (req,res,next)=> {
     try {
-        const {id_usuario, documento_id, periodo, id_libro, origen} = req.params;
+        const {id_anfitrion, documento_id, periodo, id_libro, origen} = req.params;
         var strSQL;
         var result;
         var result2;
@@ -1097,7 +1097,7 @@ const eliminarAsientoOrigen = async (req,res,next)=> {
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND origen = $5";
 
-        result = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,origen]);
+        result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,origen]);
         /*if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Detalle no encontrado"
@@ -1110,12 +1110,13 @@ const eliminarAsientoOrigen = async (req,res,next)=> {
         strSQL = strSQL + " AND periodo = $3";
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND origen = $5";
-        result2 = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,origen]);
+        result2 = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,origen]);
+
         /*if (result2.rowCount === 0)
             return res.status(404).json({
                 message:"Venta no encontrada"
-            });
-*/
+            });*/
+
         return res.sendStatus(204);
     } catch (error) {
         console.log(error.message);
