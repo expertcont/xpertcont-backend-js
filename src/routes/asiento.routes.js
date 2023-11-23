@@ -4,7 +4,7 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,crearAsientoExcelVentas,crearAsientoExcelCompras} = require('../controllers/asiento.controllers')
+const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,crearAsientoExcelVentas,crearAsientoExcelCompras} = require('../controllers/asiento.controllers')
 
 
 router.get('/asiento/compras/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCompra);
@@ -22,5 +22,6 @@ router.post('/asientoexcelcompras', upload.single('archivoExcel'), crearAsientoE
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', actualizarAsiento);
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', anularAsiento);
 router.delete('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', eliminarAsiento);
+router.delete('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:origen', eliminarAsientoOrigen);
 
 module.exports = router;

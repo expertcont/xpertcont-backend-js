@@ -1040,20 +1040,20 @@ const crearAsientoExcelCompras = async (req, res, next) => {
 
 const eliminarAsiento = async (req,res,next)=> {
     try {
-        const {id_usuario, ano, mes, id_libro, num_asiento} = req.params;
+        const {id_usuario, documento_id, periodo, id_libro, num_asiento} = req.params;
         var strSQL;
         var result;
         var result2;
         
         //primero eliminar todos detalles
         strSQL = "DELETE FROM mct_asientocontabledet ";
-        strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
-        strSQL = strSQL + " AND ano = '" + ano + "'";
-        strSQL = strSQL + " AND mes = '" + mes + "'";
-        strSQL = strSQL + " AND id_libro = '" + id_libro + "'";
-        strSQL = strSQL + " AND num_asiento = '" + num_asiento + "'";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND documento_id = $2";
+        strSQL = strSQL + " AND periodo = $3";
+        strSQL = strSQL + " AND id_libro = $4";
+        strSQL = strSQL + " AND num_asiento = $5";
 
-        result = await pool.query(strSQL,[id_usuario,ano,mes,id_libro,num_asiento]);
+        result = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,num_asiento]);
         /*if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Detalle no encontrado"
@@ -1061,12 +1061,12 @@ const eliminarAsiento = async (req,res,next)=> {
 */
         //luego eliminar cabecera
         strSQL = "DELETE FROM mct_asientocontable ";
-        strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
-        strSQL = strSQL + " AND ano = '" + ano + "'";
-        strSQL = strSQL + " AND mes = '" + mes + "'";
-        strSQL = strSQL + " AND id_libro = '" + id_libro + "'";
-        strSQL = strSQL + " AND num_asiento = '" + num_asiento + "'";
-        result2 = await pool.query(strSQL,[id_usuario,ano,mes,id_libro,num_asiento]);
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND documento_id = $2";
+        strSQL = strSQL + " AND periodo = $3";
+        strSQL = strSQL + " AND id_libro = $4";
+        strSQL = strSQL + " AND num_asiento = $5";
+        result2 = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,num_asiento]);
         /*if (result2.rowCount === 0)
             return res.status(404).json({
                 message:"Venta no encontrada"
@@ -1078,6 +1078,47 @@ const eliminarAsiento = async (req,res,next)=> {
     }
 
 };
+const eliminarAsientoOrigen = async (req,res,next)=> {
+    try {
+        const {id_usuario, documento_id, periodo, id_libro, origen} = req.params;
+        var strSQL;
+        var result;
+        var result2;
+        
+        //primero eliminar todos detalles
+        strSQL = "DELETE FROM mct_asientocontabledet ";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND documento_id = $2";
+        strSQL = strSQL + " AND periodo = $3";
+        strSQL = strSQL + " AND id_libro = $4";
+        strSQL = strSQL + " AND origen = $5";
+
+        result = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,origen]);
+        /*if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Detalle no encontrado"
+            });
+*/
+        //luego eliminar cabecera
+        strSQL = "DELETE FROM mct_asientocontable ";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND documento_id = $2";
+        strSQL = strSQL + " AND periodo = $3";
+        strSQL = strSQL + " AND id_libro = $4";
+        strSQL = strSQL + " AND origen = $5";
+        result2 = await pool.query(strSQL,[id_usuario,documento_id,periodo,id_libro,origen]);
+        /*if (result2.rowCount === 0)
+            return res.status(404).json({
+                message:"Venta no encontrada"
+            });
+*/
+        return res.sendStatus(204);
+    } catch (error) {
+        console.log(error.message);
+    }
+
+};
+
 const actualizarAsiento = async (req,res,next)=> {
     try {
         const { //datos cabecera
@@ -1304,6 +1345,7 @@ module.exports = {
     crearAsientoExcelVentas,
     crearAsientoExcelCompras,
     eliminarAsiento,
+    eliminarAsientoOrigen,
     actualizarAsiento,
     anularAsiento
  }; 
