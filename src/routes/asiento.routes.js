@@ -22,6 +22,6 @@ router.post('/asientoexcelcompras', upload.single('archivoExcel'), crearAsientoE
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', actualizarAsiento);
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', anularAsiento);
 router.delete('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', eliminarAsiento);
-router.delete('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:origen', eliminarAsientoOrigen);
+router.delete('/asientomasivo/:id_anfitrion/:documento_id/:periodo/:id_libro/:origen', eliminarAsientoOrigen);
 
 module.exports = router;
