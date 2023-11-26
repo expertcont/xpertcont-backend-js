@@ -255,9 +255,9 @@ const obtenerSireCompras = async (req,res,next)=> {
 
     let strSQL;
     strSQL = "SELECT ";
-    strSQL += "  $2";    //01 ruc
-    strSQL += " ,$3";    //02 razon gen
-    strSQL += " ,$4";    //03 periodo
+    strSQL += "  $2 as ruc";    //01 ruc
+    strSQL += " ,$3 as razon";    //02 razon gen
+    strSQL += " ,$4 as periodo";    //03 periodo
     strSQL += " ,''::varchar(20) as car_sunat";    //04 car sunat
     strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
     strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
