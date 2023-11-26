@@ -249,6 +249,71 @@ const obtenerTodosAsientosDiario = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
+const obtenerSireCompras = async (req,res,next)=> {
+    //Solo Cabeceras
+    const {id_anfitrion, documento_id, razon_social, periodo} = req.params;
+
+    let strSQL;
+    strSQL = "SELECT ";
+    strSQL += "  $2";    //01 ruc
+    strSQL += " ,$3";    //02 razon gen
+    strSQL += " ,$4";    //03 periodo
+    strSQL += " ,''::varchar(20) as car_sunat";    //04 car sunat
+    strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
+    strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
+    strSQL += " ,r_cod";                                                //07
+    strSQL += " ,r_serie";                                              //08
+    strSQL += " ,r_ano_dam";                                            //09 año dua
+    strSQL += " ,r_numero";                                             //10
+    strSQL += " ,r_numero2";                                            //11
+    strSQL += " ,r_id_doc";                                             //12
+    strSQL += " ,r_documento_id";                                       //13
+    strSQL += " ,r_razon_social";                                       //14
+    strSQL += " ,r_base001";                                            //15
+    strSQL += " ,r_igv001";                                             //16
+    strSQL += " ,r_base002";                                            //17
+    strSQL += " ,r_igv002";                                             //18
+    strSQL += " ,r_base003";                                            //19
+    strSQL += " ,r_igv003";                                             //20
+    strSQL += " ,r_base004";                                            //21 no gravado
+    strSQL += " ,r_monto_isc";                                          //22
+    strSQL += " ,r_monto_icbp";                                         //23
+    strSQL += " ,r_monto_otros";                                        //24
+    strSQL += " ,r_monto_total";                                        //25
+    strSQL += " ,r_moneda";                                             //26
+    strSQL += " ,r_tc";                                                 //27
+    strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//28
+    strSQL += " ,r_cod_ref";                                            //29
+    strSQL += " ,r_serie_ref";                                          //30
+    strSQL += " ,r_id_aduana";                                          //31
+    strSQL += " ,r_numero_ref";                                         //32
+    
+    strSQL += " ,r_idbss";                                              //33
+    strSQL += " ,r_contrato_id";                                        //34
+    strSQL += " ,r_contrato_porc";                                      //35
+    strSQL += " ,r_impuesto_mat";                                       //36
+    strSQL += " ,r_car_cp";                                             //37 vacio CAR CP a modificar
+
+    strSQL += " FROM";
+    strSQL += " mct_asientocontable ";
+
+    strSQL += " WHERE id_usuario = $1";
+    strSQL += " AND documento_id = $2";
+    strSQL += " AND periodo = $4";
+    strSQL += " AND id_libro = '008'"; //compras
+    strSQL += " ORDER BY num_asiento DESC";
+    //console.log(strSQL);
+    try {
+        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo]);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+
+    //res.send('Listado de todas los zonas');
+};
+
 const obtenerTodosAsientosPlan = async (req,res,next)=> {
     //Modo Detalles 
     //Version analizado, util para formato excel
@@ -1344,6 +1409,7 @@ module.exports = {
     obtenerTodosAsientosVenta,
     obtenerTodosAsientosCaja,
     obtenerTodosAsientosDiario,
+    obtenerSireCompras,
     obtenerTodosAsientosPlan,
     obtenerAsiento,
     crearAsiento,
