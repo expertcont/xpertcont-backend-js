@@ -2,7 +2,7 @@ const pool = require('../db');
 
 const obtenerTodosPermisoComandosVista = async (req,res,next)=> {
     try {
-        const {id_usuario} = req.params;
+        const {id_usuario,id_invitado} = req.params;
         let strSQL;
         strSQL = "SELECT mad_menucomando.id_comando";
         //strSQL = strSQL + " ,(mad_menucomando.id_comando || ' ' || mad_menucomando.nombre)::varchar(200) as nombre";
@@ -12,7 +12,8 @@ const obtenerTodosPermisoComandosVista = async (req,res,next)=> {
         strSQL = strSQL + " FROM"; 
         strSQL = strSQL + " mad_menucomando LEFT JOIN mad_seguridad_comando";
         strSQL = strSQL + " ON (mad_menucomando.id_comando = mad_seguridad_comando.id_comando and";
-        strSQL = strSQL + "     mad_seguridad_comando.id_usuario like '" + id_usuario + "%'";
+        strSQL = strSQL + "     mad_seguridad_comando.id_usuario like '" + id_usuario + "%' and";
+        strSQL = strSQL + "     mad_seguridad_comando.id_invitado like '" + id_invitado + "%' )";
         strSQL = strSQL + "    )";
         strSQL = strSQL + " ORDER BY mad_menucomando.id_comando";
     
@@ -27,12 +28,13 @@ const obtenerTodosPermisoComandosVista = async (req,res,next)=> {
 };
 const obtenerTodosPermisoComandos = async (req,res,next)=> {
     try {
-        const {id_usuario,id_menu} = req.params;
+        const {id_usuario,id_invitado,id_menu} = req.params;
         let strSQL;
         strSQL = "SELECT id_comando";
         strSQL = strSQL + " FROM mad_seguridad_comando";
-        strSQL = strSQL + " WHERE id_menu like '" + id_menu + "%'";
-        strSQL = strSQL + " AND id_usuario = '" + id_usuario + "'";
+        strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
+        strSQL = strSQL + " AND id_invitado = '" + id_invitado + "'";
+        strSQL = strSQL + " AND id_menu like '" + id_menu + "%'";
         strSQL = strSQL + " ORDER BY id_comando";
         console.log(strSQL);
         const todosReg = await pool.query(strSQL);
@@ -65,14 +67,16 @@ const obtenerTodosMenu = async (req,res,next)=> {
 };
 const obtenerTodosEmail = async (req,res,next)=> {
     try {
+        const {id_usuario} = req.params;
         let strSQL;
-        strSQL = "SELECT id_usuario";
+        strSQL = "SELECT id_invitado";
         strSQL = strSQL + " FROM"; 
         strSQL = strSQL + " mad_seguridad_comando";
-        strSQL = strSQL + " GROUP BY id_usuario";
-        strSQL = strSQL + " ORDER BY id_usuario";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " GROUP BY id_invitado";
+        strSQL = strSQL + " ORDER BY id_invitado";
     
-        const todosReg = await pool.query(strSQL);
+        const todosReg = await pool.query(strSQL,[id_usuario]);
         res.json(todosReg.rows);
     }
     catch(error){
@@ -84,6 +88,7 @@ const obtenerTodosEmail = async (req,res,next)=> {
 
 const clonarPermisoComando = async (req,res,next)=> {
     const {
+        id_anfitrion,     //01 nuevo 
         id_usuario2,     //01 nuevo 
         id_usuario     //02 existente
     } = req.body
@@ -95,17 +100,19 @@ const clonarPermisoComando = async (req,res,next)=> {
 
         strSQL = "DELETE FROM mad_seguridad_comando ";
         strSQL = strSQL + " WHERE id_usuario = $1";
-        result = await pool.query(strSQL,[id_usuario2]);
+        strSQL = strSQL + " AND id_invitado = $2";
+        result = await pool.query(strSQL,[id_anfitrion,id_usuario2]);
 
-        strSQL = "INSERT INTO mad_seguridad_comando (id_empresa, id_usuario, id_menu, id_comando)";
-        strSQL = strSQL + " SELECT id_empresa, $1, id_menu, id_comando";
+        strSQL = "INSERT INTO mad_seguridad_comando (id_usuario, id_invitado, id_menu, id_comando)";
+        strSQL = strSQL + " SELECT $1, $2, id_menu, id_comando";
         strSQL = strSQL + " FROM mad_seguridad_comando";
-        strSQL = strSQL + " WHERE id_usuario = $2  RETURNING *";
+        strSQL = strSQL + " WHERE id_usuario = $3  RETURNING *";
 
         result2 = await pool.query(strSQL, 
         [   
-            id_usuario2,     //01
-            id_usuario     //02    
+            id_anfitrion,     //01
+            id_usuario2,     //02
+            id_usuario     //03   
         ]
         );
         res.json(result2.rows[0]);
@@ -117,8 +124,8 @@ const clonarPermisoComando = async (req,res,next)=> {
 
 const registrarPermisoComando = async (req,res,next)=> {
     const {
-        id_empresa,     //01
-        id_usuario,     //02    
+        id_usuario,     //01
+        id_invitado,    //02    
         id_menu,        //03    
         id_comando      //04
     } = req.body
@@ -126,8 +133,8 @@ const registrarPermisoComando = async (req,res,next)=> {
     try {
         const result = await pool.query("INSERT INTO mad_seguridad_comando VALUES ($1,$2,$3,$4) RETURNING *", 
         [   
-            id_empresa,     //01
-            id_usuario,     //02    
+            id_usuario,     //01
+            id_invitado,   //02    
             id_menu,        //03    
             id_comando      //04
         ]
@@ -167,14 +174,14 @@ const registrarUsuario = async (req,res,next)=> {
 
 const eliminarPermisoComando = async (req,res,next)=> {
     try {
-        const {id_usuario,id_comando} = req.params;
+        const {id_usuario,id_invitado,id_comando} = req.params;
         let strSQL;
         strSQL = "DELETE FROM mad_seguridad_comando";
-        strSQL = strSQL + " WHERE id_empresa = 1";
-        strSQL = strSQL + " AND id_usuario = $1";
-        strSQL = strSQL + " AND id_comando = $2";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND id_invitado = $2";
+        strSQL = strSQL + " AND id_comando = $3";
 
-        const result = await pool.query(strSQL,[id_usuario,id_comando]);
+        const result = await pool.query(strSQL,[id_usuario,id_invitado,id_comando]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
@@ -189,13 +196,12 @@ const eliminarPermisoComando = async (req,res,next)=> {
 
 const eliminarPermisoUsuario = async (req,res,next)=> {
     try {
-        const {id_usuario} = req.params;
+        const {id_usuario,id_invitado} = req.params;
         let strSQL;
         strSQL = "DELETE FROM mad_seguridad_comando";
-        strSQL = strSQL + " WHERE id_empresa = 1";
-        strSQL = strSQL + " AND id_usuario = $1";
-
-        const result = await pool.query(strSQL,[id_usuario]);
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND id_invitado = $2";
+        const result = await pool.query(strSQL,[id_usuario,id_invitado]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
