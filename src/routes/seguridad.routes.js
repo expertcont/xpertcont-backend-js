@@ -3,7 +3,7 @@ const pool = require('../db');
 const router = Router();
 const {obtenerTodosPermisoComandosVista,obtenerTodosPermisoComandos,obtenerTodosMenu,registrarPermisoComando,eliminarPermisoComando,registrarUsuario,clonarPermisoComando,eliminarPermisoUsuario,obtenerTodosEmail} = require('../controllers/seguridad.controllers')
 
-router.get('/seguridad/:id_usuario/vista', obtenerTodosPermisoComandosVista);
+router.get('/seguridad/:id_usuario/:id_invitado/vista', obtenerTodosPermisoComandosVista);
 router.get('/seguridad/:id_usuario/:id_invitado/:id_menu', obtenerTodosPermisoComandos);
 router.get('/seguridadmenu/:id_usuario/:id_invitado', obtenerTodosMenu);
 router.get('/seguridademail/:id_usuario', obtenerTodosEmail);
