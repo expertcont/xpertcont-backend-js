@@ -14,7 +14,6 @@ const obtenerTodosPermisoComandosVista = async (req,res,next)=> {
         strSQL = strSQL + " ON (mad_menucomando.id_comando = mad_seguridad_comando.id_comando and";
         strSQL = strSQL + "     mad_seguridad_comando.id_usuario like '" + id_usuario + "%' and";
         strSQL = strSQL + "     mad_seguridad_comando.id_invitado like '" + id_invitado + "%' )";
-        strSQL = strSQL + "    )";
         strSQL = strSQL + " ORDER BY mad_menucomando.id_comando";
         console.log(strSQL);
         const todosReg = await pool.query(strSQL);
