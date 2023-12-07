@@ -106,7 +106,7 @@ const clonarPermisoComando = async (req,res,next)=> {
         strSQL = "INSERT INTO mad_seguridad_comando (id_usuario, id_invitado, id_menu, id_comando)";
         strSQL = strSQL + " SELECT $1, $2, id_menu, id_comando";
         strSQL = strSQL + " FROM mad_seguridad_comando";
-        strSQL = strSQL + " WHERE id_usuario = $3  RETURNING *";
+        strSQL = strSQL + " WHERE id_invitado = $3  RETURNING *";
         result2 = await pool.query(strSQL, 
         [   
             id_anfitrion,     //01
