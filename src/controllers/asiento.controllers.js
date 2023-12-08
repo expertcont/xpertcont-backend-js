@@ -249,7 +249,7 @@ const obtenerTodosAsientosDiario = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
-const obtenerSireCompras = async (req,res,next)=> {
+const generarSireCompras = async (req,res,next)=> {
     //Solo Cabeceras
     const {id_anfitrion, documento_id, razon_social, periodo} = req.params;
 
@@ -589,7 +589,8 @@ const crearAsiento = async (req,res,next)=> {
             devuelveNumero(haber_me),           //09
             devuelveCadenaNull(mayorizado),     //10
 
-            devuelveCadenaNull(ctrl_crea_us),    //11
+            //devuelveCadenaNull(ctrl_crea_us),    //11
+            ctrl_crea_us,    //11
             devuelveCadenaNull(r_id_doc),  //12
             devuelveCadenaNull(r_documento_id),  //13
             devuelveCadenaNull(r_razon_social),  //14
@@ -638,7 +639,7 @@ const crearAsiento = async (req,res,next)=> {
     }
 };
 
-const crearAsientoExcelVentas = async (req, res, next) => {
+const importarExcelRegVentas = async (req, res, next) => {
     let strSQL;
     //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
     const datosCarga = JSON.parse(req.body.datosCarga);
@@ -858,7 +859,7 @@ const crearAsientoExcelVentas = async (req, res, next) => {
     }
 };
   
-const crearAsientoExcelCompras = async (req, res, next) => {
+const importarExcelRegCompras = async (req, res, next) => {
     let strSQL;
     //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
     const datosCarga = JSON.parse(req.body.datosCarga);
@@ -1091,6 +1092,226 @@ const crearAsientoExcelCompras = async (req, res, next) => {
         //console.log('parametros arreglo:',parametros);
         await pool.query(strSQL, parametros);
       
+      await client.query(`DROP TABLE mct_datos`);
+      await pool.query('COMMIT');
+      /////////////////////////////////////////////////////////////
+      //console.log("final");
+      res.status(200).json({ mensaje: 'Hoja Excel insertado correctamente en base de datos' });
+    } catch (error) {
+      console.log(error);
+      await pool.query('ROLLBACK');
+      next(error);
+    }
+};
+
+const importarSireRegVentas = async (req, res, next) => {
+    let strSQL;
+    //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
+    const datosCarga = JSON.parse(req.body.datosCarga);
+    const {
+        id_anfitrion,
+        documento_id,
+        periodo,
+        id_libro,
+        id_invitado,
+    } = datosCarga;
+    
+    try {
+      const fileBuffer = req.file.buffer;
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        header: 1,
+      });
+  
+      //Seleccion general todas las columnas y eliminamos comas antes de convertirlo  a CSV
+      //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
+      // Seleccion columna x columna de interés (código y nombre con numero columna)
+      /*const csvData = sheetData
+        .map((row) => [row[0], row[1]].join(','))
+        .join('\n');*/
+
+        const csvData = sheetData
+        .map((row,index) => [
+            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
+            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
+            (row[2] || '').toString().replace(/,/g, ''),    //C cod
+            (row[3] || '').toString().replace(/,/g, ''),    //D serie
+            (row[4] || '').toString().replace(/,/g, ''),    //E numero
+            (row[5] || '').toString().replace(/,/g, ''),    //F numero2
+            (row[6] || '').toString().replace(/,/g, ''),    //G tipo
+            (row[7] || '').toString().replace(/,/g, ''),    //H documento_id
+            (row[8] || '').toString().replace(/,/g, ''),    //I razon social
+            (row[9] || ''),    //J export
+            (row[10] || ''),    //K base
+            (row[11] || ''),    //L igv
+            (row[12] || ''),    //M exo
+            (row[13] || ''),    //N inafect
+            (row[14] || ''),    //O icbp
+            (row[15] || ''),    //P otros
+            (row[16] || ''),    //Q total
+            (row[17] || ''),    //R moneda
+            (row[18] || ''),    //S tc
+            index > 0 ? convertirFechaStringComplete(row[19]) : row[19], //T emision ref
+            (row[20] || ''),    //U cod ref
+            (row[21] || ''),    //V serie ref
+            (row[22] || '')    //W num ref
+        ].join(','))
+        .join('\n');
+        //console.log(csvData);
+
+      await pool.query('BEGIN');
+  
+      // Creamos la tabla temporal solo con las columnas necesarias
+      const createTableQuery = `
+        DROP TABLE IF EXISTS mct_datos;
+        CREATE TEMP TABLE mct_datos (
+            r_fecemi DATE,
+            r_fecvcto DATE,
+            r_cod VARCHAR(2),
+            r_serie VARCHAR(5),
+            r_numero VARCHAR(22),
+            r_numero2 VARCHAR(22),
+            r_id_doc VARCHAR(2),
+            r_documento_id VARCHAR(20),
+            r_razon_social VARCHAR(200),
+            r_base001 NUMERIC(14,2),
+            r_base002 NUMERIC(14,2),
+            r_igv002 NUMERIC(14,2),
+            r_base003 NUMERIC(14,2),
+            r_base004 NUMERIC(14,2),
+            r_monto_icbp NUMERIC(12,2),
+            r_monto_otros NUMERIC(14,2),
+            r_monto_total NUMERIC(14,2),
+            r_moneda VARCHAR(5),
+            r_tc NUMERIC(5,3),
+            r_fecemi_ref DATE,
+            r_cod_ref VARCHAR(2),
+            r_serie_ref VARCHAR(5),
+            r_numero_ref VARCHAR(22)
+        );
+      `;  
+            
+      await pool.query(createTableQuery);
+
+      /////////////////////////////////////////////////////////////
+      //console.log(csvData);
+      // Convertimos la cadena CSV a un flujo de lectura
+      const csvReadableStream = Readable.from([csvData]);
+
+      // Insertamos los datos desde el CSV a la tabla mct_datos
+      //Origen Documentacion https://www.npmjs.com/package/pg-copy-streams
+      const client = await pool.connect();
+      try {
+        const ingestStream = client.query(copyFrom(`COPY mct_datos FROM STDIN WITH CSV HEADER DELIMITER ','`))
+        //const sourceStream = fs.createReadStream(csvData)
+        //console.log(sourceStream);
+        await pipeline(csvReadableStream, ingestStream)
+      } finally {
+        client.release();
+      }
+      //await pool.end()
+
+        //////////////////////////////////////////////////////////////
+        // Realiza la operación de inserción desde la tabla temporal a mct_venta
+        strSQL = "INSERT INTO mct_asientocontable";
+        strSQL +=  " (";
+        strSQL += "  id_usuario";   //01
+        strSQL += " ,documento_id"; //02
+        strSQL += " ,periodo";      //03
+        strSQL += " ,id_libro";     //04
+        strSQL += " ,num_asiento";  //05 generado *
+    
+        strSQL += " ,glosa";        //06
+        strSQL += " ,debe";         //07
+        strSQL += " ,haber";        //08
+        strSQL += " ,debe_me";      //09
+        strSQL += " ,haber_me";     //10
+        strSQL += " ,mayorizado";   //11
+        strSQL += " ,ctrl_crea";     //12 generado *
+        strSQL += " ,ctrl_crea_us";     //13
+        strSQL += " ,r_id_doc";         //14
+        strSQL += " ,r_documento_id";   //15
+        strSQL += " ,r_razon_social";   //16
+    
+        strSQL += " ,r_cod";        //17
+        strSQL += " ,r_serie";      //18
+        strSQL += " ,r_numero";     //19
+        strSQL += " ,r_numero2";    //20
+        strSQL += " ,r_fecemi";     //21
+        strSQL += " ,r_fecvcto";    //22
+        
+        strSQL += " ,r_cod_ref";    //23
+        strSQL += " ,r_serie_ref";  //24
+        strSQL += " ,r_numero_ref"; //25
+        strSQL += " ,r_fecemi_ref"; //26
+        
+        strSQL += " ,r_base001";    //27
+        strSQL += " ,r_base002";    //28
+        strSQL += " ,r_base003";    //29
+        strSQL += " ,r_base004";    //30
+        strSQL += " ,r_igv002";     //31
+        strSQL += " ,r_monto_icbp";     //32
+        strSQL += " ,r_monto_otros";    //33
+        strSQL += " ,r_monto_total";    //34
+        strSQL += " ,r_moneda";         //35
+        strSQL += " ,r_tc";             //36
+        strSQL += " ,origen";             //36
+        strSQL += " )";
+        strSQL += " SELECT ";
+        strSQL += "  $1";             //id_anfitrion
+        strSQL += " ,$2";             //documento_id
+        strSQL += " ,$3";             //periodo
+        strSQL += " ,$4";             //id_libro
+        strSQL += " ,fct_genera_asiento($1,$2,$3,$4)"; //num_asiento
+        strSQL += " ,'VENTA'";             //glosa
+        strSQL += " ,0";             //D
+        strSQL += " ,0";             //H
+        strSQL += " ,0";             //D $
+        strSQL += " ,0";             //H $
+        strSQL += " ,'0'";             //MAYORIZADO
+        strSQL += " ,CURRENT_TIMESTAMP";       //ctrl_crea
+        strSQL += " ,$5";             //id_invitado
+        strSQL += " ,r_id_doc";         //excel
+        strSQL += " ,r_documento_id";   //excel
+        strSQL += " ,r_razon_social";   //excel
+    
+        strSQL += " ,r_cod";        //excel
+        strSQL += " ,r_serie";      //excel
+        strSQL += " ,r_numero";     //excel
+        strSQL += " ,r_numero2";    //excel
+        strSQL += " ,r_fecemi";     //excel
+        strSQL += " ,r_fecvcto";    //excel
+        
+        strSQL += " ,r_cod_ref";    //excel
+        strSQL += " ,r_serie_ref";  //excel
+        strSQL += " ,r_numero_ref"; //excel
+        strSQL += " ,r_fecemi_ref"; //excel
+        
+        strSQL += " ,r_base001";    //excel
+        strSQL += " ,r_base002";    //excel
+        strSQL += " ,r_base003";    //excel
+        strSQL += " ,r_base004";    //excel
+        strSQL += " ,r_igv002";     //excel
+        strSQL += " ,r_monto_icbp";     //excel
+        strSQL += " ,r_monto_otros";    //excel
+        strSQL += " ,r_monto_total";    //excel
+        strSQL += " ,r_moneda";         //excel
+        strSQL += " ,r_tc";             //excel
+        strSQL += " ,'EXCEL'";             //origen
+        strSQL += " FROM mct_datos";             //37
+        const parametros = [   
+            id_anfitrion,    //01
+            documento_id,    //02
+            periodo,         //03
+            id_libro,        //04
+            id_invitado,     //05        
+        ];
+            
+        //console.log(strSQL);
+        //console.log('parametros arreglo:',parametros);
+        await pool.query(strSQL, parametros);
+
       await client.query(`DROP TABLE mct_datos`);
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
@@ -1409,12 +1630,13 @@ module.exports = {
     obtenerTodosAsientosVenta,
     obtenerTodosAsientosCaja,
     obtenerTodosAsientosDiario,
-    obtenerSireCompras,
+    generarSireCompras,
     obtenerTodosAsientosPlan,
     obtenerAsiento,
     crearAsiento,
-    crearAsientoExcelVentas,
-    crearAsientoExcelCompras,
+    importarExcelRegVentas,
+    importarExcelRegCompras,
+    importarSireRegVentas,
     eliminarAsiento,
     eliminarAsientoOrigen,
     actualizarAsiento,
