@@ -1157,7 +1157,7 @@ const importarSireRegVentas = async (req, res, next) => {
       })
       .join('\n');
 
-        //console.log(csvData);
+        console.log(csvData);
 
       await pool.query('BEGIN');
   
