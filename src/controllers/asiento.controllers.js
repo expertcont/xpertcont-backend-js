@@ -1118,46 +1118,45 @@ const importarSireRegVentas = async (req, res, next) => {
     
     try {
       const fileBuffer = req.file.buffer;
-      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
-        header: 1,
-      });
-  
-      //Seleccion general todas las columnas y eliminamos comas antes de convertirlo  a CSV
-      //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
-      // Seleccion columna x columna de interés (código y nombre con numero columna)
-      /*const csvData = sheetData
-        .map((row) => [row[0], row[1]].join(','))
-        .join('\n');*/
+      //const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      //const sheetName = workbook.SheetNames[0];
+      //const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      //  header: 1,
+      //});
+      const fileData = fileBuffer.toString('utf-8'); // Convertir buffer a cadena
+      const lines = fileData.split('\n');
+    
+      const csvData = lines
+      .map((line, index) => {
+          const row = line.split('|');
+          return [
+              index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
+              index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
+              (row[2] || '').toString().replace(/,/g, ''), //C cod
+              (row[3] || '').toString().replace(/,/g, ''), //D serie
+              (row[4] || '').toString().replace(/,/g, ''), //E numero
+              (row[5] || '').toString().replace(/,/g, ''), //F numero2
+              (row[6] || '').toString().replace(/,/g, ''), //G tipo
+              (row[7] || '').toString().replace(/,/g, ''), //H documento_id
+              (row[8] || '').toString().replace(/,/g, ''), //I razon social
+              (row[9] || ''), //J export
+              (row[10] || ''), //K base
+              (row[11] || ''), //L igv
+              (row[12] || ''), //M exo
+              (row[13] || ''), //N inafect
+              (row[14] || ''), //O icbp
+              (row[15] || ''), //P otros
+              (row[16] || ''), //Q total
+              (row[17] || ''), //R moneda
+              (row[18] || ''), //S tc
+              index > 0 ? convertirFechaStringComplete(row[19]) : row[19], //T emision ref
+              (row[20] || ''), //U cod ref
+              (row[21] || ''), //V serie ref
+              (row[22] || '') //W num ref
+          ].join(',');
+      })
+      .join('\n');
 
-        const csvData = sheetData
-        .map((row,index) => [
-            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
-            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
-            (row[2] || '').toString().replace(/,/g, ''),    //C cod
-            (row[3] || '').toString().replace(/,/g, ''),    //D serie
-            (row[4] || '').toString().replace(/,/g, ''),    //E numero
-            (row[5] || '').toString().replace(/,/g, ''),    //F numero2
-            (row[6] || '').toString().replace(/,/g, ''),    //G tipo
-            (row[7] || '').toString().replace(/,/g, ''),    //H documento_id
-            (row[8] || '').toString().replace(/,/g, ''),    //I razon social
-            (row[9] || ''),    //J export
-            (row[10] || ''),    //K base
-            (row[11] || ''),    //L igv
-            (row[12] || ''),    //M exo
-            (row[13] || ''),    //N inafect
-            (row[14] || ''),    //O icbp
-            (row[15] || ''),    //P otros
-            (row[16] || ''),    //Q total
-            (row[17] || ''),    //R moneda
-            (row[18] || ''),    //S tc
-            index > 0 ? convertirFechaStringComplete(row[19]) : row[19], //T emision ref
-            (row[20] || ''),    //U cod ref
-            (row[21] || ''),    //V serie ref
-            (row[22] || '')    //W num ref
-        ].join(','))
-        .join('\n');
         //console.log(csvData);
 
       await pool.query('BEGIN');
