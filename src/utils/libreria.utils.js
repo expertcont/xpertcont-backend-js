@@ -26,7 +26,7 @@ const devuelveCadenaNull = (value) => {
     return `${year}-${month}-${day}`;
   };
 
-  function convertirFechaStringComplete(dateString) {
+  function convertirFechaStringComplete(dateString,bOrigenSire) {
     if (dateString===undefined) {
       console.log("vacio de undefined");
       return '';
@@ -47,8 +47,14 @@ const devuelveCadenaNull = (value) => {
     }
 
     // Si no es un número, asumimos que ya está en el formato deseado (DD/MM/YYYY)
-    const [day, month, year] = dateString.split('/');
-    return `${year}-${month}-${day}`;
+    if (bOrigenSire){
+        //pinche sire devuelve yyyy/mm/dd,
+      const [year_sire, month_sire, day_sire] = dateString.split('/');
+      return `${year_sire}-${month_sire}-${day_sire}`;
+    }else{
+      const [day, month, year] = dateString.split('/');
+      return `${year}-${month}-${day}`;
+    }
     //Aqui si es la cabecera(text = fecha, emision, etc), lo procesara como fecha, cuidado
   };
 
