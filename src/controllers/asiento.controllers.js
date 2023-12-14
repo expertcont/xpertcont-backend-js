@@ -668,8 +668,8 @@ const importarExcelRegVentas = async (req, res, next) => {
 
         const csvData = sheetData
         .map((row,index) => [
-            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
-            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
+            index > 0 ? convertirFechaStringComplete(row[0],false) : row[0], //A emision
+            index > 0 ? convertirFechaStringComplete(row[1],false) : row[1], //B vcto
             (row[2] || '').toString().replace(/,/g, ''),    //C cod
             (row[3] || '').toString().replace(/,/g, ''),    //D serie
             (row[4] || '').toString().replace(/,/g, ''),    //E numero
@@ -687,7 +687,7 @@ const importarExcelRegVentas = async (req, res, next) => {
             (row[16] || ''),    //Q total
             (row[17] || ''),    //R moneda
             (row[18] || ''),    //S tc
-            index > 0 ? convertirFechaStringComplete(row[19]) : row[19], //T emision ref
+            index > 0 ? convertirFechaStringComplete(row[19],false) : row[19], //T emision ref
             (row[20] || ''),    //U cod ref
             (row[21] || ''),    //V serie ref
             (row[22] || '')    //W num ref
@@ -1384,8 +1384,8 @@ const importarSireRegCompras = async (req, res, next) => {
 
         const csvData = sheetData
         .map((row,index) => [
-            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
-            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
+            index > 0 ? convertirFechaStringComplete(row[0],true) : row[0], //A emision
+            index > 0 ? convertirFechaStringComplete(row[1],true) : row[1], //B vcto
             (row[2] || '').toString().replace(/,/g, ''),    //C cod
             (row[3] || '').toString().replace(/,/g, ''),    //D serie
             (row[4] || '').toString().replace(/,/g, ''),    //E ano dua
@@ -1408,7 +1408,7 @@ const importarSireRegCompras = async (req, res, next) => {
             (row[20] || ''),    //U total
             (row[21] || ''),    //V moneda
             (row[22] || ''),    //W tc
-            index > 0 ? convertirFechaStringComplete(row[23]) : row[23], //X emision ref
+            index > 0 ? convertirFechaStringComplete(row[23],true) : row[23], //X emision ref
             (row[24] || ''),    //Y cod ref
             (row[25] || ''),    //Z serie ref
             (row[26] || ''),    //AA cod aduana
