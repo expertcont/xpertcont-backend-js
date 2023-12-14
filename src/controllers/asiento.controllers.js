@@ -55,6 +55,7 @@ const obtenerTodosAsientosCompra = async (req,res,next)=> {
     strSQL = strSQL + " ,num_asiento";
     strSQL = strSQL + " ,glosa";
     strSQL = strSQL + " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref)::varchar(50) as comprobante_ref"; //(07-08-09)
+    strSQL = strSQL + " ,origen";
 
     strSQL = strSQL + " FROM";
     strSQL = strSQL + " mct_asientocontable ";
@@ -114,7 +115,8 @@ const obtenerTodosAsientosVenta = async (req,res,next)=> {
     strSQL = strSQL + " ,num_asiento";
     strSQL = strSQL + " ,glosa";
     strSQL = strSQL + " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref)::varchar(50) as comprobante_ref"; //(07-08-09)
-
+    strSQL = strSQL + " ,origen";
+    
     strSQL = strSQL + " FROM";
     strSQL = strSQL + " mct_asientocontable ";
     strSQL = strSQL + " WHERE id_usuario = '" + id_anfitrion + "'";
