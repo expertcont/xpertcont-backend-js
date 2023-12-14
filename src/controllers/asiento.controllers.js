@@ -116,7 +116,7 @@ const obtenerTodosAsientosVenta = async (req,res,next)=> {
     strSQL = strSQL + " ,glosa";
     strSQL = strSQL + " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref)::varchar(50) as comprobante_ref"; //(07-08-09)
     strSQL = strSQL + " ,origen";
-    
+
     strSQL = strSQL + " FROM";
     strSQL = strSQL + " mct_asientocontable ";
     strSQL = strSQL + " WHERE id_usuario = '" + id_anfitrion + "'";
@@ -524,6 +524,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,r_id_mediopago";   //42
     strSQL += " ,r_voucher_banco";  //43
     strSQL += " ,r_cuenta10";       //44
+    strSQL += " ,origen";       //45 new
 
     strSQL += " )";
     strSQL += " VALUES";
@@ -575,6 +576,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,$42";
     strSQL += " ,$43";
     strSQL += " ,$44";
+    strSQL += " ,'MANUAL'";
     strSQL += " ) RETURNING *";
 
     try {
