@@ -28,12 +28,12 @@ const devuelveCadenaNull = (value) => {
 
   function convertirFechaStringComplete(dateString,bOrigenSire) {
     if (dateString===undefined) {
-      console.log("vacio de undefined");
+      //console.log("vacio de undefined");
       return '';
     }
     // Si la fecha es una cadena vacía, representamos una fecha nula según lo que requiera tu base de datos
     if (dateString.toString().trim() === '') {
-      console.log("vacio de vacio ;)");
+      //console.log("vacio de vacio ;)");
       return '';  // O ajusta según lo que requiera tu base de datos para representar una fecha nula
     }
   
