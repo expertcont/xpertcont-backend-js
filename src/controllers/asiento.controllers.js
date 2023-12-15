@@ -925,7 +925,7 @@ const importarExcelRegCompras = async (req, res, next) => {
 
         ].join(','))
         .join('\n');
-        //console.log(csvData);
+        console.log(csvData);
 
       await pool.query('BEGIN');
   
