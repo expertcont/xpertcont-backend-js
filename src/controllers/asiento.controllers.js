@@ -672,8 +672,8 @@ const importarExcelRegVentas = async (req, res, next) => {
 
         const csvData = sheetData
         .map((row,index) => [
-            index > 0 ? convertirFechaStringComplete(row[0],false) : row[0], //A emision
-            index > 0 ? convertirFechaStringComplete(row[1],false) : row[1], //B vcto
+            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
+            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
             (row[2] || '').toString().replace(/,/g, ''),    //C cod
             (row[3] || '').toString().replace(/,/g, ''),    //D serie
             (row[4] || '').toString().replace(/,/g, ''),    //E numero
@@ -691,7 +691,7 @@ const importarExcelRegVentas = async (req, res, next) => {
             (row[16] || ''),    //Q total
             (row[17] || ''),    //R moneda
             (row[18] || ''),    //S tc
-            index > 0 ? convertirFechaStringComplete(row[19],false) : row[19], //T emision ref
+            index > 0 ? convertirFechaStringComplete(row[19]) : row[19], //T emision ref
             (row[20] || ''),    //U cod ref
             (row[21] || ''),    //V serie ref
             (row[22] || '')    //W num ref
@@ -892,8 +892,8 @@ const importarExcelRegCompras = async (req, res, next) => {
 
         const csvData = sheetData
         .map((row,index) => [
-            index > 0 ? convertirFechaStringComplete(row[0],false) : row[0], //A emision
-            index > 0 ? convertirFechaStringComplete(row[1],false) : row[1], //B vcto
+            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
+            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
             (row[2] || '').toString().replace(/,/g, ''),    //C cod
             (row[3] || '').toString().replace(/,/g, ''),    //D serie
             (row[4] || '').toString().replace(/,/g, ''),    //E ano dua
@@ -916,7 +916,7 @@ const importarExcelRegCompras = async (req, res, next) => {
             (row[20] || ''),    //U total
             (row[21] || ''),    //V moneda
             (row[22] || ''),    //W tc
-            index > 0 ? convertirFechaStringComplete(row[23],false) : row[23], //X emision ref
+            index > 0 ? convertirFechaStringComplete(row[23]) : row[23], //X emision ref
             (row[24] || ''),    //Y cod ref
             (row[25] || ''),    //Z serie ref
             (row[26] || ''),    //AA cod aduana
@@ -1134,8 +1134,8 @@ const importarSireRegVentas = async (req, res, next) => {
       .map((line, index) => {
           const row = line.split('|');
           return [
-              index > 0 ? convertirFechaStringComplete(row[0],true) : row[0], //A emision
-              index > 0 ? convertirFechaStringComplete(row[1],true) : row[1], //B vcto
+              index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
+              index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
               (row[2] || '').toString().replace(/,/g, ''), //C cod
               (row[3] || '').toString().replace(/,/g, ''), //D serie
               (row[4] || '').toString().replace(/,/g, ''), //E numero
@@ -1159,7 +1159,7 @@ const importarSireRegVentas = async (req, res, next) => {
               (row[21] || ''), //V total
               (row[22] || ''), //W moneda
               (row[23] || ''), //X tc
-              index > 0 ? convertirFechaStringComplete(row[24],true) : row[24], //Y emision ref
+              index > 0 ? convertirFechaStringComplete(row[24]) : row[24], //Y emision ref
               (row[25] || ''), //Z cod ref
               (row[26] || ''), //AA serie ref
               (row[27] || '') //AB num ref
@@ -1380,8 +1380,8 @@ const importarSireRegCompras = async (req, res, next) => {
       .map((line, index) => {
           const row = line.split('|');
           return [
-                index > 0 ? convertirFechaStringComplete(row[4],true) : row[4], //A emision
-                index > 0 ? convertirFechaStringComplete(row[5],true) : row[5], //B vcto
+                index > 0 ? convertirFechaStringComplete(row[4]) : row[4], //A emision
+                index > 0 ? convertirFechaStringComplete(row[5]) : row[5], //B vcto
                 (row[6] || '').toString().replace(/,/g, ''),    //C cod
                 (row[7] || '').toString().replace(/,/g, ''),    //D serie
                 (row[8] || '').toString().replace(/,/g, ''),    //E ano dua
@@ -1404,7 +1404,7 @@ const importarSireRegCompras = async (req, res, next) => {
                 (row[24] || ''),    //U total
                 (row[25] || ''),    //V moneda
                 (row[26] || ''),    //W tc
-                index > 0 ? convertirFechaStringComplete(row[27],true) : row[27], //X emision ref
+                index > 0 ? convertirFechaStringComplete(row[27]) : row[27], //X emision ref
                 (row[28] || ''),    //Y cod ref
                 (row[29] || ''),    //Z serie ref
                 (row[30] || ''),    //AA cod aduana

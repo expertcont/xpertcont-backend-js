@@ -26,7 +26,7 @@ const devuelveCadenaNull = (value) => {
     return `${year}-${month}-${day}`;
   };
 
-  function convertirFechaStringComplete(dateString,bOrigenSire) {
+  function convertirFechaStringComplete(dateString) {
     if (dateString===undefined) {
       //console.log("vacio de undefined");
       return '';
@@ -46,22 +46,45 @@ const devuelveCadenaNull = (value) => {
       return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     }
 
-    // Si no es un número, asumimos que ya está en el formato deseado (DD/MM/YYYY)
-    if (bOrigenSire){
-        //pinche sire devuelve yyyy/mm/dd,
-      const [year_sire, month_sire, day_sire] = dateString.split('/');
-      return `${year_sire}-${month_sire}-${day_sire}`;
-    }else{
-      const [day, month, year] = dateString.split('/');
-      return `${year}-${month}-${day}`;
-    }
+    //el formato deseado (YYYY-MM-DD) ... entonces
+    //procesamos la fecha en cualquier orden, (solo el mes va en el medio)
+    const dateStringFormateado = formatearFecha(dateString);
+    const [year_new, month_new, day_new] = dateStringFormateado.split('/');
+    return `${year_new}-${month_new}-${day_new}`;
     //Aqui si es la cabecera(text = fecha, emision, etc), lo procesara como fecha, cuidado
   };
 
+  function formatearFecha(inputFecha) {
+    // Reemplazar los guiones con barras para tener un formato consistente
+    let fechaConBarras = inputFecha.replace(/-/g, '/');
+  
+    // Dividir la cadena de fecha en partes
+    let partesFecha = fechaConBarras.split('/');
+  
+    // Verificar el formato original y extraer día, mes y año
+    let dia, mes, anio;
+    if (partesFecha[0].length === 4) {
+      // Formato yyyy/mm/dd
+      anio = partesFecha[0];
+      mes = partesFecha[1];
+      dia = partesFecha[2];
+    } else {
+      // Formato dd/mm/yyyy
+      dia = partesFecha[0];
+      mes = partesFecha[1];
+      anio = partesFecha[2];
+    }
+  
+    // Formatear la fecha y retornarla
+    let fechaFormateada = `${anio}-${mes}-${dia}`;
+    return fechaFormateada;
+  }
+ 
   module.exports = {
     devuelveCadenaNull,
     devuelveNumero,
     convertirFechaString,
-    convertirFechaStringComplete
+    convertirFechaStringComplete,
+    formatearFecha
   };
   
