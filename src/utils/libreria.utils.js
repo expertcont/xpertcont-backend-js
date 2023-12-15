@@ -49,8 +49,8 @@ const devuelveCadenaNull = (value) => {
     //el formato deseado (YYYY-MM-DD) ... entonces
     //procesamos la fecha en cualquier orden, (solo el mes va en el medio)
     const dateStringFormateado = formatearFecha(dateString);
-    const [year_new, month_new, day_new] = dateStringFormateado.split('/');
-    return `${year_new}-${month_new}-${day_new}`;
+    //const [year_new, month_new, day_new] = dateStringFormateado.split('-');
+    return dateStringFormateado;
     //Aqui si es la cabecera(text = fecha, emision, etc), lo procesara como fecha, cuidado
   };
 
