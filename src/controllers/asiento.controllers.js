@@ -1373,55 +1373,48 @@ const importarSireRegCompras = async (req, res, next) => {
     
     try {
       const fileBuffer = req.file.buffer;
-      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
-        header: 1,
-      });
-  
-      //Seleccion general todas las columnas y eliminamos comas antes de convertirlo  a CSV
-      //const csvData = sheetData.map(row => row.map(cell => (cell === '' ? null : cell)).join(',')).join('\n');
-      // Seleccion columna x columna de interés (código y nombre con numero columna)
-      /*const csvData = sheetData
-        .map((row) => [row[0], row[1]].join(','))
-        .join('\n');*/
+      const fileData = fileBuffer.toString('utf-8'); // Convertir buffer a cadena
+      const lines = fileData.split('\n');
+    
+      const csvData = lines
+      .map((line, index) => {
+          const row = line.split('|');
+          return [
+                index > 0 ? convertirFechaStringComplete(row[4],true) : row[4], //A emision
+                index > 0 ? convertirFechaStringComplete(row[5],true) : row[5], //B vcto
+                (row[6] || '').toString().replace(/,/g, ''),    //C cod
+                (row[7] || '').toString().replace(/,/g, ''),    //D serie
+                (row[8] || '').toString().replace(/,/g, ''),    //E ano dua
+                (row[9] || '').toString().replace(/,/g, ''),    //F numero
+                (row[10] || '').toString().replace(/,/g, ''),    //G numero2
+                (row[11] || '').toString().replace(/,/g, ''),    //H tipo
+                (row[12] || '').toString().replace(/,/g, ''),    //I documento_id
+                (row[13] || '').toString().replace(/,/g, ''),    //J razon social
 
-        const csvData = sheetData
-        .map((row,index) => [
-            index > 0 ? convertirFechaStringComplete(row[0],true) : row[0], //A emision
-            index > 0 ? convertirFechaStringComplete(row[1],true) : row[1], //B vcto
-            (row[2] || '').toString().replace(/,/g, ''),    //C cod
-            (row[3] || '').toString().replace(/,/g, ''),    //D serie
-            (row[4] || '').toString().replace(/,/g, ''),    //E ano dua
-            (row[5] || '').toString().replace(/,/g, ''),    //F numero
-            (row[6] || '').toString().replace(/,/g, ''),    //G numero2
-            (row[7] || '').toString().replace(/,/g, ''),    //H tipo
-            (row[8] || '').toString().replace(/,/g, ''),    //I documento_id
-            (row[9] || '').toString().replace(/,/g, ''),    //J razon social
+                (row[14] || ''),    //K BASE001
+                (row[15] || ''),    //L igv001
+                (row[16] || ''),    //M base002
+                (row[17] || ''),    //N igv002
+                (row[18] || ''),    //O base003
+                (row[19] || ''),    //P igv003
+                (row[20] || ''),    //Q nograv
+                (row[21] || ''),    //R isc
+                (row[22] || ''),    //S icbp
+                (row[23] || ''),    //T otros
+                (row[24] || ''),    //U total
+                (row[25] || ''),    //V moneda
+                (row[26] || ''),    //W tc
+                index > 0 ? convertirFechaStringComplete(row[27],true) : row[27], //X emision ref
+                (row[28] || ''),    //Y cod ref
+                (row[29] || ''),    //Z serie ref
+                (row[30] || ''),    //AA cod aduana
+                (row[31] || ''),    //AB numero ref
+                (row[32] || '')    //AC id_bss
+          ].join(',');
+      })
+      .join('\n');
 
-            (row[10] || ''),    //K BASE001
-            (row[11] || ''),    //L igv001
-            (row[12] || ''),    //M base002
-            (row[13] || ''),    //N igv002
-            (row[14] || ''),    //O base003
-            (row[15] || ''),    //P igv003
-            (row[16] || ''),    //Q nograv
-            (row[17] || ''),    //R isc
-            (row[18] || ''),    //S icbp
-            (row[19] || ''),    //T otros
-            (row[20] || ''),    //U total
-            (row[21] || ''),    //V moneda
-            (row[22] || ''),    //W tc
-            index > 0 ? convertirFechaStringComplete(row[23],true) : row[23], //X emision ref
-            (row[24] || ''),    //Y cod ref
-            (row[25] || ''),    //Z serie ref
-            (row[26] || ''),    //AA cod aduana
-            (row[27] || ''),    //AB numero ref
-            (row[28] || '')    //AC id_bss
-
-        ].join(','))
-        .join('\n');
-        //console.log(csvData);
+      //console.log(csvData);
 
       await pool.query('BEGIN');
   
@@ -1578,7 +1571,7 @@ const importarSireRegCompras = async (req, res, next) => {
         strSQL += " ,r_tc";             //40 excel
         strSQL += " ,r_id_aduana";      //41 excel
         strSQL += " ,r_idbss";          //42 excel
-        strSQL += " ,'EXCEL'";          //43 origen
+        strSQL += " ,'SIRE'";          //43 origen
         strSQL += " FROM mct_datos";
         const parametros = [   
             id_anfitrion,    //01
@@ -1596,7 +1589,7 @@ const importarSireRegCompras = async (req, res, next) => {
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
       //console.log("final");
-      res.status(200).json({ mensaje: 'Hoja Excel insertado correctamente en base de datos' });
+      res.status(200).json({ mensaje: 'Archivo SIRE insertado correctamente en base de datos' });
     } catch (error) {
       console.log(error);
       await pool.query('ROLLBACK');
