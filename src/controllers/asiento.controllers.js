@@ -1374,7 +1374,8 @@ const importarSireRegCompras = async (req, res, next) => {
     try {
       const fileBuffer = req.file.buffer;
       const fileData = fileBuffer.toString('utf-8'); // Convertir buffer a cadena
-      const lines = fileData.split('\n');
+      //const lines = fileData.split('\n');
+      const lines = fileData.split('\n').filter(line => line.trim() !== '' || line === '\r'); // Excluir líneas vacías pero permitir un retorno de carro al final
     
       const csvData = lines
       .map((line, index) => {
