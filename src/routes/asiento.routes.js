@@ -8,7 +8,7 @@ const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientos
 
 router.get('/asiento/compras/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCompra);
 router.get('/asiento/ventas/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosVenta);
-router.get('/asientocompara/:id_anfitrion/:id_invitado/:periodo/:documento_id/:id_libro', obtenerTodosAsientosComparacion);
+router.get('/sirecomparacion/:id_anfitrion/:id_invitado/:periodo/:documento_id/:id_libro', obtenerTodosAsientosComparacion);
 router.get('/asiento/caja/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCaja);
 router.get('/asiento/diario/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosDiario);
 
