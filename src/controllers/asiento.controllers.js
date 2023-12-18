@@ -76,6 +76,105 @@ const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
+const obtenerTodosAsientosComparacion = async (req,res,next)=> {
+    //Solo Cabeceras
+    const {id_anfitrion, id_invitado, periodo, documento_id, id_libro} = req.params;
+
+    let strSQL;
+    strSQL = "SELECT ";
+    strSQL += " 'SIRE - XPERT'::varchar(20) as resultado";
+    strSQL += " ,cast(t1.r_fecemi as varchar)::varchar(50) as r_fecemi";
+    strSQL += " ,cast(t1.r_fecvcto as varchar)::varchar(50) as r_fecvcto";
+    strSQL += " ,(t1.r_cod || '-' || t1.r_serie || '-' || t1.r_numero)::varchar(50) as comprobante";
+    strSQL += " ,t1.r_id_doc";
+    strSQL += " ,t1.r_documento_id";
+    strSQL += " ,t1.r_razon_social";
+    strSQL += " ,t1.r_monto_total";
+    strSQL += " ,t1.r_moneda";
+    strSQL += " ,t1.r_tc";
+    strSQL += " ,cast(t1.r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";
+    strSQL += " ,t1.r_cod_ref";
+    strSQL += " ,t1.r_serie_ref";
+    strSQL += " ,t1.r_numero_ref";
+    strSQL += " ,t1.r_id_aduana";
+    strSQL += " ,t1.r_ano_dam";
+    strSQL += " ,t1.num_asiento";
+    strSQL += " FROM mct_asientocontable t1";
+    strSQL += " WHERE t1.id_usuario = '" + id_anfitrion + "'";
+    strSQL += " AND t1.documento_id = '" + documento_id + "'";
+    strSQL += " AND t1.periodo = '" + periodo + "'";
+    strSQL += " AND t1.id_libro = '" + id_libro + "'";
+    strSQL += " AND t1.origen = 'SIRE'";
+    strSQL += " AND NOT EXISTS (";
+    strSQL += "    SELECT 1";
+    strSQL += "    FROM mct_asientocontable t2";
+    strSQL += "    WHERE t2.id_usuario = '" + id_anfitrion + "'";
+    strSQL += "    AND t2.documento_id = '" + documento_id + "'";
+    strSQL += "    AND t2.periodo = '" + periodo + "'";
+    strSQL += "    AND t2.id_libro = '" + id_libro + "'";
+    strSQL += "    AND t2.origen <> 'SIRE'";
+       
+    strSQL += "    AND t1.r_cod = t2.r_cod";
+    strSQL += "    AND t1.r_serie = t2.r_serie";
+    strSQL += "    AND t1.r_numero = t2.r_numero";
+    strSQL += "    AND t1.r_fecemi = t2.r_fecemi";
+    strSQL += "    AND t1.r_monto_total = t2.r_monto_total";
+    strSQL += "    AND t1.r_moneda = t2.r_moneda";
+    strSQL += " )";
+
+    strSQL += " UNION ALL ";
+
+    strSQL += " SELECT ";
+    strSQL += " 'XPERT - SIRE'::varchar(20) as resultado";
+    strSQL += " ,cast(t1.r_fecemi as varchar)::varchar(50) as r_fecemi";
+    strSQL += " ,cast(t1.r_fecvcto as varchar)::varchar(50) as r_fecvcto";
+    strSQL += " ,(t1.r_cod || '-' || t1.r_serie || '-' || t1.r_numero)::varchar(50) as comprobante";
+    strSQL += " ,t1.r_id_doc";
+    strSQL += " ,t1.r_documento_id";
+    strSQL += " ,t1.r_razon_social";
+    strSQL += " ,t1.r_monto_total";
+    strSQL += " ,t1.r_moneda";
+    strSQL += " ,t1.r_tc";
+    strSQL += " ,cast(t1.r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";
+    strSQL += " ,t1.r_cod_ref";
+    strSQL += " ,t1.r_serie_ref";
+    strSQL += " ,t1.r_numero_ref";
+    strSQL += " ,t1.r_id_aduana";
+    strSQL += " ,t1.r_ano_dam";
+    strSQL += " ,t1.num_asiento";
+    strSQL += " FROM mct_asientocontable t1";
+    strSQL += " WHERE t1.id_usuario = '" + id_anfitrion + "'";
+    strSQL += " AND t1.documento_id = '" + documento_id + "'";
+    strSQL += " AND t1.periodo = '" + periodo + "'";
+    strSQL += " AND t1.id_libro = '" + id_libro + "'";
+    strSQL += " AND t1.origen <> 'SIRE'";
+    strSQL += " AND NOT EXISTS (";
+    strSQL += "    SELECT 1";
+    strSQL += "    FROM mct_asientocontable t2";
+    strSQL += "    WHERE t2.id_usuario = '" + id_anfitrion + "'";
+    strSQL += "    AND t2.documento_id = '" + documento_id + "'";
+    strSQL += "    AND t2.periodo = '" + periodo + "'";
+    strSQL += "    AND t2.id_libro = '" + id_libro + "'";
+    strSQL += "    AND t2.origen = 'SIRE'";
+       
+    strSQL += "    AND t1.r_cod = t2.r_cod";
+    strSQL += "    AND t1.r_serie = t2.r_serie";
+    strSQL += "    AND t1.r_numero = t2.r_numero";
+    strSQL += "    AND t1.r_fecemi = t2.r_fecemi";
+    strSQL += "    AND t1.r_monto_total = t2.r_monto_total";
+    strSQL += "    AND t1.r_moneda = t2.r_moneda";
+    strSQL += " )";
+
+    //console.log(strSQL);
+    try {
+        const todosReg = await pool.query(strSQL);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 const obtenerTodosAsientosVenta = async (req,res,next)=> {
     //Solo Cabeceras
     const {id_anfitrion, id_invitado, periodo, documento_id} = req.params;
@@ -1128,7 +1227,7 @@ const importarSireRegVentas = async (req, res, next) => {
       //  header: 1,
       //});
       const fileData = fileBuffer.toString('utf-8'); // Convertir buffer a cadena
-      const lines = fileData.split('\n');
+      const lines = fileData.split('\n').filter(line => line.trim() !== '' || line === '\r'); // Excluir líneas vacías pero permitir un retorno de carro al final
     
       const csvData = lines
       .map((line, index) => {
@@ -1902,6 +2001,7 @@ const anularAsiento = async (req,res,next)=> {
 module.exports = {
     obtenerTodosAsientosCompra,
     obtenerTodosAsientosVenta,
+    obtenerTodosAsientosComparacion,
     obtenerTodosAsientosCaja,
     obtenerTodosAsientosDiario,
     generarSireCompras,
