@@ -165,7 +165,7 @@ const obtenerTodosAsientosComparacion = async (req,res,next)=> {
     strSQL += "    AND t1.r_moneda = t2.r_moneda";
     strSQL += " )";
 
-    //console.log(strSQL);
+    console.log(strSQL);
     try {
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
