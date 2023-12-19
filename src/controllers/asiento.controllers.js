@@ -411,8 +411,62 @@ const generarSireCompras = async (req,res,next)=> {
     catch(error){
         console.log(error.message);
     }
+};
+const generarSireVentas = async (req,res,next)=> {
+    //Solo Cabeceras
+    const {id_anfitrion, documento_id, razon_social, periodo} = req.params;
 
-    //res.send('Listado de todas los zonas');
+    let strSQL;
+    strSQL = "SELECT ";
+    strSQL += "  $2 as ruc";    //01 ruc
+    strSQL += " ,$3 as razon";    //02 razon gen
+    strSQL += " ,$4 as periodo";    //03 periodo
+    strSQL += " ,''::varchar(20) as car_sunat";    //04 car sunat
+
+    strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
+    strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
+    strSQL += " ,r_cod";                                                //07
+    strSQL += " ,r_serie";                                              //08
+    strSQL += " ,r_numero";                                             //09
+    strSQL += " ,r_numero2";                                            //10
+    strSQL += " ,r_id_doc";                                             //11
+    strSQL += " ,r_documento_id";                                       //12
+    strSQL += " ,r_razon_social";                                       //13
+    strSQL += " ,r_base001";                                            //14 export
+    strSQL += " ,r_base002";                                            //15 base grav
+    strSQL += " ,r_base_desc";                                          //16 base desc
+    strSQL += " ,r_igv002";                                             //17 igv grv
+    strSQL += " ,r_igv_desc";                                           //18 igv desc
+    strSQL += " ,r_base003";                                            //19 exonerado
+    strSQL += " ,r_base004";                                            //20 inafecto
+    strSQL += " ,r_monto_isc";                                          //21
+    strSQL += " ,r_base_ivap";                                          //22
+    strSQL += " ,r_igv_ivap";                                           //23
+    strSQL += " ,r_monto_icbp";                                         //24
+    strSQL += " ,r_monto_otros";                                        //25
+    strSQL += " ,r_monto_total";                                        //26
+    strSQL += " ,r_moneda";                                             //27
+    strSQL += " ,r_tc";                                                 //28
+    strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//29
+    strSQL += " ,r_cod_ref";                                            //30
+    strSQL += " ,r_serie_ref";                                          //31
+    strSQL += " ,r_numero_ref";                                         //32
+    strSQL += " ,r_contrato_id";                                        //33
+    strSQL += " FROM";
+    strSQL += " mct_asientocontable ";
+    strSQL += " WHERE id_usuario = $1";
+    strSQL += " AND documento_id = $2";
+    strSQL += " AND periodo = $4";
+    strSQL += " AND id_libro = '014'"; //Ventas
+    strSQL += " ORDER BY num_asiento DESC";
+    //console.log(strSQL);
+    try {
+        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo]);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
 };
 
 const obtenerTodosAsientosPlan = async (req,res,next)=> {
@@ -2005,6 +2059,7 @@ module.exports = {
     obtenerTodosAsientosCaja,
     obtenerTodosAsientosDiario,
     generarSireCompras,
+    generarSireVentas,
     obtenerTodosAsientosPlan,
     obtenerAsiento,
     crearAsiento,

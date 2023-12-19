@@ -4,7 +4,7 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,importarExcelRegVentas,importarExcelRegCompras,generarSireCompras, importarSireRegVentas,importarSireRegCompras,obtenerTodosAsientosComparacion} = require('../controllers/asiento.controllers')
+const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,importarExcelRegVentas,importarExcelRegCompras,generarSireCompras,generarSireVentas,importarSireRegVentas,importarSireRegCompras,obtenerTodosAsientosComparacion} = require('../controllers/asiento.controllers')
 
 router.get('/asiento/compras/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCompra);
 router.get('/asiento/ventas/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosVenta);
@@ -13,6 +13,7 @@ router.get('/asiento/caja/:id_anfitrion/:id_invitado/:periodo/:documento_id', ob
 router.get('/asiento/diario/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosDiario);
 
 router.get('/sire/compras/:id_anfitrion/:documento_id/:razon_social/:periodo', generarSireCompras);
+router.get('/sire/ventas/:id_anfitrion/:documento_id/:razon_social/:periodo', generarSireVentas);
 
 router.get('/asiento/:fecha_ini/:fecha_proceso', obtenerTodosAsientosPlan);
 router.get('/asiento/todos/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', obtenerAsiento);
