@@ -3,7 +3,7 @@ const pool = require('../db');
 const obtenerTodasContabilidades = async (req,res,next)=> {
     try {
         let strSQL;
-        const {id_usuario} = req.params;
+        const {id_anfitrion} = req.params;
         strSQL = "SELECT ";
         strSQL = strSQL + " mad_usuariocontabilidad.documento_id,";
         strSQL = strSQL + " mad_usuariocontabilidad.razon_social,";
@@ -13,7 +13,7 @@ const obtenerTodasContabilidades = async (req,res,next)=> {
         strSQL = strSQL + " mad_usuariocontabilidad LEFT JOIN mct_cuentacontable_det";
         strSQL = strSQL + " ON (mad_usuariocontabilidad.id_usuario = mct_cuentacontable_det.id_usuario and";
         strSQL = strSQL + "     mad_usuariocontabilidad.documento_id = mct_cuentacontable_det.documento_id)";
-        strSQL = strSQL + " WHERE mad_usuariocontabilidad.id_usuario = '" + id_usuario + "'";
+        strSQL = strSQL + " WHERE mad_usuariocontabilidad.id_usuario = '" + id_anfitrion + "'";
         strSQL = strSQL + " GROUP BY ";
         strSQL = strSQL + " mad_usuariocontabilidad.documento_id,";
         strSQL = strSQL + " mad_usuariocontabilidad.razon_social,";
@@ -30,8 +30,8 @@ const obtenerTodasContabilidades = async (req,res,next)=> {
 };
 const obtenerContabilidad = async (req,res,next)=> {
     try {
-        const {id_usuario,documento_id} = req.params;
-        const result = await pool.query("select * from mad_usuariocontabilidad where id_usuario = $1 and documento_id = $2",[id_usuario, documento_id]);
+        const {id_anfitrion,documento_id} = req.params;
+        const result = await pool.query("select * from mad_usuariocontabilidad where id_usuario = $1 and documento_id = $2",[id_anfitrion, documento_id]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -45,7 +45,7 @@ const obtenerContabilidad = async (req,res,next)=> {
 };
 
 const crearContabilidad = async (req,res,next)=> {
-    const { id_usuario,     //correo anfitrion
+    const { id_anfitrion,     //correo anfitrion
             documento_id,   //contabilidad
             razon_social   //contabilidad
             } = req.body
@@ -59,7 +59,7 @@ const crearContabilidad = async (req,res,next)=> {
         strSQL = strSQL + " RETURNING *";
         const result = await pool.query(strSQL, 
         [   
-            id_usuario,
+            id_anfitrion,
             documento_id,
             razon_social
         ]
@@ -73,8 +73,8 @@ const crearContabilidad = async (req,res,next)=> {
 
 const eliminarContabilidad = async (req,res,next)=> {
     try {
-        const {id_usuario, documento_id} = req.params;
-        const result = await pool.query("delete from mad_usuariocontabilidad where id_usuario = $1 and documento_id = $2",[id_usuario,documento_id]);
+        const {id_anfitrion, documento_id} = req.params;
+        const result = await pool.query("delete from mad_usuariocontabilidad where id_usuario = $1 and documento_id = $2",[id_anfitrion,documento_id]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
@@ -89,10 +89,10 @@ const eliminarContabilidad = async (req,res,next)=> {
 };
 const actualizarContabilidad = async (req,res,next)=> {
     try {
-        const {id_usuario, documento_id} = req.params;
+        const {id_anfitrion, documento_id} = req.params;
         const {razon_social,activo} = req.body
  
-        const result = await pool.query("update mad_usuariocontabilidad set razon_social=$1,activo=$2 where id_usuario=$3 and documento_id=$4",[razon_social,activo,id_usuario,documento_id]);
+        const result = await pool.query("update mad_usuariocontabilidad set razon_social=$1,activo=$2 where id_usuario=$3 and documento_id=$4",[razon_social,activo,id_anfitrion,documento_id]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
