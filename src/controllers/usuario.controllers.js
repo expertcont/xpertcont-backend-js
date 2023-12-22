@@ -112,7 +112,7 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += "'" + id_usuario + "'= mad_usuariocontabilidad.id_usuario )";
         strSQL += " WHERE mad_seguridad_contabilidad.id_usuario = '" + id_usuario + "'"; //anfitrion
         strSQL += " AND mad_seguridad_contabilidad.id_invitado = '" + id_invitado + "'"; //auxiliar
-        strSQL += " as consulta";
+        strSQL += " ) as consulta";
         strSQL += " order by razon_social";
 
         const todosReg = await pool.query(strSQL);
