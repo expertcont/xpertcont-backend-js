@@ -95,22 +95,25 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         const {id_usuario,id_invitado} = req.params;
         var strSQL;
         //Si es el anfitrion esta autorizado a todos sin permiso
-        strSQL = "SELECT documento_id, razon_social from mad_usuariocontabilidad";
-        strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'"; //el anfitrion y
-        strSQL = strSQL + " AND id_usuario = '" + id_invitado + "'"; //el auxiliar coinciden (acceso 100%)
-        strSQL = strSQL + " AND activo = '1'";
+        strSQL = "select * from (";
+        strSQL += "SELECT documento_id, razon_social from mad_usuariocontabilidad";
+        strSQL += " WHERE id_usuario = '" + id_usuario + "'"; //el anfitrion y
+        strSQL += " AND id_usuario = '" + id_invitado + "'"; //el auxiliar coinciden (acceso 100%)
+        strSQL += " AND activo = '1'";
 
-        strSQL = strSQL + " UNION ALL";
+        strSQL += " UNION ALL";
         
         //Si es el invitado con permisos nomas
-        strSQL = strSQL + " SELECT mad_seguridad_contabilidad.documento_id,";
-        strSQL = strSQL + " mad_usuariocontabilidad.razon_social";
-        strSQL = strSQL + " FROM ";
-        strSQL = strSQL + " mad_seguridad_contabilidad INNER JOIN mad_usuariocontabilidad";
-        strSQL = strSQL + " ON (mad_seguridad_contabilidad.documento_id = mad_usuariocontabilidad.documento_id and ";
-        strSQL = strSQL + "'" + id_usuario + "'= mad_usuariocontabilidad.id_usuario )";
-        strSQL = strSQL + " WHERE mad_seguridad_contabilidad.id_usuario = '" + id_usuario + "'"; //anfitrion
-        strSQL = strSQL + " AND mad_seguridad_contabilidad.id_invitado = '" + id_invitado + "'"; //auxiliar
+        strSQL += " SELECT mad_seguridad_contabilidad.documento_id,";
+        strSQL += " mad_usuariocontabilidad.razon_social";
+        strSQL += " FROM ";
+        strSQL += " mad_seguridad_contabilidad INNER JOIN mad_usuariocontabilidad";
+        strSQL += " ON (mad_seguridad_contabilidad.documento_id = mad_usuariocontabilidad.documento_id and ";
+        strSQL += "'" + id_usuario + "'= mad_usuariocontabilidad.id_usuario )";
+        strSQL += " WHERE mad_seguridad_contabilidad.id_usuario = '" + id_usuario + "'"; //anfitrion
+        strSQL += " AND mad_seguridad_contabilidad.id_invitado = '" + id_invitado + "'"; //auxiliar
+        strSQL += " as consulta";
+        strSQL += " order by razon_social";
 
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
