@@ -8,7 +8,7 @@ const obtenerTodosPermisosContabilidadesVista = async (req,res,next)=> {
         strSQL = "SELECT mad_usuariocontabilidad.documento_id";
         strSQL = strSQL + " ,(mad_usuariocontabilidad.documento_id || ' ' || mad_usuariocontabilidad.razon_social)::varchar(200) as nombre2";
         strSQL = strSQL + " ,mad_usuariocontabilidad.razon_social as nombre";
-        strSQL = strSQL + " ,mad_seguridad_comando.documento_id as id_permiso";
+        strSQL = strSQL + " ,mad_usuariocontabilidad.documento_id as id_permiso";
         strSQL = strSQL + " FROM"; 
         strSQL = strSQL + " mad_usuariocontabilidad LEFT JOIN mad_seguridad_contabilidad";
         strSQL = strSQL + " ON (mad_usuariocontabilidad.documento_id = mad_seguridad_contabilidad.documento_id and";
