@@ -170,6 +170,27 @@ const registrarPermisoComando = async (req,res,next)=> {
         next(error)
     }
 };
+const registrarPermisoContabilidad = async (req,res,next)=> {
+    const {
+        id_usuario,     //01
+        id_invitado,    //02    
+        documento_id    //03
+    } = req.body
+
+    try {
+        const result = await pool.query("INSERT INTO mad_seguridad_contabilidad VALUES ($1,$2,$3) RETURNING *", 
+        [   
+            id_usuario,     //01
+            id_invitado,   //02    
+            documento_id,        //03    
+        ]
+        );
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        next(error)
+    }
+};
 
 const registrarUsuario = async (req,res,next)=> {
     try {
@@ -218,6 +239,27 @@ const eliminarPermisoComando = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+const eliminarPermisoContabilidad = async (req,res,next)=> {
+    try {
+        const {id_usuario,id_invitado,documento_id} = req.params;
+        let strSQL;
+        strSQL = "DELETE FROM mad_seguridad_contabilidad";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND id_invitado = $2";
+        strSQL = strSQL + " AND documento_id = $3";
+
+        const result = await pool.query(strSQL,[id_usuario,id_invitado,documento_id]);
+
+        if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Email Usuario no encontrado"
+            });
+
+        return res.sendStatus(204);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
 
 const eliminarPermisoUsuario = async (req,res,next)=> {
     try {
@@ -246,8 +288,10 @@ module.exports = {
     obtenerTodosMenu,
     obtenerTodosEmail,
     registrarPermisoComando,
-    clonarPermisoComando, //new
+    registrarPermisoContabilidad, //new
+    clonarPermisoComando, 
     registrarUsuario,
     eliminarPermisoComando,
+    eliminarPermisoContabilidad, //new
     eliminarPermisoUsuario
  }; 
