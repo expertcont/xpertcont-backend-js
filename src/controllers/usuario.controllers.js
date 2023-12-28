@@ -20,15 +20,15 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         strSQL = strSQL + " AND anfitrion = '1'";
 
         strSQL = strSQL + " UNION ALL";
-        
+        //ahora es tabla mad_seguridad_contabilidad
         strSQL = strSQL + " SELECT consulta.*,";
         strSQL = strSQL + " mad_usuario.razon_social";
         strSQL = strSQL + " FROM (";
         strSQL = strSQL + " select";
-        strSQL = strSQL + " mad_usuariogrupo.id_usuario";
-        strSQL = strSQL + " from mad_usuariogrupo inner join mad_usuario";
-        strSQL = strSQL + " on (mad_usuariogrupo.id_invitado = mad_usuario.id_usuario)";
-        strSQL = strSQL + " where mad_usuariogrupo.id_invitado = '" + id_usuario + "'";
+        strSQL = strSQL + " mad_seguridad_contabilidad.id_usuario";
+        strSQL = strSQL + " from mad_seguridad_contabilidad inner join mad_usuario";
+        strSQL = strSQL + " on (mad_seguridad_contabilidad.id_invitado = mad_usuario.id_usuario)";
+        strSQL = strSQL + " where mad_seguridad_contabilidad.id_invitado = '" + id_usuario + "'";
         strSQL = strSQL + " ) as consulta";
         strSQL = strSQL + " INNER JOIN mad_usuario";
         strSQL = strSQL + " ON (consulta.id_usuario = mad_usuario.id_usuario)";
@@ -140,7 +140,7 @@ const obtenerUsuario = async (req,res,next)=> {
 };
 
 const crearUsuario = async (req,res,next)=> {
-    const {id_usuario,nombre,dni,telefono,vendedor,supervisor,activo,anfitrion} = req.body
+    const {id_usuario,razon_social,documento_id,telefono} = req.body
     try {
         var strSQL;
         strSQL = "INSERT INTO mad_usuario ";
