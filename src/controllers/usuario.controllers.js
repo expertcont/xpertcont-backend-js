@@ -27,8 +27,9 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         strSQL = strSQL + " select";
         strSQL = strSQL + " mad_seguridad_contabilidad.id_usuario";
         strSQL = strSQL + " from mad_seguridad_contabilidad inner join mad_usuario";
-        strSQL = strSQL + " on (mad_seguridad_contabilidad.id_invitado = mad_usuario.id_usuario)";
+        strSQL = strSQL + " on (mad_seguridad_contabilidad.id_usuario = mad_usuario.id_usuario)";
         strSQL = strSQL + " where mad_seguridad_contabilidad.id_invitado = '" + id_usuario + "'";
+        strSQL = strSQL + " group by mad_seguridad_contabilidad.id_usuario";
         strSQL = strSQL + " ) as consulta";
         strSQL = strSQL + " INNER JOIN mad_usuario";
         strSQL = strSQL + " ON (consulta.id_usuario = mad_usuario.id_usuario)";
