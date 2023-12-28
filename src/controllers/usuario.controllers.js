@@ -15,14 +15,14 @@ const obtenerTodosEstudios = async (req,res,next)=> {
     try {
         const {id_usuario} = req.params;
         var strSQL;
-        strSQL = "SELECT id_usuario, nombres from mad_usuario";
+        strSQL = "SELECT id_usuario, razon_social from mad_usuario";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
         strSQL = strSQL + " AND anfitrion = '1'";
 
         strSQL = strSQL + " UNION ALL";
         
         strSQL = strSQL + " SELECT consulta.*,";
-        strSQL = strSQL + " mad_usuario.nombres";
+        strSQL = strSQL + " mad_usuario.razon_social";
         strSQL = strSQL + " FROM (";
         strSQL = strSQL + " select";
         strSQL = strSQL + " mad_usuariogrupo.id_usuario";
@@ -140,11 +140,11 @@ const obtenerUsuario = async (req,res,next)=> {
 };
 
 const crearUsuario = async (req,res,next)=> {
-    const {id_usuario,nombre,email,dni,telefono,vendedor,supervisor,activo,anfitrion} = req.body
+    const {id_usuario,nombre,dni,telefono,vendedor,supervisor,activo,anfitrion} = req.body
     try {
         var strSQL;
         strSQL = "INSERT INTO mad_usuario ";
-        strSQL = strSQL + " (id_usuario,nombre,email,dni,telefono,ctrl_insercion) RETURNING *";
+        strSQL = strSQL + " (id_usuario,nombre,dni,telefono,ctrl_insercion) RETURNING *";
         strSQL = strSQL + " VALUES ($1,$2,$3,$4,$5,current_timestamp) RETURNING *";
         const result = await pool.query(strSQL, 
         [   
