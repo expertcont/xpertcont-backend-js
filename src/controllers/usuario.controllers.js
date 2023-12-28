@@ -115,7 +115,7 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += " AND mad_seguridad_contabilidad.id_invitado = '" + id_invitado + "'"; //auxiliar
         strSQL += " ) as consulta";
         strSQL += " order by razon_social";
-
+        console.log(strSQL);
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
     }
