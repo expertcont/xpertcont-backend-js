@@ -9,7 +9,7 @@ router.get('/usuario/periodos/:id_usuario', obtenerTodosPeriodos);
 router.get('/usuario/anfitrion/:id_usuario', obtenerAnfitrion);
 
 //id_usuario = correo anfitrion, id_auxiliar = correo auxiliar
-//router.get('/usuario/contabilidades/:id_usuario/:id_invitado', obtenerTodosContabilidades);
+router.get('/usuario/contabilidades/:id_usuario/:id_invitado', obtenerTodosContabilidades); //estamos usando
 
 router.get('/usuario/:id_usuario', obtenerUsuario);
 router.post('/usuario', crearUsuario);
