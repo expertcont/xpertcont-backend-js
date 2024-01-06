@@ -115,7 +115,7 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += " AND mad_seguridad_contabilidad.id_invitado = '" + id_invitado + "'"; //auxiliar
         strSQL += " ) as consulta";
         strSQL += " order by razon_social";
-        console.log(strSQL);
+        //console.log(strSQL);
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
     }
@@ -126,8 +126,8 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
 
 const obtenerUsuario = async (req,res,next)=> {
     try {
-        const {id} = req.params;
-        const result = await pool.query("select * from mad_usuario where id_usuario = $1",[id]);
+        const {id_usuario} = req.params;
+        const result = await pool.query("select * from mad_usuario where id_usuario = $1",[id_usuario]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -141,24 +141,34 @@ const obtenerUsuario = async (req,res,next)=> {
 };
 
 const crearUsuario = async (req,res,next)=> {
-    const {id_usuario,razon_social,documento_id,telefono} = req.body
+    const {id_usuario,razon_social,documento_id,telefono,periodo} = req.body
     try {
         var strSQL;
         strSQL = "INSERT INTO mad_usuario ";
-        strSQL = strSQL + " (id_usuario,nombre,dni,telefono,ctrl_insercion) RETURNING *";
-        strSQL = strSQL + " VALUES ($1,$2,$3,$4,$5,current_timestamp) RETURNING *";
+        strSQL = strSQL + " (id_usuario,razon_social,documento_id,telefono,activo) RETURNING *";
+        strSQL = strSQL + " VALUES ($1,$2,$3,$4,$5,current_timestamp,'1') RETURNING *";
         const result = await pool.query(strSQL, 
         [   
-            id_usuario,
-            nombre,
-            email,
-            dni,
-            telefono,
-            vendedor,
-            activo,
-            anfitrion
+            id_usuario,     //01 body
+            razon_social,   //02 body
+            documento_id,   //03 body
+            telefono        //04 body
         ]
         );
+        
+        strSQL = "INSERT INTO mad_usuariolicencia ";
+        strSQL = strSQL + " (id_usuario,id_licencia,periodo,ctrl_crea) RETURNING *";
+        strSQL = strSQL + " VALUES ($1,$2,$3,current_timestamp) RETURNING *";
+        const result2 = await pool.query(strSQL, 
+        [   
+            id_usuario,     //01 body
+            id_licencia,   //02 body
+            periodo,   //03 body
+        ]
+        );
+
+        //Agregaremos dar de alta licencia inicial, para posterior aprobacion
+
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
@@ -168,8 +178,8 @@ const crearUsuario = async (req,res,next)=> {
 
 const eliminarUsuario = async (req,res,next)=> {
     try {
-        const {id} = req.params;
-        const result = await pool.query("delete from mad_usuario where id_usuario = $1",[id]);
+        const {id_usuario} = req.params;
+        const result = await pool.query("delete from mad_usuario where id_usuario = $1",[id_usuario]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
@@ -185,29 +195,20 @@ const eliminarUsuario = async (req,res,next)=> {
 const actualizarUsuario = async (req,res,next)=> {
     try {
         var strSQL;
-        const {id} = req.params;
-        const {nombre,email,dni,telefono,vendedor,supervisor,activo,anfitrion} = req.body
+        const {id_usuario} = req.params;
+        const {razon_social,documento_id,telefono} = req.body
         strSQL = "update mad_usuario set";
-        strSQL = strSQL + "  nombre=$1";
-        strSQL = strSQL + " ,email=$2";
-        strSQL = strSQL + " ,dni=$3";
+        strSQL = strSQL + "  razon_social=$2";
+        strSQL = strSQL + " ,documento_id=$3";
         strSQL = strSQL + " ,telefono=$4";
-        strSQL = strSQL + " ,vendedor=$5";
-        strSQL = strSQL + " ,supervisor=$6";
-        strSQL = strSQL + " ,activo=$7";
-        strSQL = strSQL + " ,anfitrion=$8";
-        strSQL = strSQL + " where id_usuario=$9";
+        strSQL = strSQL + " where id_usuario=$1";
         
         const result = await pool.query(strSQL,
         [   
-            nombre,
-            email,
-            dni,
-            telefono,
-            vendedor,
-            supervisor,
-            activo,
-            anfitrion
+            id_usuario,     //01 params
+            razon_social,   //02 body
+            documento_id,   //03 body
+            telefono,       //04 body
         ]
         );
 

@@ -836,18 +836,24 @@ const importarExcelRegVentas = async (req, res, next) => {
             (row[8] || '').toString().replace(/,/g, ''),    //I razon social
             (row[9] || ''),    //J export
             (row[10] || ''),    //K base
-            (row[11] || ''),    //L igv
-            (row[12] || ''),    //M exo
-            (row[13] || ''),    //N inafect
-            (row[14] || ''),    //O icbp
-            (row[15] || ''),    //P otros
-            (row[16] || ''),    //Q total
-            (row[17] || ''),    //R moneda
-            (row[18] || ''),    //S tc
-            index > 0 ? convertirFechaStringComplete(row[19]) : row[19], //T emision ref
-            (row[20] || ''),    //U cod ref
-            (row[21] || ''),    //V serie ref
-            (row[22] || '')    //W num ref
+            (row[11] || ''),    //L DESC BASE (NEW)***
+            (row[12] || ''),    //M igv
+            (row[13] || ''),    //N DESC IGV (NEW)***
+            (row[14] || ''),    //O exo
+            (row[15] || ''),    //P inafect
+            (row[16] || ''),    //Q ISC (NEW)***
+            (row[17] || ''),    //R BASE PILADO (NEW)***
+            (row[18] || ''),    //S IGV PILADO (NEW)***
+
+            (row[19] || ''),    //T icbp
+            (row[20] || ''),    //U otros
+            (row[21] || ''),    //V total
+            (row[22] || ''),    //W moneda
+            (row[23] || ''),    //X tc
+            index > 0 ? convertirFechaStringComplete(row[24]) : row[24], //Y emision ref
+            (row[25] || ''),    //Z cod ref
+            (row[26] || ''),    //AA serie ref
+            (row[27] || '')    //AB num ref
         ].join(','))
         .join('\n');
         //console.log(csvData);
@@ -869,9 +875,18 @@ const importarExcelRegVentas = async (req, res, next) => {
             r_razon_social VARCHAR(200),
             r_base001 NUMERIC(14,2),
             r_base002 NUMERIC(14,2),
+            r_base_desc NUMERIC(14,2),
+
             r_igv002 NUMERIC(14,2),
+            r_igv_desc NUMERIC(14,2),
+
             r_base003 NUMERIC(14,2),
             r_base004 NUMERIC(14,2),
+            
+            r_monto_isc NUMERIC(14,2),            
+            r_base_ivap NUMERIC(14,2),
+            r_igv_ivap NUMERIC(14,2),
+
             r_monto_icbp NUMERIC(12,2),
             r_monto_otros NUMERIC(14,2),
             r_monto_total NUMERIC(14,2),
@@ -932,17 +947,22 @@ const importarExcelRegVentas = async (req, res, next) => {
         strSQL += " ,r_numero2";    //20
         strSQL += " ,r_fecemi";     //21
         strSQL += " ,r_fecvcto";    //22
-        
         strSQL += " ,r_cod_ref";    //23
         strSQL += " ,r_serie_ref";  //24
         strSQL += " ,r_numero_ref"; //25
         strSQL += " ,r_fecemi_ref"; //26
-        
         strSQL += " ,r_base001";    //27
         strSQL += " ,r_base002";    //28
         strSQL += " ,r_base003";    //29
         strSQL += " ,r_base004";    //30
+        strSQL += " ,r_base_desc";    //28 new        
         strSQL += " ,r_igv002";     //31
+        strSQL += " ,r_igv_desc";     //31 new
+        
+        strSQL += " ,r_monto_isc";     //32 new
+        strSQL += " ,r_base_ivap";     //32 new
+        strSQL += " ,r_igv_ivap";     //32 new
+
         strSQL += " ,r_monto_icbp";     //32
         strSQL += " ,r_monto_otros";    //33
         strSQL += " ,r_monto_total";    //34
@@ -974,24 +994,29 @@ const importarExcelRegVentas = async (req, res, next) => {
         strSQL += " ,r_numero2";    //excel
         strSQL += " ,r_fecemi";     //excel
         strSQL += " ,r_fecvcto";    //excel
-        
         strSQL += " ,r_cod_ref";    //excel
         strSQL += " ,r_serie_ref";  //excel
         strSQL += " ,r_numero_ref"; //excel
         strSQL += " ,r_fecemi_ref"; //excel
-        
         strSQL += " ,r_base001";    //excel
         strSQL += " ,r_base002";    //excel
         strSQL += " ,r_base003";    //excel
         strSQL += " ,r_base004";    //excel
+        strSQL += " ,r_base_desc";    //28 new        
         strSQL += " ,r_igv002";     //excel
+        strSQL += " ,r_igv_desc";     //31 new  
+
+        strSQL += " ,r_monto_isc";     //32 new
+        strSQL += " ,r_base_ivap";     //32 new
+        strSQL += " ,r_igv_ivap";     //32 new
+        
         strSQL += " ,r_monto_icbp";     //excel
         strSQL += " ,r_monto_otros";    //excel
         strSQL += " ,r_monto_total";    //excel
         strSQL += " ,r_moneda";         //excel
         strSQL += " ,r_tc";             //excel
-        strSQL += " ,'EXCEL'";             //origen
-        strSQL += " FROM mct_datos";             //37
+        strSQL += " ,'EXCEL'";          //origen
+        strSQL += " FROM mct_datos";    
         const parametros = [   
             id_anfitrion,    //01
             documento_id,    //02
