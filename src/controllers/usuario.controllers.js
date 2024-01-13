@@ -117,9 +117,9 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += " AND id_usuario = '" + id_invitado + "'"; //el auxiliar coinciden (acceso 100%)
         strSQL += " AND activo = '1'";
 
+        //Si es el invitado con permisos nomas
         strSQL += " UNION ALL";
         
-        //Si es el invitado con permisos nomas
         strSQL += " SELECT mad_seguridad_contabilidad.documento_id,";
         strSQL += " mad_usuariocontabilidad.razon_social";
         strSQL += " FROM ";
@@ -128,9 +128,23 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += "'" + id_usuario + "'= mad_usuariocontabilidad.id_usuario )";
         strSQL += " WHERE mad_seguridad_contabilidad.id_usuario = '" + id_usuario + "'"; //anfitrion
         strSQL += " AND mad_seguridad_contabilidad.id_invitado = '" + id_invitado + "'"; //auxiliar
+
+        //Agregamos el super 
+        strSQL += " UNION ALL";
+
+        strSQL += " SELECT documento_id,";
+        strSQL += "        razon_social";
+        strSQL += " FROM mad_usuariocontabilidad";
+        strSQL += " WHERE id_usuario = '" + id_usuario + "'"; //anfitrion
+        strSQL += " AND EXISTS (";
+        strSQL += "     SELECT 1    FROM mad_usuario";
+        strSQL += "     WHERE super = '1' AND id_usuario = '" + id_invitado + "'"; //auxiliar
+        strSQL += " )";
+
         strSQL += " ) as consulta";
         strSQL += " order by razon_social";
-        //console.log(strSQL);
+
+        console.log(strSQL);
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
     }
