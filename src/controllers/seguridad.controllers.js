@@ -70,7 +70,7 @@ const obtenerTodosPermisoComandos = async (req,res,next)=> {
         strSQL = strSQL + " WHERE EXISTS (";
         strSQL = strSQL + "    SELECT 1";
         strSQL = strSQL + "    FROM mad_usuario";
-        strSQL = strSQL + "    WHERE super = '1' AND id_usuario = $2"; //Super ingresa como invitado total
+        strSQL = strSQL + "    WHERE super = '1' AND id_usuario = '" + id_invitado + "'"; //Super ingresa como invitado total
         strSQL = strSQL + " )";
         //strSQL = strSQL + " ORDER BY id_comando";
         strSQL = strSQL + " ) as consulta";
