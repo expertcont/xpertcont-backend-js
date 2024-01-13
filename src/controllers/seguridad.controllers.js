@@ -54,12 +54,28 @@ const obtenerTodosPermisoComandos = async (req,res,next)=> {
     try {
         const {id_usuario,id_invitado,id_menu} = req.params;
         let strSQL;
-        strSQL = "SELECT id_comando";
+
+        strSQL = "select * from (";
+        strSQL = strSQL + " SELECT id_comando";
         strSQL = strSQL + " FROM mad_seguridad_comando";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
         strSQL = strSQL + " AND id_invitado = '" + id_invitado + "'";
         strSQL = strSQL + " AND id_menu like '" + id_menu + "%'";
         strSQL = strSQL + " ORDER BY id_comando";
+
+        //Aumentamos la invitacion al super, de manera directa, siempre y cuando lo sea
+        strSQL = strSQL + " UNION ALL";
+
+        strSQL = strSQL + " SELECT id_comando FROM mad_menucomando";
+        strSQL = strSQL + " WHERE EXISTS (";
+        strSQL = strSQL + "    SELECT 1";
+        strSQL = strSQL + "    FROM mad_usuario";
+        strSQL = strSQL + "    WHERE super = '1' AND id_usuario = $2"; //Super ingresa como invitado total
+        strSQL = strSQL + " )";
+        strSQL = strSQL + " ORDER BY id_comando";
+        strSQL = strSQL + " ) as consulta";
+        strSQL = strSQL + " order by consulta.id_comando";
+        
         console.log(strSQL);
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
@@ -75,12 +91,27 @@ const obtenerTodosMenu = async (req,res,next)=> {
     try {
         const {id_usuario,id_invitado} = req.params;
         let strSQL;
-        strSQL = "SELECT id_menu FROM mad_seguridad_comando";
+        strSQL = "select * from (";
+        strSQL = strSQL + " SELECT id_menu FROM mad_seguridad_comando";
         strSQL = strSQL + " WHERE id_usuario = $1";
         strSQL = strSQL + " AND id_invitado = $2";
         strSQL = strSQL + " GROUP BY id_menu";
         strSQL = strSQL + " ORDER BY id_menu";
         
+        //Aumentamos la invitacion al super, de manera directa, siempre y cuando lo sea
+        strSQL = strSQL + " UNION ALL";
+
+        strSQL = strSQL + " SELECT id_menu FROM mad_menucomando";
+        strSQL = strSQL + " WHERE EXISTS (";
+        strSQL = strSQL + "    SELECT 1";
+        strSQL = strSQL + "    FROM mad_usuario";
+        strSQL = strSQL + "    WHERE super = '1' AND id_usuario = $2"; //Super ingresa como invitado total
+        strSQL = strSQL + " )";
+        strSQL = strSQL + " GROUP BY id_menu";
+        strSQL = strSQL + " ORDER BY id_menu";
+        strSQL = strSQL + " ) as consulta";
+        strSQL = strSQL + " order by consulta.id_menu";
+
         const todosReg = await pool.query(strSQL,[id_usuario,id_invitado]);
         res.json(todosReg.rows);
     }
