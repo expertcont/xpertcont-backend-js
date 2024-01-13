@@ -61,7 +61,7 @@ const obtenerTodosPermisoComandos = async (req,res,next)=> {
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
         strSQL = strSQL + " AND id_invitado = '" + id_invitado + "'";
         strSQL = strSQL + " AND id_menu like '" + id_menu + "%'";
-        strSQL = strSQL + " ORDER BY id_comando";
+        //strSQL = strSQL + " ORDER BY id_comando";
 
         //Aumentamos la invitacion al super, de manera directa, siempre y cuando lo sea
         strSQL = strSQL + " UNION ALL";
@@ -72,7 +72,7 @@ const obtenerTodosPermisoComandos = async (req,res,next)=> {
         strSQL = strSQL + "    FROM mad_usuario";
         strSQL = strSQL + "    WHERE super = '1' AND id_usuario = $2"; //Super ingresa como invitado total
         strSQL = strSQL + " )";
-        strSQL = strSQL + " ORDER BY id_comando";
+        //strSQL = strSQL + " ORDER BY id_comando";
         strSQL = strSQL + " ) as consulta";
         strSQL = strSQL + " order by consulta.id_comando";
         
@@ -96,7 +96,7 @@ const obtenerTodosMenu = async (req,res,next)=> {
         strSQL = strSQL + " WHERE id_usuario = $1";
         strSQL = strSQL + " AND id_invitado = $2";
         strSQL = strSQL + " GROUP BY id_menu";
-        strSQL = strSQL + " ORDER BY id_menu";
+        //strSQL = strSQL + " ORDER BY id_menu";
         
         //Aumentamos la invitacion al super, de manera directa, siempre y cuando lo sea
         strSQL = strSQL + " UNION ALL";
@@ -108,7 +108,7 @@ const obtenerTodosMenu = async (req,res,next)=> {
         strSQL = strSQL + "    WHERE super = '1' AND id_usuario = $2"; //Super ingresa como invitado total
         strSQL = strSQL + " )";
         strSQL = strSQL + " GROUP BY id_menu";
-        strSQL = strSQL + " ORDER BY id_menu";
+        //strSQL = strSQL + " ORDER BY id_menu";
         strSQL = strSQL + " ) as consulta";
         strSQL = strSQL + " order by consulta.id_menu";
 
