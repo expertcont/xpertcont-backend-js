@@ -142,7 +142,8 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += " )";
 
         strSQL += " ) as consulta";
-        strSQL += " order by razon_social";
+        strSQL += " group by consulta.documento_id,consulta.razon_social";
+        strSQL += " order by consulta.razon_social";
 
         console.log(strSQL);
         const todosReg = await pool.query(strSQL);
