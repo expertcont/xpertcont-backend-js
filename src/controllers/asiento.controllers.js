@@ -1312,6 +1312,36 @@ const importarSireRegVentas = async (req, res, next) => {
       .map((line, index) => {
           const row = line.split('|');
           return [
+              index > 0 ? convertirFechaStringComplete(row[4]) : row[4], //A emision
+              index > 0 ? convertirFechaStringComplete(row[5]) : row[5], //B vcto
+              (row[6] || '').toString().replace(/,/g, ''), //C cod
+              (row[7] || '').toString().replace(/,/g, ''), //D serie
+              (row[8] || '').toString().replace(/,/g, ''), //E numero
+              (row[9] || '').toString().replace(/,/g, ''), //F numero2
+              (row[10] || '').toString().replace(/,/g, ''), //G tipo
+              (row[11] || '').toString().replace(/,/g, ''), //H documento_id
+              (row[12] || '').toString().replace(/,/g, ''), //I razon social
+              (row[13] || ''), //J export
+              (row[14] || ''), //K base
+              (row[15] || ''), //L base desc    NEW
+              (row[16] || ''), //M igv
+              (row[17] || ''), //N igv desc     NEW
+              (row[18] || ''), //O exo
+              (row[19] || ''), //P inafect
+              (row[20] || ''), //Q isc          NEW
+              (row[21] || ''), //R base ivap    NEW
+              (row[22] || ''), //S ivap         NEW
+                
+              (row[23] || ''), //T icbp
+              (row[24] || ''), //U otros
+              (row[25] || ''), //V total
+              (row[26] || ''), //W moneda
+              (row[27] || ''), //X tc
+              index > 0 ? convertirFechaStringComplete(row[28]) : row[28], //Y emision ref
+              (row[29] || ''), //Z cod ref
+              (row[30] || ''), //AA serie ref
+              (row[31] || '') //AB num ref
+                /*
               index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
               index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
               (row[2] || '').toString().replace(/,/g, ''), //C cod
@@ -1340,7 +1370,8 @@ const importarSireRegVentas = async (req, res, next) => {
               index > 0 ? convertirFechaStringComplete(row[24]) : row[24], //Y emision ref
               (row[25] || ''), //Z cod ref
               (row[26] || ''), //AA serie ref
-              (row[27] || '') //AB num ref
+              (row[27] || '') //AB num ref */
+
           ].join(',');
       })
       .join('\n');
