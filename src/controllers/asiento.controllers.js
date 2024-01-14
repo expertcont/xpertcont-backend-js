@@ -89,7 +89,7 @@ const obtenerTodosAsientosComparacion = async (req,res,next)=> {
     strSQL += " ,t1.r_id_doc";
     strSQL += " ,t1.r_documento_id";
     strSQL += " ,t1.r_razon_social";
-    strSQL += " ,t1.r_monto_total";
+    strSQL += " ,t1.r_monto_total"; //caso de null o ceros sale diferente, por eso usare coalesce, para igualarlos
     strSQL += " ,t1.r_moneda";
     strSQL += " ,t1.r_tc";
     strSQL += " ,cast(t1.r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";
@@ -118,7 +118,7 @@ const obtenerTodosAsientosComparacion = async (req,res,next)=> {
     strSQL += "    AND t1.r_serie = t2.r_serie";
     strSQL += "    AND t1.r_numero = t2.r_numero";
     strSQL += "    AND t1.r_fecemi = t2.r_fecemi";
-    strSQL += "    AND t1.r_monto_total = t2.r_monto_total";
+    strSQL += "    AND COALESCE(t1.r_monto_total,0) = COALESCE(t2.r_monto_total,0)";
     strSQL += "    AND t1.r_moneda = t2.r_moneda";
     strSQL += " )";
 
