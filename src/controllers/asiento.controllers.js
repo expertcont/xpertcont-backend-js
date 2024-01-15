@@ -810,6 +810,15 @@ const importarExcelRegVentas = async (req, res, next) => {
     
     try {
       const fileBuffer = req.file.buffer;
+      //Extraer la extensión del nombre del archivo
+      const fileName = req.file.originalname;
+      const lastDotIndex = fileName.lastIndexOf('.');
+      const fileExtension = lastDotIndex !== -1 ? fileName.slice(lastDotIndex) : '';
+      let pos=0;
+      if (fileExtension==='xlsx') { pos=0; } //Excel datos propios
+      if (fileExtension==='xls') { pos=4; } //Excel simple csv sire
+      //Fin extension, determina inicio de columna
+
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
@@ -825,35 +834,35 @@ const importarExcelRegVentas = async (req, res, next) => {
 
         const csvData = sheetData
         .map((row,index) => [
-            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
-            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
-            (row[2] || '').toString().replace(/,/g, ''),    //C cod
-            (row[3] || '').toString().replace(/,/g, ''),    //D serie
-            (row[4] || '').toString().replace(/,/g, ''),    //E numero
-            (row[5] || '').toString().replace(/,/g, ''),    //F numero2
-            (row[6] || '').toString().replace(/,/g, ''),    //G tipo
-            (row[7] || '').toString().replace(/,/g, ''),    //H documento_id
-            (row[8] || '').toString().replace(/,/g, ''),    //I razon social
-            (row[9] || ''),    //J export
-            (row[10] || ''),    //K base
-            (row[11] || ''),    //L DESC BASE (NEW)***
-            (row[12] || ''),    //M igv
-            (row[13] || ''),    //N DESC IGV (NEW)***
-            (row[14] || ''),    //O exo
-            (row[15] || ''),    //P inafect
-            (row[16] || ''),    //Q ISC (NEW)***
-            (row[17] || ''),    //R BASE PILADO (NEW)***
-            (row[18] || ''),    //S IGV PILADO (NEW)***
+            index > 0 ? convertirFechaStringComplete(row[pos+0]) : row[pos+0], //A emision
+            index > 0 ? convertirFechaStringComplete(row[pos+1]) : row[pos+1], //B vcto
+            (row[pos+2] || '').toString().replace(/,/g, ''),    //C cod
+            (row[pos+3] || '').toString().replace(/,/g, ''),    //D serie
+            (row[pos+4] || '').toString().replace(/,/g, ''),    //E numero
+            (row[pos+5] || '').toString().replace(/,/g, ''),    //F numero2
+            (row[pos+6] || '').toString().replace(/,/g, ''),    //G tipo
+            (row[pos+7] || '').toString().replace(/,/g, ''),    //H documento_id
+            (row[pos+8] || '').toString().replace(/,/g, ''),    //I razon social
+            (row[pos+9] || ''),    //J export
+            (row[pos+10] || ''),    //K base
+            (row[pos+11] || ''),    //L DESC BASE (NEW)***
+            (row[pos+12] || ''),    //M igv
+            (row[pos+13] || ''),    //N DESC IGV (NEW)***
+            (row[pos+14] || ''),    //O exo
+            (row[pos+15] || ''),    //P inafect
+            (row[pos+16] || ''),    //Q ISC (NEW)***
+            (row[pos+17] || ''),    //R BASE PILADO (NEW)***
+            (row[pos+18] || ''),    //S IGV PILADO (NEW)***
 
-            (row[19] || ''),    //T icbp
-            (row[20] || ''),    //U otros
-            (row[21] || ''),    //V total
-            (row[22] || ''),    //W moneda
-            (row[23] || ''),    //X tc
-            index > 0 ? convertirFechaStringComplete(row[24]) : row[24], //Y emision ref
-            (row[25] || ''),    //Z cod ref
-            (row[26] || ''),    //AA serie ref
-            (row[27] || '')    //AB num ref
+            (row[pos+19] || ''),    //T icbp
+            (row[pos+20] || ''),    //U otros
+            (row[pos+21] || ''),    //V total
+            (row[pos+22] || ''),    //W moneda
+            (row[pos+23] || ''),    //X tc
+            index > 0 ? convertirFechaStringComplete(row[pos+24]) : row[pos+24], //Y emision ref
+            (row[pos+25] || ''),    //Z cod ref
+            (row[pos+26] || ''),    //AA serie ref
+            (row[pos+27] || '')    //AB num ref
         ].join(','))
         .join('\n');
         //console.log(csvData);
@@ -1055,6 +1064,15 @@ const importarExcelRegCompras = async (req, res, next) => {
     
     try {
       const fileBuffer = req.file.buffer;
+      //Extraer la extensión del nombre del archivo
+      const fileName = req.file.originalname;
+      const lastDotIndex = fileName.lastIndexOf('.');
+      const fileExtension = lastDotIndex !== -1 ? fileName.slice(lastDotIndex) : '';
+      let pos=0;
+      if (fileExtension==='xlsx') { pos=0; } //Excel datos propios
+      if (fileExtension==='xls') { pos=4; } //Excel simple csv sire
+      //Fin extension, determina inicio de columna
+
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
@@ -1070,36 +1088,36 @@ const importarExcelRegCompras = async (req, res, next) => {
 
         const csvData = sheetData
         .map((row,index) => [
-            index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
-            index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
-            (row[2] || '').toString().replace(/,/g, ''),    //C cod
-            (row[3] || '').toString().replace(/,/g, ''),    //D serie
-            (row[4] || '').toString().replace(/,/g, ''),    //E ano dua
-            (row[5] || '').toString().replace(/,/g, ''),    //F numero
-            (row[6] || '').toString().replace(/,/g, ''),    //G numero2
-            (row[7] || '').toString().replace(/,/g, ''),    //H tipo
-            (row[8] || '').toString().replace(/,/g, ''),    //I documento_id
-            (row[9] || '').toString().replace(/,/g, ''),    //J razon social
+            index > 0 ? convertirFechaStringComplete(row[pos+0]) : row[pos+0], //A emision
+            index > 0 ? convertirFechaStringComplete(row[pos+1]) : row[pos+1], //B vcto
+            (row[pos+2] || '').toString().replace(/,/g, ''),    //C cod
+            (row[pos+3] || '').toString().replace(/,/g, ''),    //D serie
+            (row[pos+4] || '').toString().replace(/,/g, ''),    //E ano dua
+            (row[pos+5] || '').toString().replace(/,/g, ''),    //F numero
+            (row[pos+6] || '').toString().replace(/,/g, ''),    //G numero2
+            (row[pos+7] || '').toString().replace(/,/g, ''),    //H tipo
+            (row[pos+8] || '').toString().replace(/,/g, ''),    //I documento_id
+            (row[pos+9] || '').toString().replace(/,/g, ''),    //J razon social
 
-            (row[10] || ''),    //K BASE001
-            (row[11] || ''),    //L igv001
-            (row[12] || ''),    //M base002
-            (row[13] || ''),    //N igv002
-            (row[14] || ''),    //O base003
-            (row[15] || ''),    //P igv003
-            (row[16] || ''),    //Q nograv
-            (row[17] || ''),    //R isc
-            (row[18] || ''),    //S icbp
-            (row[19] || ''),    //T otros
-            (row[20] || ''),    //U total
-            (row[21] || ''),    //V moneda
-            (row[22] || ''),    //W tc
-            index > 0 ? convertirFechaStringComplete(row[23]) : row[23], //X emision ref
-            (row[24] || ''),    //Y cod ref
-            (row[25] || ''),    //Z serie ref
-            (row[26] || ''),    //AA cod aduana
-            (row[27] || ''),    //AB numero ref
-            (row[28] || '')    //AC id_bss
+            (row[pos+10] || ''),    //K BASE001
+            (row[pos+11] || ''),    //L igv001
+            (row[pos+12] || ''),    //M base002
+            (row[pos+13] || ''),    //N igv002
+            (row[pos+14] || ''),    //O base003
+            (row[pos+15] || ''),    //P igv003
+            (row[pos+16] || ''),    //Q nograv
+            (row[pos+17] || ''),    //R isc
+            (row[pos+18] || ''),    //S icbp
+            (row[pos+19] || ''),    //T otros
+            (row[pos+20] || ''),    //U total
+            (row[pos+21] || ''),    //V moneda
+            (row[pos+22] || ''),    //W tc
+            index > 0 ? convertirFechaStringComplete(row[pos+23]) : row[pos+23], //X emision ref
+            (row[pos+24] || ''),    //Y cod ref
+            (row[pos+25] || ''),    //Z serie ref
+            (row[pos+26] || ''),    //AA cod aduana
+            (row[pos+27] || ''),    //AB numero ref
+            (row[pos+28] || '')    //AC id_bss
 
         ].join(','))
         .join('\n');
