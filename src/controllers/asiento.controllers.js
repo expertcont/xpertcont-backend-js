@@ -423,8 +423,10 @@ const generarSireVentas = async (req,res,next)=> {
     strSQL += " ,$4 as periodo";    //03 periodo
     strSQL += " ,''::varchar(20) as car_sunat";    //04 car sunat
 
-    strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
-    strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
+    strSQL += " ,r_fecemi";   //05
+    strSQL += " ,r_fecvcto"; //06    
+    //strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
+    //strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
     strSQL += " ,r_cod";                                                //07
     strSQL += " ,r_serie";                                              //08
     strSQL += " ,r_numero";                                             //09
@@ -447,7 +449,8 @@ const generarSireVentas = async (req,res,next)=> {
     strSQL += " ,r_monto_total";                                        //26
     strSQL += " ,r_moneda";                                             //27
     strSQL += " ,r_tc";                                                 //28
-    strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//29
+    //strSQL += " ,cast(r_fecemi_ref as varchar)::v//archar(50) as r_fecemi_ref";//29
+    strSQL += " ,r_fecemi_ref";//29
     strSQL += " ,r_cod_ref";                                            //30
     strSQL += " ,r_serie_ref";                                          //31
     strSQL += " ,r_numero_ref";                                         //32
