@@ -867,7 +867,7 @@ const importarExcelRegVentas = async (req, res, next) => {
         ].join(','))
         .join('\n');
         
-        console.log(csvData);
+        //console.log(csvData);
 
       await pool.query('BEGIN');
   
@@ -1026,7 +1026,12 @@ const importarExcelRegVentas = async (req, res, next) => {
         strSQL += " ,r_monto_total";    //excel
         strSQL += " ,r_moneda";         //excel
         strSQL += " ,r_tc";             //excel
-        strSQL += " ,'EXCEL'";          //origen
+        if (fileExtension==='.xls') { 
+            strSQL += " ,'SIRE'";          //origen
+        } //Sire CSV Excel
+        if (fileExtension==='.xlsx') {
+            strSQL += " ,'EXCEL'";          //origen
+        } //Excel datos propios
         strSQL += " FROM mct_datos";    
         const parametros = [   
             id_anfitrion,    //01
@@ -1280,7 +1285,13 @@ const importarExcelRegCompras = async (req, res, next) => {
         strSQL += " ,r_tc";             //40 excel
         strSQL += " ,r_id_aduana";      //41 excel
         strSQL += " ,r_idbss";          //42 excel
-        strSQL += " ,'EXCEL'";          //43 origen
+        if (fileExtension==='.xls') { 
+            strSQL += " ,'SIRE'";          //origen
+        } //Sire CSV Excel
+        if (fileExtension==='.xlsx') {
+            strSQL += " ,'EXCEL'";          //origen
+        } //Excel datos propios
+        
         strSQL += " FROM mct_datos";
         const parametros = [   
             id_anfitrion,    //01
