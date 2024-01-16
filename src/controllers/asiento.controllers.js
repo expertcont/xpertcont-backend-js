@@ -815,6 +815,7 @@ const importarExcelRegVentas = async (req, res, next) => {
       const lastDotIndex = fileName.lastIndexOf('.');
       const fileExtension = lastDotIndex !== -1 ? fileName.slice(lastDotIndex) : '';
       let pos=0;
+      console.log('extension: ', fileExtension);
       if (fileExtension==='xlsx') { pos=0; } //Excel datos propios
       if (fileExtension==='xls') { pos=4; } //Excel simple csv sire
       //Fin extension, determina inicio de columna
