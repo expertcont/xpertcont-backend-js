@@ -865,7 +865,8 @@ const importarExcelRegVentas = async (req, res, next) => {
             (row[pos+27] || '')    //AB num ref
         ].join(','))
         .join('\n');
-        //console.log(csvData);
+        
+        console.log(csvData);
 
       await pool.query('BEGIN');
   
