@@ -358,10 +358,12 @@ const generarSireCompras = async (req,res,next)=> {
     strSQL = "SELECT ";
     strSQL += "  $2 as ruc";    //01 ruc
     strSQL += " ,$3 as razon";    //02 razon gen
-    strSQL += " ,$4 as periodo";    //03 periodo
+    strSQL += " ,replace($4,'-','') as periodo";    //03 periodo
     strSQL += " ,''::varchar(20) as car_sunat";    //04 car sunat
-    strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
-    strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
+    //strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
+    //strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
+    strSQL += " ,to_char(r_fecemi,'DD/MM/YYYY')::varchar(12) as r_fecemi";   //05 formato sire
+    strSQL += " ,to_char(r_fecvcto,'DD/MM/YYYY')::varchar(12) as r_fecvcto"; //06 formato sire
     strSQL += " ,r_cod";                                                //07
     strSQL += " ,r_serie";                                              //08
     strSQL += " ,r_ano_dam";                                            //09 año dua
@@ -383,7 +385,8 @@ const generarSireCompras = async (req,res,next)=> {
     strSQL += " ,r_monto_total";                                        //25
     strSQL += " ,r_moneda";                                             //26
     strSQL += " ,r_tc";                                                 //27
-    strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//28
+    //strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//28
+    strSQL += " ,to_char(r_fecemi_ref,'DD/MM/YYYY')::varchar(12) as r_fecemi_ref"; //28 formato sire    
     strSQL += " ,r_cod_ref";                                            //29
     strSQL += " ,r_serie_ref";                                          //30
     strSQL += " ,r_id_aduana";                                          //31
@@ -420,11 +423,11 @@ const generarSireVentas = async (req,res,next)=> {
     strSQL = "SELECT ";
     strSQL += "  $2 as ruc";    //01 ruc
     strSQL += " ,$3 as razon";    //02 razon gen
-    strSQL += " ,$4 as periodo";    //03 periodo
+    strSQL += " ,replace($4,'-','') as periodo";    //03 periodo
     strSQL += " ,''::varchar(20) as car_sunat";    //04 car sunat
 
-    strSQL += " ,r_fecemi";   //05
-    strSQL += " ,r_fecvcto"; //06    
+    strSQL += " ,to_char(r_fecemi,'DD/MM/YYYY')::varchar(12) as r_fecemi";   //05 formato sire
+    strSQL += " ,to_char(r_fecvcto,'DD/MM/YYYY')::varchar(12) as r_fecvcto"; //06 formato sire
     //strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
     //strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
     strSQL += " ,r_cod";                                                //07
@@ -450,7 +453,7 @@ const generarSireVentas = async (req,res,next)=> {
     strSQL += " ,r_moneda";                                             //27
     strSQL += " ,r_tc";                                                 //28
     //strSQL += " ,cast(r_fecemi_ref as varchar)::v//archar(50) as r_fecemi_ref";//29
-    strSQL += " ,r_fecemi_ref";//29
+    strSQL += " ,to_char(r_fecemi_ref,'DD/MM/YYYY')::varchar(12) as r_fecemi_ref"; //29 formato sire
     strSQL += " ,r_cod_ref";                                            //30
     strSQL += " ,r_serie_ref";                                          //31
     strSQL += " ,r_numero_ref";                                         //32
