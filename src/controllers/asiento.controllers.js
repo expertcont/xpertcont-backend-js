@@ -352,7 +352,7 @@ const obtenerTodosAsientosDiario = async (req,res,next)=> {
 
 const generarSireCompras = async (req,res,next)=> {
     //Solo Cabeceras
-    const {id_anfitrion, documento_id, razon_social, periodo} = req.params;
+    const {id_anfitrion, documento_id, razon_social, periodo, moneda} = req.params;
 
     let strSQL;
     strSQL = "SELECT ";
@@ -404,11 +404,12 @@ const generarSireCompras = async (req,res,next)=> {
     strSQL += " WHERE id_usuario = $1";
     strSQL += " AND documento_id = $2";
     strSQL += " AND periodo = $4";
+    strSQL += " AND r_moneda = $5"; //new
     strSQL += " AND id_libro = '008'"; //compras
     strSQL += " ORDER BY num_asiento DESC";
     //console.log(strSQL);
     try {
-        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo]);
+        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo, moneda]);
         res.json(todosReg.rows);
     }
     catch(error){
@@ -417,7 +418,7 @@ const generarSireCompras = async (req,res,next)=> {
 };
 const generarSireVentas = async (req,res,next)=> {
     //Solo Cabeceras
-    const {id_anfitrion, documento_id, razon_social, periodo} = req.params;
+    const {id_anfitrion, documento_id, razon_social, periodo, moneda} = req.params;
 
     let strSQL;
     strSQL = "SELECT ";
@@ -463,11 +464,12 @@ const generarSireVentas = async (req,res,next)=> {
     strSQL += " WHERE id_usuario = $1";
     strSQL += " AND documento_id = $2";
     strSQL += " AND periodo = $4";
-    strSQL += " AND id_libro = '014'"; //Ventas
+    strSQL += " AND r_moneda = $5";     //new
+    strSQL += " AND id_libro = '014'";  //Ventas
     strSQL += " ORDER BY num_asiento DESC";
     //console.log(strSQL);
     try {
-        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo]);
+        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo, moneda]);
         res.json(todosReg.rows);
     }
     catch(error){

@@ -12,8 +12,8 @@ router.get('/asientosirecompara/:id_anfitrion/:id_invitado/:periodo/:documento_i
 router.get('/asiento/caja/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCaja);
 router.get('/asiento/diario/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosDiario);
 
-router.get('/sire/compras/:id_anfitrion/:documento_id/:razon_social/:periodo', generarSireCompras);
-router.get('/sire/ventas/:id_anfitrion/:documento_id/:razon_social/:periodo', generarSireVentas);
+router.get('/sire/compras/:id_anfitrion/:documento_id/:razon_social/:periodo/:moneda', generarSireCompras); //new moneda PEN o USD
+router.get('/sire/ventas/:id_anfitrion/:documento_id/:razon_social/:periodo/:moneda', generarSireVentas);//new moneda PEN o USD
 
 router.get('/asiento/:fecha_ini/:fecha_proceso', obtenerTodosAsientosPlan);
 router.get('/asiento/todos/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', obtenerAsiento);
