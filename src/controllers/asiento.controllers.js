@@ -867,7 +867,7 @@ const importarExcelRegVentas = async (req, res, next) => {
             (row[pos+20] || ''),    //U otros
             (row[pos+21] || ''),    //V total
             (row[pos+22] || ''),    //W moneda
-            (corregirTCPEN(row[pos+23]) || ''),    //X tc
+            (corregirTCPEN(row[pos+23],row[pos+22]) || ''),    //X tc
             index > 0 ? convertirFechaStringComplete(row[pos+24]) : row[pos+24], //Y emision ref
             (row[pos+25] || ''),    //Z cod ref
             (row[pos+26] || ''),    //AA serie ref
@@ -1126,7 +1126,7 @@ const importarExcelRegCompras = async (req, res, next) => {
             (row[pos+19] || ''),    //T otros
             (row[pos+20] || ''),    //U total
             (row[pos+21] || ''),    //V moneda
-            (corregirTCPEN(row[pos+22]) || ''),    //W tc
+            (corregirTCPEN(row[pos+22],row[pos+21]) || ''),    //W tc
             index > 0 ? convertirFechaStringComplete(row[pos+23]) : row[pos+23], //X emision ref
             (row[pos+24] || ''),    //Y cod ref
             (row[pos+25] || ''),    //Z serie ref
