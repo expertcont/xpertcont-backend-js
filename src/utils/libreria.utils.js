@@ -55,18 +55,19 @@ const devuelveCadenaNull = (value) => {
   };
   function corregirTCPEN(sValor,sMoneda) {
     //Arregla tipo de cambio=1, para PEN, asi el usuario se equivoque, sistema corrige
-    if (sValor===undefined) {
+    if (sValor===undefined || sMoneda===undefined) {
       //console.log("vacio de undefined");
       return '';
     }
     // Si la fecha es una cadena vacía, representamos una fecha nula según lo que requiera tu base de datos
-    if (sValor.toString().trim() === '') {
+    if (sValor.toString().trim() === '' || sMoneda.toString().trim() === '') {
       //console.log("vacio de vacio ;)");
       return '';  // O ajusta según lo que requiera tu base de datos para representar una fecha nula
     }
-    if (sValor.toString().trim() === '1' && sMoneda.toString.trim() ==='PEN') {
-      //console.log("vacio de vacio ;)");
-      return '';  // O ajusta según lo que requiera tu base de datos para representar una fecha nula
+    if (sValor.toString().trim() === '1') {
+      if (sMoneda.toString.trim() ==='PEN'){
+        return '';  // O ajusta según lo que requiera tu base de datos para representar una fecha nula  
+      }
     }
   
     return sValor;
