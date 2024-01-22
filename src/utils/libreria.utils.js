@@ -66,7 +66,7 @@ const devuelveCadenaNull = (value) => {
     }
     if (sValor.toString().trim() === '1') {
       console.log("sMoneda: ", sMoneda);
-      if (sMoneda.toString.trim() ==='PEN'){
+      if (sMoneda.trim() ==='PEN'){
         return '';  // O ajusta según lo que requiera tu base de datos para representar una fecha nula  
       }
     }
