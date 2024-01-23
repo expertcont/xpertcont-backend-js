@@ -174,6 +174,53 @@ const obtenerTodosAsientosComparacion = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+const obtenerTodosAsientosPrev = async (req,res,next)=> {
+    //Solo Cabeceras
+    const {id_anfitrion, periodo, documento_id, id_libro} = req.params;
+
+    let strSQL;
+    strSQL = "SELECT 'Por Contabilizar'::varchar(20) as resultado";
+    strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";
+    strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto";
+    strSQL += " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante";
+    strSQL += " ,r_id_doc";
+    strSQL += " ,r_documento_id";
+    strSQL += " ,r_razon_social";
+    strSQL += " ,r_monto_total"; 
+    strSQL += " ,r_moneda";
+    strSQL += " ,r_tc";
+    strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";
+    strSQL += " ,r_cod_ref";
+    strSQL += " ,r_serie_ref";
+    strSQL += " ,r_numero_ref";
+    strSQL += " ,r_id_aduana";
+    strSQL += " ,r_ano_dam";
+    strSQL += " ,num_asiento";
+    strSQL += " FROM mct_asientocontable AS ac";
+    strSQL += " WHERE ac.id_usuario = '" + id_anfitrion + "'";
+    strSQL += " AND ac.documento_id = '" + documento_id + "'";
+    strSQL += " AND ac.periodo = '" + periodo + "'";
+    strSQL += " AND ac.id_libro = '" + id_libro + "'";
+    strSQL += " AND NOT EXISTS (";
+    strSQL += "         SELECT 1";
+    strSQL += "         FROM mct_asientocontabledet AS acd";
+    strSQL += "         WHERE";
+    strSQL += "             acd.id_usuario = ac.id_usuario";
+    strSQL += "             AND acd.documento_id = ac.documento_id";
+    strSQL += "             AND acd.periodo = ac.periodo";
+    strSQL += "             AND acd.id_libro = ac.id_libro";
+    strSQL += "             AND acd.num_asiento = ac.num_asiento";
+    strSQL += "     )";
+    
+    //console.log(strSQL);
+    try {
+        const todosReg = await pool.query(strSQL);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
 
 const obtenerTodosAsientosVenta = async (req,res,next)=> {
     //Solo Cabeceras
@@ -2151,6 +2198,7 @@ module.exports = {
     obtenerTodosAsientosCompra,
     obtenerTodosAsientosVenta,
     obtenerTodosAsientosComparacion,
+    obtenerTodosAsientosPrev,
     obtenerTodosAsientosCaja,
     obtenerTodosAsientosDiario,
     generarSireCompras,
