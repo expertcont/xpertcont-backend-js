@@ -36,13 +36,45 @@ const obtenerTodasCuentas = async (req,res,next)=> {
 
         strSQL = strSQL + " ORDER BY id_cuenta";
 
-        const todasZonas = await pool.query(strSQL);
-        res.json(todasZonas.rows);
+        const todasCuentas = await pool.query(strSQL);
+        res.json(todasCuentas.rows);
     }
     catch(error){
         console.log(error.message);
     }
     //res.send('Listado de todas los zonas');
+};
+
+const obtenerTodasCuentasSimple = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_usuario,documento_id,id_maestro} = req.params;
+        strSQL = "SELECT ";
+        strSQL = strSQL + " id_cuenta";
+        strSQL = strSQL + " ,descripcion";
+        strSQL = strSQL + " FROM";
+        strSQL = strSQL + " mct_cuentacontable";
+        strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
+        strSQL = strSQL + " AND id_maestro like  '" + id_maestro + "%'";
+        
+        strSQL = strSQL + " UNION ALL";
+        
+        strSQL = strSQL + " SELECT id_cuenta";
+        strSQL = strSQL + " ,descripcion";
+        strSQL = strSQL + " FROM";
+        strSQL = strSQL + " mct_cuentacontable_det";
+        strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
+        strSQL = strSQL + " AND documento_id = '" + documento_id + "'";
+        strSQL = strSQL + " AND id_maestro like  '" + id_maestro + "%'";
+
+        strSQL = strSQL + " ORDER BY id_cuenta";
+
+        const todasCuentas = await pool.query(strSQL);
+        res.json(todasCuentas.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
 };
 
 const obtenerCuenta = async (req,res,next)=> {
@@ -124,6 +156,7 @@ const actualizarCuenta = async (req,res,next)=> {
 
 module.exports = {
     obtenerTodasCuentas,
+    obtenerTodasCuentasSimple,
     obtenerCuenta,
     crearCuenta,
     eliminarCuenta,
