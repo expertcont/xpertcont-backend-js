@@ -55,7 +55,7 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         strSQL = strSQL + " FROM";
         strSQL = strSQL + " mct_cuentacontable";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
-        strSQL = strSQL + " AND id_maestro like  '" + id_maestro + "%'";
+        strSQL = strSQL + " AND id_cuenta like  '" + id_maestro + "%'";
         
         strSQL = strSQL + " UNION ALL";
         
@@ -65,7 +65,7 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         strSQL = strSQL + " mct_cuentacontable_det";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
         strSQL = strSQL + " AND documento_id = '" + documento_id + "'";
-        strSQL = strSQL + " AND id_maestro like  '" + id_maestro + "%'";
+        strSQL = strSQL + " AND id_cuenta like  '" + id_maestro + "%'";
 
         strSQL = strSQL + " ORDER BY id_cuenta";
 
