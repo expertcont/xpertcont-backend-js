@@ -4,7 +4,11 @@ const router = Router();
 const {obtenerTodasCuentas,obtenerCuenta, crearCuenta, actualizarCuenta, eliminarCuenta, obtenerTodasCuentasSimple} = require('../controllers/cuenta.controllers')
 
 router.get('/cuentas/:id_usuario/:documento_id', obtenerTodasCuentas);//id_usuario(correo anfitrion) y documento_id(ruc contab)
+
+//truco para recibir parametro en blanco, usar 2 rutas
+router.get('/cuentassimple/:id_usuario/:documento_id', obtenerTodasCuentasSimple);//id_usuario(correo anfitrion) y documento_id(ruc contab) y maestro para filtrado
 router.get('/cuentassimple/:id_usuario/:documento_id/:id_maestro', obtenerTodasCuentasSimple);//id_usuario(correo anfitrion) y documento_id(ruc contab) y maestro para filtrado
+
 router.get('/cuenta/:id_usuario/:documento_id/:id_cuenta', obtenerCuenta);
 router.post('/cuenta', crearCuenta);
 router.put('/cuenta/:id_usuario/:documento_id/:id_cuenta', actualizarCuenta);
