@@ -79,6 +79,59 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+const obtenerTodosAmarres6 = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_usuario,id_cuenta} = req.params;
+
+        strSQL = "select consulta2.*, mct_cuentacontable.descripcion as descripcion_haber from (";
+        strSQL += " select consulta.*, mct_cuentacontable.descripcion as descripcion_debe from (";
+        strSQL += " select id_cuenta,id_cuenta_haber ";
+        strSQL += " from mct_cuentacontable ";
+        strSQL += " where id_usuario = '" + id_usuario + "'";
+        strSQL += " and id_cuenta_debe = '" + id_cuenta + "'";
+        strSQL += " and not id_cuenta_debe is null";
+        strSQL += " ) as consulta left join mct_cuentacontable";
+        strSQL += " on ('" + id_usuario + "' = mct_cuentacontable.id_usuario and";
+        strSQL += "    consulta.id_cuenta = mct_cuentacontable.id_cuenta)";
+        strSQL += " ) as consulta2 left join mct_cuentacontable";
+        strSQL +=" on ('" + id_usuario + "' = mct_cuentacontable.id_usuario and";
+        strSQL +="     consulta2.id_cuenta_haber = mct_cuentacontable.id_cuenta)";
+
+        const todasCuentas = await pool.query(strSQL);
+        res.json(todasCuentas.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
+const obtenerTodosAmarres9 = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_usuario,id_cuenta} = req.params;
+
+        strSQL = "select consulta2.*, mct_cuentacontable.descripcion as descripcion_haber from (";
+        strSQL += " select consulta.*, mct_cuentacontable.descripcion as descripcion_debe from (";
+        strSQL += " select id_cuenta_debe,id_cuenta_haber ";
+        strSQL += " from mct_cuentacontable ";
+        strSQL += " where id_usuario = '" + id_usuario + "'";
+        strSQL += " and id_cuenta = '" + id_cuenta + "'";
+        strSQL += " and not id_cuenta_debe is null";
+        strSQL += " ) as consulta left join mct_cuentacontable";
+        strSQL += " on ('" + id_usuario + "' = mct_cuentacontable.id_usuario and";
+        strSQL += "    consulta.id_cuenta_debe = mct_cuentacontable.id_cuenta)";
+        strSQL += " ) as consulta2 left join mct_cuentacontable";
+        strSQL +=" on ('" + id_usuario + "' = mct_cuentacontable.id_usuario and";
+        strSQL +="     consulta2.id_cuenta_haber = mct_cuentacontable.id_cuenta)";
+
+        const todasCuentas = await pool.query(strSQL);
+        res.json(todasCuentas.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
 
 const obtenerCuenta = async (req,res,next)=> {
     try {
@@ -160,6 +213,8 @@ const actualizarCuenta = async (req,res,next)=> {
 module.exports = {
     obtenerTodasCuentas,
     obtenerTodasCuentasSimple,
+    obtenerTodosAmarres6,
+    obtenerTodosAmarres9,
     obtenerCuenta,
     crearCuenta,
     eliminarCuenta,
