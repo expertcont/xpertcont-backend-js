@@ -111,7 +111,8 @@ const obtenerTodosAmarres9 = async (req,res,next)=> {
         let strSQL;
         const {id_usuario,id_cuenta} = req.params;
 
-        strSQL = "select consulta2.*, mct_cuentacontable.descripcion as descripcion_haber from (";
+        strSQL = "select consulta2.*, mct_cuentacontable.descripcion as descripcion_haber";
+        strSQL += " ,(consulta2.descripcion || '-' || mct_cuentacontable.descripcion_haber)::varchar(300) as descripcion from (";
         strSQL += " select consulta.*, mct_cuentacontable.descripcion as descripcion_debe from (";
         strSQL += " select id_cuenta_debe,id_cuenta_haber ";
         strSQL += " from mct_cuentacontable ";
