@@ -2194,6 +2194,38 @@ const anularAsiento = async (req,res,next)=> {
 
 };
 
+const crearAsientoVentasMasivo = async (req,res,next)=> {
+    let strSQL;
+    const { jsonData } = req.body;
+    const { id_usuario,documento_id,periodo,id_cuenta } = req.params;
+
+    strSQL = "CALL pgenerarasientosventa($1,$2,$3,$4,$5)";
+    try {
+        const parametros = [jsonData,id_usuario,documento_id,periodo,id_cuenta];
+        const result = await pool.query(strSQL, parametros);
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        next(error)
+    }
+};
+const crearAsientoComprasMasivo = async (req,res,next)=> {
+    let strSQL;
+    const { jsonData } = req.body;
+    const { id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
+    console.log(documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
+    console.log(jsonData);
+    strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
+    try {
+        const parametros = [jsonData,id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
+        const result = await pool.query(strSQL, parametros);
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        next(error)
+    }
+};
+
 module.exports = {
     obtenerTodosAsientosCompra,
     obtenerTodosAsientosVenta,
@@ -2206,6 +2238,8 @@ module.exports = {
     obtenerTodosAsientosPlan,
     obtenerAsiento,
     crearAsiento,
+    crearAsientoVentasMasivo,
+    crearAsientoComprasMasivo,
     importarExcelRegVentas,
     importarExcelRegCompras,
     importarSireRegVentas,
