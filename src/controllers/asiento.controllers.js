@@ -2212,10 +2212,10 @@ const crearAsientoVentasMasivo = async (req,res,next)=> {
 const crearAsientoComprasMasivo = async (req,res,next)=> {
     let strSQL;
     const { jsonData } = req.body;
-    const { id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
-    console.log(documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
+    //const { id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
+    //console.log(documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
     console.log(jsonData);
-    strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
+    /*strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
     try {
         const parametros = [jsonData,id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
         const result = await pool.query(strSQL, parametros);
@@ -2223,7 +2223,7 @@ const crearAsientoComprasMasivo = async (req,res,next)=> {
     }catch(error){
         //res.json({error:error.message});
         next(error)
-    }
+    }*/
 };
 
 module.exports = {
