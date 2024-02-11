@@ -2218,8 +2218,8 @@ const crearAsientoComprasMasivo = async (req,res,next)=> {
     //console.log(jsonData);
     //console.log(r_fecemi,r_documento_id,r_razon_social);
     const jsonData = req.body.get('jsonData');
-    console.log(jsonData);
-    
+    console.log('jsonData:', jsonData);
+
     /*strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
     try {
         const parametros = [jsonData,id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
