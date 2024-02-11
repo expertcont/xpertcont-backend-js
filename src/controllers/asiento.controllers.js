@@ -2211,10 +2211,12 @@ const crearAsientoVentasMasivo = async (req,res,next)=> {
 };
 const crearAsientoComprasMasivo = async (req,res,next)=> {
     let strSQL;
-    const { jsonData } = req.body;
+    const { r_fecemi,r_documento_id,r_razon_social } = req.body;
+    //const { jsonData } = req.body;
     //const { id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
     //console.log(documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
-    console.log(jsonData);
+    //console.log(jsonData);
+    console.log(r_fecemi,r_documento_id,r_razon_social);
     /*strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
     try {
         const parametros = [jsonData,id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
