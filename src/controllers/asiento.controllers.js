@@ -2219,8 +2219,8 @@ const crearAsientoComprasMasivo = async (req,res,next)=> {
     //console.log(r_fecemi,r_documento_id,r_razon_social);
     console.log('assdassddsdas');
     
-    const datosCarga = JSON.parse(req.body.jsonData);
-    //const jsonData = req.body.jsonData;
+    //const datosCarga = JSON.parse(req.body.jsonData);
+    const datosCarga = req.body.jsonData;
     //console.log('jsonData:', JSON.parse(req.body.jsonData));
     console.log(datosCarga);
 
