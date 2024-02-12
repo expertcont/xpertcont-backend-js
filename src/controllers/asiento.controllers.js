@@ -2194,7 +2194,7 @@ const anularAsiento = async (req,res,next)=> {
 
 };
 
-const crearAsientoVentasMasivo = async (req,res,next)=> {
+const crearAsientoMasivoVentas = async (req,res,next)=> {
     let strSQL;
     const { jsonData } = req.body;
     const { id_usuario,documento_id,periodo,id_cuenta } = req.params;
@@ -2209,13 +2209,13 @@ const crearAsientoVentasMasivo = async (req,res,next)=> {
         next(error)
     }
 };
-const crearAsientoComprasMasivo = async (req,res,next)=> {
+const crearAsientoMasivoCompras = async (req,res,next)=> {
     let strSQL;
     //const { r_fecemi,r_documento_id,r_razon_social } = req.body;
-    const { jsonData } = req.body;
+    const { r_razon_social } = req.body;
     //const { id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
     //console.log(documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
-    console.log(jsonData);
+    console.log(r_razon_social);
     //console.log(r_fecemi,r_documento_id,r_razon_social);
     
     /*const datosCarga = JSON.parse(req.body.datosCarga);
@@ -2249,8 +2249,8 @@ module.exports = {
     obtenerTodosAsientosPlan,
     obtenerAsiento,
     crearAsiento,
-    crearAsientoVentasMasivo,
-    crearAsientoComprasMasivo,
+    crearAsientoMasivoVentas,
+    crearAsientoMasivoCompras,
     importarExcelRegVentas,
     importarExcelRegCompras,
     importarSireRegVentas,

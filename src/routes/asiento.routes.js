@@ -4,7 +4,7 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,importarExcelRegVentas,importarExcelRegCompras,generarSireCompras,generarSireVentas,importarSireRegVentas,importarSireRegCompras,obtenerTodosAsientosComparacion, obtenerTodosAsientosPrev, crearAsientoVentasMasivo, crearAsientoComprasMasivo} = require('../controllers/asiento.controllers')
+const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,importarExcelRegVentas,importarExcelRegCompras,generarSireCompras,generarSireVentas,importarSireRegVentas,importarSireRegCompras,obtenerTodosAsientosComparacion, obtenerTodosAsientosPrev, crearAsientoMasivoVentas, crearAsientoMasivoCompras} = require('../controllers/asiento.controllers')
 
 router.get('/asiento/compras/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCompra);
 router.get('/asiento/ventas/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosVenta);
@@ -26,8 +26,8 @@ router.post('/asientoexcelcompras', upload.single('archivoExcel'), importarExcel
 router.post('/asientosireventas', upload.single('archivoExcel'), importarSireRegVentas);//ahora es cvs o excel 97
 router.post('/asientosirecompras', upload.single('archivoExcel'), importarSireRegCompras);//ahora es cvs o excel 97
 
-router.post('/asientomasivoventas', crearAsientoVentasMasivo); //new para ejecutar proc almac con jsonb
-router.post('/asientomasivocompras', crearAsientoComprasMasivo); //new para ejecutar proc almac con jsonb
+router.post('/asientomasivoventas', crearAsientoMasivoVentas); //new para ejecutar proc almac con jsonb
+router.post('/asientomasivocompras', crearAsientoMasivoCompras); //new para ejecutar proc almac con jsonb
 
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', actualizarAsiento);
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', anularAsiento);
