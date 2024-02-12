@@ -2238,7 +2238,8 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
         const result = await pool.query(strSQL, parametros);
         res.json(result.rows[0]);
     }catch(error){
-        res.json({error:error.message});
+        //res.json({error:error.message});
+        res.json(error);
         next(error)
     }
 };
