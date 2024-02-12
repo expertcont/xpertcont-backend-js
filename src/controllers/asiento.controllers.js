@@ -2217,11 +2217,13 @@ const crearAsientoComprasMasivo = async (req,res,next)=> {
     //console.log(documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
     //console.log(jsonData);
     //console.log(r_fecemi,r_documento_id,r_razon_social);
-    console.log('assdassddsdas');
     
-    //const datosCarga = JSON.parse(req.body.jsonData);
-    const datosCarga = req.body.jsonData;
-    //console.log('jsonData:', JSON.parse(req.body.jsonData));
+    const datosCarga = JSON.parse(req.body.datosCarga);
+    const {
+        r_fecemi,
+        r_documento_id,
+        r_razon_social,
+    } = datosCarga;
     console.log(datosCarga);
 
     /*strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
