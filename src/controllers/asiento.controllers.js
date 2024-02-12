@@ -2211,32 +2211,24 @@ const crearAsientoMasivoVentas = async (req,res,next)=> {
 };
 const crearAsientoMasivoCompras = async (req,res,next)=> {
     let strSQL;
-    const { id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
+    const {id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
 
     const datos = req.body;
     const primerElemento = datos[0];
     console.log(primerElemento);
     
 
-    console.log(id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
+    console.log(id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
     
-    /*const datosCarga = JSON.parse(req.body.datosCarga);
-    const {
-        r_fecemi,
-        r_documento_id,
-        r_razon_social,
-    } = datosCarga;
-    console.log(r_razon_social);*/
-
-    /*strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
+    strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
     try {
-        const parametros = [jsonData,id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
+        const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
         const result = await pool.query(strSQL, parametros);
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
         next(error)
-    }*/
+    }
 };
 
 module.exports = {
