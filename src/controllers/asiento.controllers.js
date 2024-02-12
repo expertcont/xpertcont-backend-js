@@ -2227,10 +2227,9 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
     const {id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
 
     const datos = req.body;
-    const primerElemento = datos[0];
-    console.log(primerElemento);
+    //const primerElemento = datos[0];
+    console.log(datos);
     
-
     console.log(id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
     
     strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
@@ -2239,7 +2238,7 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
         const result = await pool.query(strSQL, parametros);
         res.json(result.rows[0]);
     }catch(error){
-        //res.json({error:error.message});
+        res.json({error:error.message});
         next(error)
     }
 };
