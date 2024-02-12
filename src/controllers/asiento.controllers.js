@@ -2224,7 +2224,7 @@ const crearAsientoComprasMasivo = async (req,res,next)=> {
         r_documento_id,
         r_razon_social,
     } = datosCarga;
-    console.log(datosCarga);
+    console.log(r_razon_social);
 
     /*strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
     try {
