@@ -2211,21 +2211,14 @@ const crearAsientoMasivoVentas = async (req,res,next)=> {
 };
 const crearAsientoMasivoCompras = async (req,res,next)=> {
     let strSQL;
-    //const { r_fecemi,r_documento_id,r_razon_social } = req.body;
-    //const { r_razon_social } = req.body;
-    //console.log(r_razon_social);
+    const { id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
 
-    
-    //console.log(datos[0].r_razon_social);
-    console.log(req.body);
     const datos = req.body;
     const primerElemento = datos[0];
     console.log(primerElemento);
-
-    //const { id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
-    //console.log(documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
     
-    //console.log(r_fecemi,r_documento_id,r_razon_social);
+
+    console.log(id_usuario,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
     
     /*const datosCarga = JSON.parse(req.body.datosCarga);
     const {
