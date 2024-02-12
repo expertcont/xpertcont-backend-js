@@ -183,6 +183,10 @@ const obtenerTodosAsientosPrev = async (req,res,next)=> {
     strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";
     strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto";
     strSQL += " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante";
+    strSQL += " ,r_cod";
+    strSQL += " ,r_serie";
+    strSQL += " ,r_numero";
+    strSQL += " ,r_numero2";
     strSQL += " ,r_id_doc";
     strSQL += " ,r_documento_id";
     strSQL += " ,r_razon_social";
@@ -195,6 +199,7 @@ const obtenerTodosAsientosPrev = async (req,res,next)=> {
     strSQL += " ,r_numero_ref";
     strSQL += " ,r_id_aduana";
     strSQL += " ,r_ano_dam";
+    strSQL += " ,origen";
     strSQL += " ,num_asiento";
     strSQL += " FROM mct_asientocontable AS ac";
     strSQL += " WHERE ac.id_usuario = '" + id_anfitrion + "'";
