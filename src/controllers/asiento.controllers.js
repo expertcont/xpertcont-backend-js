@@ -201,6 +201,14 @@ const obtenerTodosAsientosPrev = async (req,res,next)=> {
     strSQL += " ,r_ano_dam";
     strSQL += " ,origen";
     strSQL += " ,num_asiento";
+    strSQL += " ,r_base001";
+    strSQL += " ,r_base002";
+    strSQL += " ,r_base003";
+    strSQL += " ,r_base004";
+    strSQL += " ,r_igv001";
+    strSQL += " ,r_igv002";
+    strSQL += " ,r_igv003";
+    strSQL += " ,r_monto_icbp";
     strSQL += " FROM mct_asientocontable AS ac";
     strSQL += " WHERE ac.id_usuario = '" + id_anfitrion + "'";
     strSQL += " AND ac.documento_id = '" + documento_id + "'";
