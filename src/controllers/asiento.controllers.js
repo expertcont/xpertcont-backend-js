@@ -2229,12 +2229,11 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
     const datos = req.body;
     //const primerElemento = datos[0];
     console.log(datos);
-    
     console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
-    
+    const datosJSON = JSON.stringify(datos);     
     strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
     try {
-        const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
+        const parametros = [datosJSON,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
         const result = await pool.query(strSQL, parametros);
         console.log('todo ok');
         res.json(result.rows[0]);
