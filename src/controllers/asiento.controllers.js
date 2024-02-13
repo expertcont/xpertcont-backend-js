@@ -2214,9 +2214,9 @@ const crearAsientoMasivoVentas = async (req,res,next)=> {
     const datos = req.body;
     //const primerElemento = datos[0];
     //console.log(datos);
-    //console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta);
+    console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta);
     const datosJSON = JSON.stringify(datos);     
-    //console.log(datosJSON);
+    console.log(datosJSON);
     strSQL = "CALL pgenerarasientosventa($1,$2,$3,$4,$5)";
     try {
         const parametros = [datosJSON,id_anfitrion,documento_id,periodo,id_cuenta];
