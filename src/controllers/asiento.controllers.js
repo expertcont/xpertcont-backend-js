@@ -2239,7 +2239,7 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
-        res.json(error);
+        //res.json(error);
         next(error)
     }
 };
