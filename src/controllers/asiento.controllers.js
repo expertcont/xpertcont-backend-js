@@ -2236,10 +2236,13 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
     try {
         const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
         const result = await pool.query(strSQL, parametros);
+        console.log('todo ok');
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
         //res.json(error);
+        console.log('hubo un problema');
+        console.log(error.message);
         next(error)
     }
 };
