@@ -2209,16 +2209,23 @@ const anularAsiento = async (req,res,next)=> {
 
 const crearAsientoMasivoVentas = async (req,res,next)=> {
     let strSQL;
-    const { jsonData } = req.body;
-    const { id_usuario,documento_id,periodo,id_cuenta } = req.params;
+    const {id_anfitrion,documento_id,periodo,id_cuenta} = req.params;
 
+    const datos = req.body;
+    //const primerElemento = datos[0];
+    //console.log(datos);
+    //console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta);
+    const datosJSON = JSON.stringify(datos);     
+    //console.log(datosJSON);
     strSQL = "CALL pgenerarasientosventa($1,$2,$3,$4,$5)";
     try {
-        const parametros = [jsonData,id_usuario,documento_id,periodo,id_cuenta];
+        const parametros = [datosJSON,id_anfitrion,documento_id,periodo,id_cuenta];
         const result = await pool.query(strSQL, parametros);
+        console.log('ventas ok');
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
+        console.log('hubo un problema: ', error.message);
         next(error)
     }
 };
@@ -2228,15 +2235,15 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
 
     const datos = req.body;
     //const primerElemento = datos[0];
-    console.log(datos);
-    console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
+    //console.log(datos);
+    //console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
     const datosJSON = JSON.stringify(datos);     
-    console.log(datosJSON);
+    //console.log(datosJSON);
     strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
     try {
         const parametros = [datosJSON,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
         const result = await pool.query(strSQL, parametros);
-        console.log('todo ok');
+        console.log('compras ok');
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
