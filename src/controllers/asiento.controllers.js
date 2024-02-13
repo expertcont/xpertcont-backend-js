@@ -2231,6 +2231,7 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
     console.log(datos);
     console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono);
     const datosJSON = JSON.stringify(datos);     
+    console.log(datosJSON);
     strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
     try {
         const parametros = [datosJSON,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
