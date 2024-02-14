@@ -2212,14 +2212,11 @@ const crearAsientoMasivoVentas = async (req,res,next)=> {
     const {id_anfitrion,documento_id,periodo,id_cuenta} = req.params;
 
     const datos = req.body;
-    console.log(req.body);
+    //console.log(datos);
     //console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta);
-    //const datosJSON = JSON.stringify(datos);     
-    //console.log(datosJSON);
 
     strSQL = "CALL pgenerarasientosventa($1,$2,$3,$4,$5)";
     try {
-        //const parametros = [datosJSON,id_anfitrion,documento_id,periodo,id_cuenta];
         const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta];
         const result = await pool.query(strSQL, parametros);
         console.log('ventas ok');
@@ -2230,7 +2227,28 @@ const crearAsientoMasivoVentas = async (req,res,next)=> {
         next(error)
     }
 };
+
 const crearAsientoMasivoCompras = async (req,res,next)=> {
+    let strSQL;
+    const {id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
+
+    const datos = req.body;
+    console.log(datos);
+    strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
+    try {
+        const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
+        const result = await pool.query(strSQL, parametros);
+        console.log('compras ok');
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        console.log('hubo un problema: ', error.message);
+        next(error)
+    }
+};
+
+//version json
+/*const crearAsientoMasivoCompras = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
 
@@ -2251,7 +2269,7 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
         console.log('hubo un problema: ', error.message);
         next(error)
     }
-};
+};*/
 
 module.exports = {
     obtenerTodosAsientosCompra,
