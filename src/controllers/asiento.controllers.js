@@ -2216,10 +2216,11 @@ const crearAsientoMasivoVentas = async (req,res,next)=> {
     //console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta);
     //const datosJSON = JSON.stringify(datos);     
     //console.log(datosJSON);
-    
-    /*strSQL = "CALL pgenerarasientosventa($1,$2,$3,$4,$5)";
+
+    strSQL = "CALL pgenerarasientosventa($1,$2,$3,$4,$5)";
     try {
-        const parametros = [datosJSON,id_anfitrion,documento_id,periodo,id_cuenta];
+        //const parametros = [datosJSON,id_anfitrion,documento_id,periodo,id_cuenta];
+        const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta];
         const result = await pool.query(strSQL, parametros);
         console.log('ventas ok');
         res.json(result.rows[0]);
@@ -2227,7 +2228,7 @@ const crearAsientoMasivoVentas = async (req,res,next)=> {
         //res.json({error:error.message});
         console.log('hubo un problema: ', error.message);
         next(error)
-    }*/
+    }
 };
 const crearAsientoMasivoCompras = async (req,res,next)=> {
     let strSQL;
