@@ -23,6 +23,7 @@ app.use(cors()); //comunica con otro backend
 
 app.use(morgan('dev'));
 app.use(express.json()); //para reconocer json en express, parametros POST
+app.use(express.text()); //new para text ;)
 
 app.use(asientodetRoutes);
 app.use(asientoRoutes);
