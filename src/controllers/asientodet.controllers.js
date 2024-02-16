@@ -2,24 +2,18 @@ const pool = require('../db');
 
 const obtenerTodosAsientosDet = async (req,res,next)=> {
     let strSQL;
-    strSQL = "select zona_venta";
-    strSQL = strSQL + " ,cast(comprobante_original_fecemi as varchar)::varchar(50) as comprobante_original_fecemi";
-    strSQL = strSQL + " ,tipo_op";
-    strSQL = strSQL + " ,(comprobante_original_codigo";
-    strSQL = strSQL + "   || '-' || comprobante_original_serie";
-    strSQL = strSQL + "   || '-' || comprobante_original_numero)::varchar(50) as pedido";
-    strSQL = strSQL + " ,vendedor";
-    strSQL = strSQL + " ,razon_social";
-    strSQL = strSQL + " ,comprobante_original_codigo";
-    strSQL = strSQL + " ,comprobante_original_serie";
-    strSQL = strSQL + " ,comprobante_original_numero";
-    strSQL = strSQL + " ,elemento";
-    strSQL = strSQL + " from";
-    strSQL = strSQL + " mve_venta_det ";
-    strSQL = strSQL + " order by comprobante_original_fecemi DESC, razon_social ASC";
+    const {id_anfitrion,documento_id,periodo,id_libro} = req.params;
+
+    strSQL = "SELECT * ";
+    strSQL = strSQL + " FROM mct_asientocontabledet ";
+    strSQL = strSQL + " WHERE id_usuario = $1";
+    strSQL = strSQL + " AND documento_id = $2";
+    strSQL = strSQL + " AND periodo = $3";
+    strSQL = strSQL + " AND id_libro = $4";
+    strSQL = strSQL + " ORDER BY item";
 
     try {
-        const todosReg = await pool.query(strSQL);
+        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro]);
         res.json(todosReg.rows);
     }
     catch(error){
@@ -28,22 +22,22 @@ const obtenerTodosAsientosDet = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
-
 const obtenerAsientoDet = async (req,res,next)=> {
     //DEtalles de un Pedido
     try {
-        const {cod,serie,num,elem} = req.params;
+        const {id_anfitrion,documento_id,periodo,id_libro,num_asiento} = req.params;
         let strSQL ;
         strSQL = "SELECT * ";
-        strSQL = strSQL + " FROM mve_venta_detalle ";
-        strSQL = strSQL + " WHERE comprobante_original_codigo = $1";
-        strSQL = strSQL + " AND comprobante_original_serie = $2";
-        strSQL = strSQL + " AND comprobante_original_numero = $3";
-        strSQL = strSQL + " AND elemento = $4";
+        strSQL = strSQL + " FROM mct_asientocontabledet ";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND documento_id = $2";
+        strSQL = strSQL + " AND periodo = $3";
+        strSQL = strSQL + " AND id_libro = $4";
+        strSQL = strSQL + " AND num_asiento = $5";
         strSQL = strSQL + " ORDER BY item";
-        //console.log(strSQL,[cod,serie,num,elem]);
+        //console.log(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
         
-        const result = await pool.query(strSQL,[cod,serie,num,elem]);
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
         
         //eSTE MENSAJE DE VENTGA NO ENCONTRADA, CONFUNDE AL BUCLE PARA RENDERIZAR LOS DATOS
         //MEJOR QUE SALGA ARRAY VACIO, AL MENOS ASI ENTIENDE QUE NO HAY NADA
@@ -60,20 +54,21 @@ const obtenerAsientoDet = async (req,res,next)=> {
 };
 
 const obtenerAsientoDetItem = async (req,res,next)=> {
-    //DEtalles de un Pedido
+    //Detalles de un Pedido
     try {
-        const {cod,serie,num,elem,item} = req.params;
+        const {id_anfitrion,documento_id,periodo,id_libro,num_asiento,item} = req.params;
         let strSQL ;
-        strSQL = "SELECT mve_venta_detalle.*, cast(mve_venta_detalle.fecha_entrega as varchar)::varchar(50) as fecha_entrega2 FROM mve_venta_detalle ";
-        strSQL = strSQL + " WHERE comprobante_original_codigo = $1";
-        strSQL = strSQL + " AND comprobante_original_serie = $2";
-        strSQL = strSQL + " AND comprobante_original_numero = $3";
-        strSQL = strSQL + " AND elemento = $4";
-        strSQL = strSQL + " AND item = $5";
-        strSQL = strSQL + " ORDER BY item";
-        //console.log(strSQL,[cod,serie,num,elem,item]);
+        strSQL = "SELECT * ";
+        strSQL = strSQL + " FROM mct_asientocontabledet ";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND documento_id = $2";
+        strSQL = strSQL + " AND periodo = $3";
+        strSQL = strSQL + " AND id_libro = $4";
+        strSQL = strSQL + " AND num_asiento = $5";
+        strSQL = strSQL + " AND item = $6";
+        //console.log(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento,item]);
         
-        const result = await pool.query(strSQL,[cod,serie,num,elem,item]);
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento,item]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -85,7 +80,6 @@ const obtenerAsientoDetItem = async (req,res,next)=> {
         console.log(error.message);
     }
 };
-
 
 const crearAsientoDet = async (req,res,next)=> {
     let strSQL;
@@ -123,7 +117,7 @@ const crearAsientoDet = async (req,res,next)=> {
     //console.log(datePieces);
     let sAno = (fechaArmada.getFullYear()).toString(); // new 
 
-    strSQL = "INSERT INTO mve_venta_detalle";
+    strSQL = "INSERT INTO mct_asientocontabledet";
     strSQL = strSQL + " (";
     strSQL = strSQL + "  id_empresa";
     strSQL = strSQL + " ,id_punto_venta";
@@ -220,20 +214,16 @@ const crearAsientoDet = async (req,res,next)=> {
 
 const eliminarAsientoDet = async (req,res,next)=> {
     try {
-        const {cod,serie,num,elem,item} = req.params;
+        const {id_anfitrion,documento_id,periodo,id_libro,num_asiento,item} = req.params;
         var strSQL;
-        strSQL = "DELETE FROM mve_venta_detalle ";
-        strSQL = strSQL + " WHERE comprobante_original_codigo = $1";
-        strSQL = strSQL + " AND comprobante_original_serie = $2";
-        strSQL = strSQL + " AND comprobante_original_numero = $3";
-        strSQL = strSQL + " AND elemento = $4";
-        if (item!="-"){
-            strSQL = strSQL + " AND item = $5";
-            //console.log(strSQL,[cod,serie,num,elem,item]);
-            const result = await pool.query(strSQL,[cod,serie,num,elem,item]);
-        }else{
-            const result = await pool.query(strSQL,[cod,serie,num,elem]);
-        }
+        strSQL = "DELETE FROM mct_asientocontabledet ";
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND documento_id = $2";
+        strSQL = strSQL + " AND periodo = $3";
+        strSQL = strSQL + " AND id_libro = $4";
+        strSQL = strSQL + " AND num_asiento = $5";
+        strSQL = strSQL + " AND item = $6";
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento,item]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
