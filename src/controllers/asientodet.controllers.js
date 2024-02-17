@@ -27,14 +27,33 @@ const obtenerAsientoDet = async (req,res,next)=> {
     try {
         const {id_anfitrion,documento_id,periodo,id_libro,num_asiento} = req.params;
         let strSQL ;
-        strSQL = "SELECT * ";
-        strSQL = strSQL + " FROM mct_asientocontabledet ";
-        strSQL = strSQL + " WHERE id_usuario = $1";
-        strSQL = strSQL + " AND documento_id = $2";
-        strSQL = strSQL + " AND periodo = $3";
-        strSQL = strSQL + " AND id_libro = $4";
-        strSQL = strSQL + " AND num_asiento = $5";
-        strSQL = strSQL + " ORDER BY item";
+
+        strSQL = "select mct_asientocontabledet.*, mct_cuentacontable.descripcion";
+        strSQL += " from mct_asientocontabledet left join mct_cuentacontable";
+        strSQL += " on (mct_asientocontabledet.id_cuenta = mct_cuentacontable.id_cuenta and";
+        strSQL += "     mct_asientocontabledet.id_usuario = mct_cuentacontable.id_usuario)";
+        strSQL += " where mct_asientocontabledet.id_usuario = $1";
+        strSQL += " and mct_asientocontabledet.documento_id = $2";
+        strSQL += " and mct_asientocontabledet.periodo = $3";
+        strSQL += " and mct_asientocontabledet.id_libro = $4";
+        strSQL += " and mct_asientocontabledet.num_asiento = $5";
+        strSQL += " and mct_asientocontabledet.id_cuenta not like '104%'";
+        
+        strSQL += " union all";
+        
+        strSQL += " select mct_asientocontabledet.*, mct_cuentacontable_det.descripcion";
+        strSQL += " from mct_asientocontabledet left join mct_cuentacontable_det";
+        strSQL += " on (mct_asientocontabledet.id_cuenta = mct_cuentacontable_det.id_cuenta and";
+        strSQL += "     mct_asientocontabledet.id_usuario = mct_cuentacontable_det.id_usuario)";
+        strSQL += " where mct_asientocontabledet.id_usuario = $1";
+        strSQL += " and mct_asientocontabledet.documento_id = $2";
+        strSQL += " and mct_asientocontabledet.periodo = $3";
+        strSQL += " and mct_asientocontabledet.id_libro = $4";
+        strSQL += " and mct_asientocontabledet.num_asiento = $5";
+        strSQL += " and mct_asientocontabledet.id_cuenta like '104%'";
+        
+        strSQL += " order by mct_asientocontabledet.id_cuenta";
+        
         console.log(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
         
         const result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
