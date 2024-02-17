@@ -29,6 +29,7 @@ const obtenerAsientoDet = async (req,res,next)=> {
         let strSQL ;
 
         strSQL = "select mct_asientocontabledet.*, mct_cuentacontable.descripcion";
+        strSQL += ",(mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(50) as comprobante";
         strSQL += " from mct_asientocontabledet left join mct_cuentacontable";
         strSQL += " on (mct_asientocontabledet.id_cuenta = mct_cuentacontable.id_cuenta and";
         strSQL += "     mct_asientocontabledet.id_usuario = mct_cuentacontable.id_usuario)";
@@ -42,6 +43,7 @@ const obtenerAsientoDet = async (req,res,next)=> {
         strSQL += " union all";
         
         strSQL += " select mct_asientocontabledet.*, mct_cuentacontable_det.descripcion";
+        strSQL += ",(mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(50) as comprobante";
         strSQL += " from mct_asientocontabledet left join mct_cuentacontable_det";
         strSQL += " on (mct_asientocontabledet.id_cuenta = mct_cuentacontable_det.id_cuenta and";
         strSQL += "     mct_asientocontabledet.id_usuario = mct_cuentacontable_det.id_usuario)";
