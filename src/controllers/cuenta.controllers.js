@@ -51,9 +51,9 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         const {id_usuario,documento_id,id_maestro,bpopup} = req.params;
         strSQL = "SELECT ";
         if (bpopup != undefined && bpopup != null) {
-            strSQL = strSQL + " id_cuenta";
-        }else {
             strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
+        }else {
+            strSQL = strSQL + " id_cuenta";            
         }
         strSQL = strSQL + " ,descripcion";
         strSQL = strSQL + " FROM";
@@ -62,14 +62,14 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         if (id_maestro != undefined && id_maestro != null) {
         strSQL = strSQL + " AND id_cuenta like  '" + id_maestro + "%'";
         }
-        
+
         strSQL = strSQL + " UNION ALL";
         
         strSQL = strSQL + " SELECT";
         if (bpopup != undefined && bpopup != null) {
-            strSQL = strSQL + " id_cuenta";
-        }else {
             strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
+        }else {
+            strSQL = strSQL + " id_cuenta";            
         }
         strSQL = strSQL + " ,descripcion";
         strSQL = strSQL + " FROM";
