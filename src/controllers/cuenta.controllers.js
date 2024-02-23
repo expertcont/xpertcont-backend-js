@@ -80,7 +80,11 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
             strSQL = strSQL + " AND id_cuenta like  '" + id_maestro + "%'";
         }
 
-        strSQL = strSQL + " ORDER BY id_cuenta";
+        if (bpopup != undefined && bpopup != null) {
+            strSQL = strSQL + " ORDER BY codigo";
+        }else{
+            strSQL = strSQL + " ORDER BY id_cuenta";
+        }
 
         const todasCuentas = await pool.query(strSQL);
         res.json(todasCuentas.rows);
