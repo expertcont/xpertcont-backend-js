@@ -48,9 +48,13 @@ const obtenerTodasCuentas = async (req,res,next)=> {
 const obtenerTodasCuentasSimple = async (req,res,next)=> {
     try {
         let strSQL;
-        const {id_usuario,documento_id,id_maestro} = req.params;
+        const {id_usuario,documento_id,id_maestro,bpopup} = req.params;
         strSQL = "SELECT ";
-        strSQL = strSQL + " id_cuenta";
+        if (bpopup != undefined && bpopup != null) {
+            strSQL = strSQL + " id_cuenta";
+        }else {
+            strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
+        }
         strSQL = strSQL + " ,descripcion";
         strSQL = strSQL + " FROM";
         strSQL = strSQL + " mct_cuentacontable";
@@ -58,9 +62,15 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         if (id_maestro != undefined && id_maestro != null) {
         strSQL = strSQL + " AND id_cuenta like  '" + id_maestro + "%'";
         }
+        
         strSQL = strSQL + " UNION ALL";
         
-        strSQL = strSQL + " SELECT id_cuenta";
+        strSQL = strSQL + " SELECT";
+        if (bpopup != undefined && bpopup != null) {
+            strSQL = strSQL + " id_cuenta";
+        }else {
+            strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
+        }
         strSQL = strSQL + " ,descripcion";
         strSQL = strSQL + " FROM";
         strSQL = strSQL + " mct_cuentacontable_det";
@@ -79,6 +89,7 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+
 const obtenerTodosAmarres6 = async (req,res,next)=> {
     try {
         let strSQL;
