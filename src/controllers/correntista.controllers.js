@@ -29,6 +29,28 @@ const obtenerCorrentista = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+const obtenerCorrentistaPopUp = async (req,res,next)=> {
+    try {
+        const {id_usuario, documento_id} = req.params;
+        let strSQL;
+        strSQL = "SELECT (r_id_doc || ' | ' || r_documento_id) as codigo, r_razon_social as descripcion";
+        strSQL += " FROM mct_asientocontabledet";
+        strSQL += " WHERE id_usuario = $1 AND documento_id = $2 AND NOT r_documento_id IS NULL";
+        strSQL += " GROUP BY r_id_doc,r_documento_id,r_razon_social";
+        strSQL += " ORDER BY r_razon_social";
+
+        const result = await pool.query(strSQL,[id_usuario,documento_id]);
+
+        if (result.rows.length === 0)
+            return res.status(404).json({
+                message:"Correntista no encontrado"
+            });
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
 
 const crearCorrentista = async (req,res,next)=> {
     //const {id_usuario,nombres} = req.body
@@ -146,6 +168,7 @@ const actualizarCorrentista = async (req,res,next)=> {
 module.exports = {
     obtenerTodosCorrentista,
     obtenerCorrentista,
+    obtenerCorrentistaPopUp,
     crearCorrentista,
     eliminarCorrentista,
     actualizarCorrentista
