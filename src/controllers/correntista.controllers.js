@@ -46,7 +46,7 @@ const obtenerCorrentistaPopUp = async (req,res,next)=> {
                 message:"Correntista no encontrado"
             });
 
-        res.json(result.rows[0]);
+        res.json(result.rows);
     } catch (error) {
         console.log(error.message);
     }
