@@ -77,7 +77,6 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
             strSQL = strSQL + " id_cuenta";
             strSQL = strSQL + " ,descripcion";
         }
-        strSQL = strSQL + " ,descripcion";
         strSQL = strSQL + " FROM";
         strSQL = strSQL + " mct_cuentacontable_det";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
