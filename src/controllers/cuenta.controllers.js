@@ -52,10 +52,13 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         strSQL = "SELECT ";
         if (bpopup != undefined && bpopup != null) {
             strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
+            strSQL = strSQL + " ,descripcion";
+            strSQL = strSQL + " ,null as auxiliar";
         }else {
-            strSQL = strSQL + " id_cuenta";            
+            strSQL = strSQL + " id_cuenta";   
+            strSQL = strSQL + " ,descripcion";         
         }
-        strSQL = strSQL + " ,descripcion";
+        
         strSQL = strSQL + " FROM";
         strSQL = strSQL + " mct_cuentacontable";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
@@ -68,8 +71,11 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         strSQL = strSQL + " SELECT";
         if (bpopup != undefined && bpopup != null) {
             strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
+            strSQL = strSQL + " ,descripcion";
+            strSQL = strSQL + " ,null as auxiliar";
         }else {
-            strSQL = strSQL + " id_cuenta";            
+            strSQL = strSQL + " id_cuenta";
+            strSQL = strSQL + " ,descripcion";
         }
         strSQL = strSQL + " ,descripcion";
         strSQL = strSQL + " FROM";

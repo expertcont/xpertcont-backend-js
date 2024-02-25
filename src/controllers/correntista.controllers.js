@@ -33,7 +33,7 @@ const obtenerCorrentistaPopUp = async (req,res,next)=> {
     try {
         const {id_usuario, documento_id} = req.params;
         let strSQL;
-        strSQL = "SELECT (r_id_doc || ' | ' || r_documento_id) as codigo, r_razon_social as descripcion";
+        strSQL = "SELECT r_documento_id as codigo, r_razon_social as descripcion, r_id_doc as auxiliar";
         strSQL += " FROM mct_asientocontabledet";
         strSQL += " WHERE id_usuario = $1 AND documento_id = $2 AND NOT r_documento_id IS NULL";
         strSQL += " GROUP BY r_id_doc,r_documento_id,r_razon_social";
