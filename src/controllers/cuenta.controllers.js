@@ -53,7 +53,7 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         if (bpopup != undefined && bpopup != null) {
             strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
             strSQL = strSQL + " ,descripcion";
-            strSQL = strSQL + " ,null as auxiliar";
+            strSQL = strSQL + " ,'' as auxiliar";
         }else {
             strSQL = strSQL + " id_cuenta";   
             strSQL = strSQL + " ,descripcion";         
@@ -72,7 +72,7 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         if (bpopup != undefined && bpopup != null) {
             strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
             strSQL = strSQL + " ,descripcion";
-            strSQL = strSQL + " ,null as auxiliar";
+            strSQL = strSQL + " ,'' as auxiliar";
         }else {
             strSQL = strSQL + " id_cuenta";
             strSQL = strSQL + " ,descripcion";
