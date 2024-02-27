@@ -2,8 +2,8 @@ const pool = require('../db');
 
 const obtenerTodasFormasPago = async (req,res,next)=> {
     try {
-        const todasZonas = await pool.query("select id_formapago, nombre from mad_formapago order by id_formapago");
-        res.json(todasZonas.rows);
+        const todosRegistros = await pool.query("select id_mediopago, nombre from mct_tmediopago order by id_mediopago");
+        res.json(todosRegistros.rows);
     }
     catch(error){
         console.log(error.message);
@@ -11,10 +11,22 @@ const obtenerTodasFormasPago = async (req,res,next)=> {
 
     //res.send('Listado de todas los zonas');
 };
+const obtenerTodasFormasPagoPopUp = async (req,res,next)=> {
+    try {
+        const todosRegistros = await pool.query("select id_mediopago as codigo, nombre as descripcion, '' as auxiliar from mct_tmediopago order by id_mediopago");
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+
+    //res.send('Listado de todas los zonas');
+};
+
 const obtenerFormaPago = async (req,res,next)=> {
     try {
         const {id} = req.params;
-        const result = await pool.query("select * from mad_formapago where id_formapago = $1",[id]);
+        const result = await pool.query("select * from mct_tmediopago where id_mediopago = $1",[id]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -48,7 +60,7 @@ const crearFormaPago = async (req,res,next)=> {
 const eliminarFormaPago = async (req,res,next)=> {
     try {
         const {id} = req.params;
-        const result = await pool.query("delete from mad_formapago where id_formapago = $1",[id]);
+        const result = await pool.query("delete from mct_tmediopago where id_mediopago = $1",[id]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
@@ -81,6 +93,7 @@ const actualizarFormaPago = async (req,res,next)=> {
 
 module.exports = {
     obtenerTodasFormasPago,
+    obtenerTodasFormasPagoPopUp,
     obtenerFormaPago,
     crearFormaPago,
     eliminarFormaPago,
