@@ -82,7 +82,7 @@ const obtenerAsientoDetItem = async (req,res,next)=> {
 
         strSQL = "select mct_asientocontabledet.*";
         strSQL += " ,(mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(50) as comprobante";
-        strSQL += " ,mct_cuentacontable_det.descripcion";
+        strSQL += " ,mct_cuentacontable.descripcion";
         strSQL += " ,mct_tdoc.nombre as r_doc";
         strSQL += " ,mct_tmediopago.nombre as r_mediopago";
         strSQL += " from";
