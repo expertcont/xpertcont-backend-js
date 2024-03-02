@@ -128,7 +128,7 @@ const obtenerAsientoDetItem = async (req,res,next)=> {
         strSQL += " and mct_asientocontabledet.item = $6";
         strSQL += " and mct_asientocontabledet.id_cuenta like '104%'";
         
-        strSQL += " order by mct_asientocontabledet.item";
+        strSQL += " order by item";
         //console.log(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento,item]);
         
         const result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento,item]);
