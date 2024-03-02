@@ -33,11 +33,18 @@ const obtenerCorrentistaPopUp = async (req,res,next)=> {
     try {
         const {id_usuario, documento_id} = req.params;
         let strSQL;
-        strSQL = "SELECT r_documento_id as codigo, r_razon_social as descripcion, r_id_doc as auxiliar";
+        strSQL = "select * from fct_correntistas($1,$2)";
+        strSQL += " as (";
+        strSQL += "     codigo VARCHAR(20),";
+        strSQL += "     descripcion varchar(200),";
+        strSQL += "     auxiliar varchar(2)";
+        strSQL += " )";
+
+        /*strSQL = "SELECT r_documento_id as codigo, r_razon_social as descripcion, r_id_doc as auxiliar";
         strSQL += " FROM mct_asientocontabledet";
         strSQL += " WHERE id_usuario = $1 AND documento_id = $2 AND NOT r_documento_id IS NULL";
         strSQL += " GROUP BY r_id_doc,r_documento_id,r_razon_social";
-        strSQL += " ORDER BY r_razon_social";
+        strSQL += " ORDER BY r_razon_social";*/
 
         const result = await pool.query(strSQL,[id_usuario,documento_id]);
 
