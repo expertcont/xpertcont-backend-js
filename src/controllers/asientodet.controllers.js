@@ -79,14 +79,56 @@ const obtenerAsientoDetItem = async (req,res,next)=> {
     try {
         const {id_anfitrion,documento_id,periodo,id_libro,num_asiento,item} = req.params;
         let strSQL ;
-        strSQL = "SELECT * ";
-        strSQL = strSQL + " FROM mct_asientocontabledet ";
-        strSQL = strSQL + " WHERE id_usuario = $1";
-        strSQL = strSQL + " AND documento_id = $2";
-        strSQL = strSQL + " AND periodo = $3";
-        strSQL = strSQL + " AND id_libro = $4";
-        strSQL = strSQL + " AND num_asiento = $5";
-        strSQL = strSQL + " AND item = $6";
+
+        strSQL = "select mct_asientocontabledet.*";
+        strSQL += " ,(mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(50) as comprobante";
+        strSQL += " ,mct_cuentacontable_det.descripcion";
+        strSQL += " ,mct_tdoc.nombre as r_doc";
+        strSQL += " ,mct_tmediopago.nombre as r_mediopago";
+        strSQL += " from";
+        strSQL += " (";
+        strSQL += " (";
+        strSQL += " mct_asientocontabledet left join mct_cuentacontable";
+        strSQL += " on (mct_asientocontabledet.id_cuenta = mct_cuentacontable.id_cuenta and";
+        strSQL += "     mct_asientocontabledet.id_usuario = mct_cuentacontable.id_usuario)";
+        strSQL += " ) left join mct_tmediopago";
+        strSQL += " on (mct_asientocontabledet.r_id_mediopago = mct_tmediopago.id_mediopago)";
+        strSQL += " ) left join mct_tdoc";
+        strSQL += " on (mct_asientocontabledet.r_id_doc = mct_tdoc.id_doc)";
+        strSQL += " where mct_asientocontabledet.id_usuario = $1";
+        strSQL += " and mct_asientocontabledet.documento_id = $2";
+        strSQL += " and mct_asientocontabledet.periodo = $3";
+        strSQL += " and mct_asientocontabledet.id_libro = $4";
+        strSQL += " and mct_asientocontabledet.num_asiento = $5";
+        strSQL += " and mct_asientocontabledet.item = $6";
+        strSQL += " and mct_asientocontabledet.id_cuenta not like '104%'";
+        
+        strSQL += " union all";
+        
+        strSQL += " select mct_asientocontabledet.*";
+        strSQL += " ,(mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(50) as comprobante";
+        strSQL += " ,mct_cuentacontable_det.descripcion";
+        strSQL += " ,mct_tdoc.nombre as r_doc";
+        strSQL += " ,mct_tmediopago.nombre as r_mediopago";
+        strSQL += " from";
+        strSQL += " (";
+        strSQL += " (";
+        strSQL += " mct_asientocontabledet left join mct_cuentacontable_det";
+        strSQL += " on (mct_asientocontabledet.id_cuenta = mct_cuentacontable_det.id_cuenta and";
+        strSQL += "     mct_asientocontabledet.id_usuario = mct_cuentacontable_det.id_usuario)";
+        strSQL += " ) left join mct_tmediopago";
+        strSQL += " on (mct_asientocontabledet.r_id_mediopago = mct_tmediopago.id_mediopago)";
+        strSQL += " ) left join mct_tdoc";
+        strSQL += " on (mct_asientocontabledet.r_id_doc = mct_tdoc.id_doc)";
+        strSQL += " where mct_asientocontabledet.id_usuario = $1";
+        strSQL += " and mct_asientocontabledet.documento_id = $2";
+        strSQL += " and mct_asientocontabledet.periodo = $3";
+        strSQL += " and mct_asientocontabledet.id_libro = $4";
+        strSQL += " and mct_asientocontabledet.num_asiento = $5";
+        strSQL += " and mct_asientocontabledet.item = $6";
+        strSQL += " and mct_asientocontabledet.id_cuenta like '104%'";
+        
+        strSQL += " order by mct_asientocontabledet.item";
         //console.log(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento,item]);
         
         const result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento,item]);
