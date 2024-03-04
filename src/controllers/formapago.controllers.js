@@ -23,28 +23,6 @@ const obtenerTodasFormasPagoPopUp = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
-const obtenerTodosCCostoPopUp = async (req,res,next)=> {
-    try {
-        let strSQL;
-        const {id_anfitrion,documento_id} = req.params;
-        strSQL = "SELECT ccosto FROM mct_asientocontabledet";
-        strSQL += " WHERE id_usuario = $1";
-        strSQL += " AND documento_id = $2";
-        strSQL += " GROUP BY ccosto";
-        strSQL += " ORDER BY ccosto";
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id]);
-
-        if (result.rows.length === 0)
-            return res.status(404).json({
-                message:"Usuario no encontrado"
-            });
-
-        res.json(result.rows[0]);
-    } catch (error) {
-        console.log(error.message);
-    }
-};
-
 const obtenerFormaPago = async (req,res,next)=> {
     try {
         const {id} = req.params;
@@ -116,7 +94,6 @@ const actualizarFormaPago = async (req,res,next)=> {
 module.exports = {
     obtenerTodasFormasPago,
     obtenerTodasFormasPagoPopUp,
-    obtenerTodosCCostoPopUp,
     obtenerFormaPago,
     crearFormaPago,
     eliminarFormaPago,
