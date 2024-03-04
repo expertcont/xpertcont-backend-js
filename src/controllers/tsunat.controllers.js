@@ -75,11 +75,12 @@ const obtenerTodosCCostoPopUp = async (req,res,next)=> {
         strSQL += " FROM mct_asientocontabledet";
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND documento_id = $2";
+        strSQL += " AND not r_ccosto is null";
         strSQL += " GROUP BY r_ccosto";
         strSQL += " ORDER BY r_ccosto";
         const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id]);
         res.json(todosReg.rows);
-        
+
     } catch (error) {
         console.log(error.message);
     }
