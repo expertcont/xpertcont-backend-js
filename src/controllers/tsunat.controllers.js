@@ -69,7 +69,10 @@ const obtenerTodosCCostoPopUp = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
-        strSQL = "SELECT ccosto FROM mct_asientocontabledet";
+        strSQL = "SELECT ccosto as codigo";
+        strSQL += "     ,null as descripcion";
+        //strSQL += "     ,null as auxiliar";
+        strSQL += " FROM mct_asientocontabledet";
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND documento_id = $2";
         strSQL += " GROUP BY ccosto";
