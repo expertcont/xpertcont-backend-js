@@ -77,14 +77,9 @@ const obtenerTodosCCostoPopUp = async (req,res,next)=> {
         strSQL += " AND documento_id = $2";
         strSQL += " GROUP BY r_ccosto";
         strSQL += " ORDER BY r_ccosto";
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id]);
-
-        if (result.rows.length === 0)
-            return res.status(404).json({
-                message:"Usuario no encontrado"
-            });
-
-        res.json(result.rows[0]);
+        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        res.json(todosReg.rows);
+        
     } catch (error) {
         console.log(error.message);
     }
