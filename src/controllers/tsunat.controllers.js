@@ -49,7 +49,7 @@ const obtenerTodosComprobante = async (req,res,next)=> {
 };
 const obtenerTodosMedioPago = async (req,res,next)=> {
     try {
-        const todosReg = await pool.query("SELECT id_mediopago,nombre from mct_tmediopago ORDER BY id_mediopago");
+        const todosReg = await pool.query("SELECT id_mediopago as codigo, nombre as descripcion from mct_tmediopago ORDER BY id_mediopago");
         res.json(todosReg.rows);
     }
     catch(error){
@@ -58,7 +58,7 @@ const obtenerTodosMedioPago = async (req,res,next)=> {
 };
 const obtenerTodosIdDoc = async (req,res,next)=> {
     try {
-        const todosReg = await pool.query("SELECT id_doc,nombre from mct_tdoc ORDER BY id_doc");
+        const todosReg = await pool.query("SELECT id_doc as codigo, nombre as descripcion from mct_tdoc ORDER BY id_doc");
         res.json(todosReg.rows);
     }
     catch(error){
