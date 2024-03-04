@@ -70,7 +70,7 @@ const obtenerTodosCCostoPopUp = async (req,res,next)=> {
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
         strSQL = "SELECT r_ccosto as codigo";
-        strSQL += "     ,('C'|| ccosto)::varchar(100) as descripcion";
+        strSQL += "     ,('C'|| r_ccosto)::varchar(100) as descripcion";
         strSQL += "     ,''::varchar(10) as auxiliar";
         strSQL += " FROM mct_asientocontabledet";
         strSQL += " WHERE id_usuario = $1";
