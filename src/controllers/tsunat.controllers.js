@@ -69,14 +69,14 @@ const obtenerTodosCCostoPopUp = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
-        strSQL = "SELECT ccosto as codigo";
+        strSQL = "SELECT r_ccosto as codigo";
         strSQL += "     ,('C'|| ccosto)::varchar(100) as descripcion";
-        strSQL += "     ,'' as auxiliar";
+        strSQL += "     ,''::varchar(10) as auxiliar";
         strSQL += " FROM mct_asientocontabledet";
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND documento_id = $2";
-        strSQL += " GROUP BY ccosto";
-        strSQL += " ORDER BY ccosto";
+        strSQL += " GROUP BY r_ccosto";
+        strSQL += " ORDER BY r_ccosto";
         const result = await pool.query(strSQL,[id_anfitrion,documento_id]);
 
         if (result.rows.length === 0)
