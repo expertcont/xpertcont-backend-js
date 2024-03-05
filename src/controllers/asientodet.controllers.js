@@ -1,4 +1,5 @@
 const pool = require('../db');
+const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN} = require('../utils/libreria.utils');
 
 const obtenerTodosAsientosDet = async (req,res,next)=> {
     let strSQL;
@@ -245,7 +246,7 @@ const crearAsientoDet = async (req,res,next)=> {
     strSQL = strSQL + " ,$3";
     strSQL = strSQL + " ,$4";
     strSQL = strSQL + " ,$5";
-    strSQL = strSQL + " ,(select * from fct_genera_asiento_item('" + id_usuario + "','" + documento_id + "','" + periodo + "','" + id_libro + "','" + num_asiento + "'))"; //item
+    strSQL = strSQL + " ,(select * from fct_genera_asiento_item('" + id_anfitrion + "','" + documento_id + "','" + periodo + "','" + id_libro + "','" + num_asiento + "'))"; //item
     strSQL = strSQL + " ,$6";
     strSQL = strSQL + " ,$7";
     strSQL = strSQL + " ,$8";
@@ -283,20 +284,20 @@ const crearAsientoDet = async (req,res,next)=> {
             id_libro,       //04
             num_asiento,    //05
     
-            fecha_asiento,  //06
+            convertirFechaStringComplete(fecha_asiento),  //06
             
             id_cuenta,      //07
             glosa,          //08
             r_id_doc,       //09
             r_documento_id, //10
             r_razon_social, //11
-            r_fecemi,       //12
-            r_fecvcto,      //13
+            convertirFechaStringComplete(r_fecemi),       //12
+            convertirFechaStringComplete(r_fecvcto),      //13
             r_cod,          //14
             r_serie,        //15
             r_numero,       //16
             r_numero2,      //17
-            r_fecemi_ref,   //18
+            convertirFechaStringComplete(r_fecemi_ref),   //18
             r_cod_ref,      //19
             r_serie_ref,    //20
             r_numero_ref,   //21
@@ -414,7 +415,7 @@ const actualizarAsientoDet = async (req,res,next)=> {
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND num_asiento = $5";
         strSQL = strSQL + " AND item = $6";
- 
+        console.log(strSQL);
         const result = await pool.query(strSQL,
         [   
             id_anfitrion,   //01
@@ -424,20 +425,20 @@ const actualizarAsientoDet = async (req,res,next)=> {
             num_asiento,    //05
             item,           //06
 
-            fecha_asiento,  //07
+            convertirFechaStringComplete(fecha_asiento),  //07
             
             id_cuenta,      //08
             glosa,          //09
             r_id_doc,       //10
             r_documento_id, //11
             r_razon_social, //12
-            r_fecemi,       //13
-            r_fecvcto,      //14
+            convertirFechaStringComplete(r_fecemi),       //13
+            convertirFechaStringComplete(r_fecvcto),      //14
             r_cod,          //15
             r_serie,        //16
             r_numero,       //17
             r_numero2,      //18
-            r_fecemi_ref,   //19
+            convertirFechaStringComplete(r_fecemi_ref),   //19
             r_cod_ref,      //20
             r_serie_ref,    //21
             r_numero_ref,   //22
