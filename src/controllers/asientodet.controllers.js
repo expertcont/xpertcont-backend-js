@@ -386,7 +386,7 @@ const actualizarAsientoDet = async (req,res,next)=> {
         strSQL = strSQL + " ,id_cuenta = $8";
         strSQL = strSQL + " ,glosa = $9"; 
         strSQL = strSQL + " ,r_id_doc = $10";
-        strSQL = strSQL + " ,r_document_id = $11";
+        strSQL = strSQL + " ,r_documento_id = $11";
         strSQL = strSQL + " ,r_razon_social = $12";
         strSQL = strSQL + " ,r_fecemi = $13";         
         strSQL = strSQL + " ,r_fecvcto = $14";
