@@ -381,7 +381,7 @@ const actualizarAsientoDet = async (req,res,next)=> {
  
         var strSQL;
         strSQL = "UPDATE mct_asientocontabledet SET ";
-        strSQL = strSQL + " ,fecha_asiento = $7"; 
+        strSQL = strSQL + "  fecha_asiento = $7"; 
 
         strSQL = strSQL + " ,id_cuenta = $8";
         strSQL = strSQL + " ,glosa = $9"; 
