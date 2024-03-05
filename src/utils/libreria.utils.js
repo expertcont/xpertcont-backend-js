@@ -27,6 +27,11 @@ const devuelveCadenaNull = (value) => {
   };
 
   function convertirFechaStringComplete(dateString) {
+    if (dateString===null) {
+      //console.log("vacio de undefined");
+      return '';
+    }
+
     if (dateString===undefined) {
       //console.log("vacio de undefined");
       return '';
