@@ -85,6 +85,9 @@ const obtenerAsientoDetItem = async (req,res,next)=> {
         strSQL += " ,mct_cuentacontable.descripcion";
         strSQL += " ,mct_tdoc.nombre as r_doc";
         strSQL += " ,mct_tmediopago.nombre as r_mediopago";
+        strSQL += " ,cast(mct_asientocontabledet.r_fecemi as varchar)::varchar(50) as r_fecemi2";
+        strSQL += " ,cast(mct_asientocontabledet.r_fecvcto as varchar)::varchar(50) as r_fecvcto2";
+        strSQL += " ,cast(mct_asientocontabledet.r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref2";
         strSQL += " from";
         strSQL += " (";
         strSQL += " (";
@@ -110,6 +113,9 @@ const obtenerAsientoDetItem = async (req,res,next)=> {
         strSQL += " ,mct_cuentacontable_det.descripcion";
         strSQL += " ,mct_tdoc.nombre as r_doc";
         strSQL += " ,mct_tmediopago.nombre as r_mediopago";
+        strSQL += " ,cast(mct_asientocontabledet.r_fecemi as varchar)::varchar(50) as r_fecemi2";
+        strSQL += " ,cast(mct_asientocontabledet.r_fecvcto as varchar)::varchar(50) as r_fecvcto2";
+        strSQL += " ,cast(mct_asientocontabledet.r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref2";
         strSQL += " from";
         strSQL += " (";
         strSQL += " (";
@@ -147,80 +153,99 @@ const obtenerAsientoDetItem = async (req,res,next)=> {
 const crearAsientoDet = async (req,res,next)=> {
     let strSQL;
     const {
-        id_empresa,         //01
-        id_punto_venta,     //02
-        comprobante_original_codigo, //03
-        comprobante_original_serie,  //04
-        comprobante_original_numero, //05
-        ref_documento_id,   //06
-        ref_razon_social,   //07
-        id_zona_entrega,    //08
-        zona_entrega,       //09
-        id_producto,            //10
-        descripcion,        //11
-        comprobante_original_fecemi, //12
-        precio_unitario,    //13
-        porc_igv,           //14
-        cantidad,           //15
-        ref_observacion,  //16
-        registrado,          //17
-        ref_direccion,          //18
-        unidad_medida,          //19
+        id_anfitrion,     //01
+        documento_id,   //02
+        periodo,        //03
+        id_libro,       //04
+        num_asiento,    //05
 
-        fecha_entrega2,          //20  24
-        moneda          //21   25 new
+        fecha_asiento,  //06
+        
+        id_cuenta,      //07
+        glosa,          //08
+        r_id_doc,       //09
+        r_documento_id, //10
+        r_razon_social, //11
+        r_fecemi,       //12
+        r_fecvcto,      //13
+        r_cod,          //14
+        r_serie,        //15
+        r_numero,       //16
+        r_numero2,      //17
+        r_fecemi_ref,   //18
+        r_cod_ref,      //19
+        r_serie_ref,    //20
+        r_numero_ref,   //21
+
+        debe_nac,       //22
+        haber_nac,      //23
+        debe_me,        //24
+        haber_me,       //25
+
+        r_tc,           //26
+        r_id_mediopago, //27
+        r_voucher_banco, //28
+        mayorizado,     //29
+        asiento_cierre, //30
+        r_ccosto        //31
         } = req.body
-    //COD = Procesar zona_venta, para extraer siglas (LCH-LIMA) => LCH
-    //SERIE = Procesar comprobante_original_fecemi, para extraer mes (28/10/2022) => 10
 
     //console.log(comprobante_original_fecemi);
     //cuidado con edicion manual de la fecha, se registra al reves, pero en caso de click va normal
-    let datePieces = comprobante_original_fecemi.split("-");
+    let datePieces = r_fecemi.split("-");
     const fechaArmada = new Date(datePieces[0],datePieces[1],datePieces[2]); //ok con hora 00:00:00
     //console.log(datePieces);
     let sAno = (fechaArmada.getFullYear()).toString(); // new 
 
     strSQL = "INSERT INTO mct_asientocontabledet";
     strSQL = strSQL + " (";
-    strSQL = strSQL + "  id_empresa";
-    strSQL = strSQL + " ,id_punto_venta";
-    strSQL = strSQL + " ,ano"; //new
-    strSQL = strSQL + " ,comprobante_original_codigo";
-    strSQL = strSQL + " ,comprobante_original_serie";
-    strSQL = strSQL + " ,comprobante_original_numero";
-    strSQL = strSQL + " ,elemento";
-    strSQL = strSQL + " ,item";
-    strSQL = strSQL + " ,ref_documento_id";
-    strSQL = strSQL + " ,ref_razon_social";
-    strSQL = strSQL + " ,id_zona_entrega";
-    strSQL = strSQL + " ,zona_entrega";
-    strSQL = strSQL + " ,id_producto";
-    strSQL = strSQL + " ,descripcion";
-    strSQL = strSQL + " ,comprobante_original_fecemi";
-    strSQL = strSQL + " ,precio_unitario";
-    strSQL = strSQL + " ,porc_igv";
-    strSQL = strSQL + " ,cantidad";
-    strSQL = strSQL + " ,ref_observacion";
-    strSQL = strSQL + " ,registrado";
-    strSQL = strSQL + " ,ref_direccion";
-    strSQL = strSQL + " ,unidad_medida";
+    strSQL = strSQL + "  id_usuario";       //01
+    strSQL = strSQL + " ,documento_id";     //02
+    strSQL = strSQL + " ,periodo";          //03
+    strSQL = strSQL + " ,id_libro";         //04
+    strSQL = strSQL + " ,num_asiento";      //05
+    
+    strSQL = strSQL + " ,item";             //generado internamente
+    
+    strSQL = strSQL + " ,fecha_asiento";    //06
 
-    strSQL = strSQL + " ,fecha_entrega";
-    strSQL = strSQL + " ,moneda"; //new
-    strSQL = strSQL + " ,estado";
+    strSQL = strSQL + " ,id_cuenta";        //07
+    strSQL = strSQL + " ,glosa";            //08
+    strSQL = strSQL + " ,r_id_doc";         //09
+    strSQL = strSQL + " ,r_document_id";    //10
+    strSQL = strSQL + " ,r_razon_social";   //11
+    strSQL = strSQL + " ,r_fecemi";         //12
+    strSQL = strSQL + " ,r_fecvcto";        //13
+    strSQL = strSQL + " ,r_cod";            //14
+    strSQL = strSQL + " ,r_serie";          //15
+    strSQL = strSQL + " ,r_numero";         //16
+    strSQL = strSQL + " ,r_numero2";        //17
+    strSQL = strSQL + " ,r_fecemi_ref";     //18
+    strSQL = strSQL + " ,r_cod_ref";        //19
+    strSQL = strSQL + " ,r_serie_ref";      //20
+    strSQL = strSQL + " ,r_numero_ref";     //21
+
+    strSQL = strSQL + " ,debe_nac";         //22
+    strSQL = strSQL + " ,haber_nac";        //23
+    strSQL = strSQL + " ,debe_me";          //24
+    strSQL = strSQL + " ,haber_me";         //25
+
+    strSQL = strSQL + " ,r_tc";             //26
+    strSQL = strSQL + " ,r_id_mediopago";   //27
+    strSQL = strSQL + " ,r_voucher_banco";  //28
+    strSQL = strSQL + " ,mayorizado";       //29
+    strSQL = strSQL + " ,asiento_cierre";   //30
+    strSQL = strSQL + " ,r_ccosto";         //31
 
     strSQL = strSQL + " )";
     strSQL = strSQL + " VALUES";
     strSQL = strSQL + " (";
     strSQL = strSQL + "  $1";
     strSQL = strSQL + " ,$2";
-    strSQL = strSQL + " ,'" + sAno + "'"; //new
     strSQL = strSQL + " ,$3";
     strSQL = strSQL + " ,$4";
     strSQL = strSQL + " ,$5";
-    strSQL = strSQL + ",1"; //elemento
-    //cuidado aqui en esta funcion hay que aumenta el año,. para generar toodo, le aumentamos arriba pero aqui en el item, aun mno lo esta considerando chingados
-    strSQL = strSQL + " ,(select * from fve_genera_venta_item(1,'" + comprobante_original_codigo + "','" + comprobante_original_serie + "','" + comprobante_original_numero + "',1))"; //item
+    strSQL = strSQL + " ,(select * from fct_genera_asiento_item('" + id_usuario + "','" + documento_id + "','" + periodo + "','" + id_libro + "','" + num_asiento + "'))"; //item
     strSQL = strSQL + " ,$6";
     strSQL = strSQL + " ,$7";
     strSQL = strSQL + " ,$8";
@@ -235,37 +260,58 @@ const crearAsientoDet = async (req,res,next)=> {
     strSQL = strSQL + " ,$17";
     strSQL = strSQL + " ,$18";
     strSQL = strSQL + " ,$19";
-
     strSQL = strSQL + " ,$20";
-    strSQL = strSQL + " ,$21"; //new moneda (S/ ó USD)
-    strSQL = strSQL + " ,'PENDIENTE'";//NEW
+    strSQL = strSQL + " ,$21"; 
+    strSQL = strSQL + " ,$22"; 
+    strSQL = strSQL + " ,$23"; 
+    strSQL = strSQL + " ,$24"; 
+    strSQL = strSQL + " ,$25"; 
+    strSQL = strSQL + " ,$26"; 
+    strSQL = strSQL + " ,$27"; 
+    strSQL = strSQL + " ,$28"; 
+    strSQL = strSQL + " ,$29"; 
+    strSQL = strSQL + " ,$30"; 
+    strSQL = strSQL + " ,$31"; 
     strSQL = strSQL + " ) RETURNING *";
     try {
         //console.log(strSQL);
         const result = await pool.query(strSQL, 
         [   
-            id_empresa,         //01
-            id_punto_venta,     //02
-            comprobante_original_codigo, //03
-            comprobante_original_serie,  //04
-            comprobante_original_numero, //05
-            ref_documento_id,   //06
-            ref_razon_social,   //07
-            id_zona_entrega,    //08
-            zona_entrega,       //09
-            id_producto,        //10
-            descripcion,        //11
-            comprobante_original_fecemi, //12
-            precio_unitario,    //13
-            porc_igv,           //14
-            cantidad,           //15
-            ref_observacion,    //16
-            registrado,          //17
-            ref_direccion,      //18
-            unidad_medida,      //19
+            id_anfitrion,     //01
+            documento_id,   //02
+            periodo,        //03
+            id_libro,       //04
+            num_asiento,    //05
+    
+            fecha_asiento,  //06
             
-            fecha_entrega2,     //20      24
-            moneda              //21      25 new moneda
+            id_cuenta,      //07
+            glosa,          //08
+            r_id_doc,       //09
+            r_documento_id, //10
+            r_razon_social, //11
+            r_fecemi,       //12
+            r_fecvcto,      //13
+            r_cod,          //14
+            r_serie,        //15
+            r_numero,       //16
+            r_numero2,      //17
+            r_fecemi_ref,   //18
+            r_cod_ref,      //19
+            r_serie_ref,    //20
+            r_numero_ref,   //21
+    
+            debe_nac,       //22
+            haber_nac,      //23
+            debe_me,        //24
+            haber_me,       //25
+    
+            r_tc,           //26
+            r_id_mediopago, //27
+            r_voucher_banco, //28
+            mayorizado,     //29
+            asiento_cierre, //30
+            r_ccosto        //31
         ]
         );
         res.json(result.rows[0]);
@@ -290,7 +336,7 @@ const eliminarAsientoDet = async (req,res,next)=> {
 
         if (result.rowCount === 0)
             return res.status(404).json({
-                message:"Venta no encontrada"
+                message:"Asiento Detalle no encontrado"
             });
 
         return res.sendStatus(204);
@@ -301,66 +347,110 @@ const eliminarAsientoDet = async (req,res,next)=> {
 
 const actualizarAsientoDet = async (req,res,next)=> {
     try {
-        const {cod,serie,num,elem,item} = req.params;
+        const {id_anfitrion,documento_id,periodo,id_libro,num_asiento,item} = req.params;
         const { 
-                ref_documento_id,   //01
-                ref_razon_social,   //02
-                id_zona_entrega,    //03
-                zona_entrega,       //04
-                id_producto,        //05
-                descripcion,        //06
-                precio_unitario,    //07
-                porc_igv,           //08
-                cantidad,           //09
-                ref_observacion,    //10
-                ref_direccion,      //11
-                unidad_medida,      //12
-                fecha_entrega2      //13
+            fecha_asiento,  //07
+            
+            id_cuenta,      //08
+            glosa,          //09
+            r_id_doc,       //10
+            r_documento_id, //11
+            r_razon_social, //12
+            r_fecemi,       //13
+            r_fecvcto,      //14
+            r_cod,          //15
+            r_serie,        //16
+            r_numero,       //17
+            r_numero2,      //18
+            r_fecemi_ref,   //19
+            r_cod_ref,      //20
+            r_serie_ref,    //21
+            r_numero_ref,   //22
+    
+            debe_nac,       //23
+            haber_nac,      //24
+            debe_me,        //25
+            haber_me,       //26
+    
+            r_tc,           //27
+            r_id_mediopago, //28
+            r_voucher_banco, //29
+            r_ccosto        //30
             } = req.body        
  
         var strSQL;
-        strSQL = "UPDATE mve_venta_detalle SET ";
-        strSQL = strSQL + "  ref_documento_id = $1";
-        strSQL = strSQL + " ,ref_razon_social = $2";
-        strSQL = strSQL + " ,id_zona_entrega = $3";
-        strSQL = strSQL + " ,zona_entrega = $4";
-        strSQL = strSQL + " ,id_producto = $5";
-        strSQL = strSQL + " ,descripcion = $6";
-        strSQL = strSQL + " ,precio_unitario = $7";
-        strSQL = strSQL + " ,porc_igv = $8";
-        strSQL = strSQL + " ,cantidad = $9";
-        strSQL = strSQL + " ,ref_observacion = $10";
-        strSQL = strSQL + " ,ref_direccion = $11";
-        strSQL = strSQL + " ,unidad_medida = $12";
-        strSQL = strSQL + " ,fecha_entrega = $13";
+        strSQL = "UPDATE mct_asientocontabledet SET ";
+        strSQL = strSQL + " ,fecha_asiento = $7"; 
 
-        strSQL = strSQL + " WHERE comprobante_original_codigo = $14";
-        strSQL = strSQL + " AND comprobante_original_serie = $15";
-        strSQL = strSQL + " AND comprobante_original_numero = $16";
-        strSQL = strSQL + " AND elemento = $17";
-        strSQL = strSQL + " AND item = $18";
+        strSQL = strSQL + " ,id_cuenta = $8";
+        strSQL = strSQL + " ,glosa = $9"; 
+        strSQL = strSQL + " ,r_id_doc = $10";
+        strSQL = strSQL + " ,r_document_id = $11";
+        strSQL = strSQL + " ,r_razon_social = $12";
+        strSQL = strSQL + " ,r_fecemi = $13";         
+        strSQL = strSQL + " ,r_fecvcto = $14";
+        strSQL = strSQL + " ,r_cod = $15";
+        strSQL = strSQL + " ,r_serie = $16";
+        strSQL = strSQL + " ,r_numero = $17";
+        strSQL = strSQL + " ,r_numero2 = $18";
+        strSQL = strSQL + " ,r_fecemi_ref = $19";
+        strSQL = strSQL + " ,r_cod_ref = $20";
+        strSQL = strSQL + " ,r_serie_ref = $21";
+        strSQL = strSQL + " ,r_numero_ref = $22";
+    
+        strSQL = strSQL + " ,debe_nac = $23";
+        strSQL = strSQL + " ,haber_nac = $24";
+        strSQL = strSQL + " ,debe_me = $25"; 
+        strSQL = strSQL + " ,haber_me = $26";
+    
+        strSQL = strSQL + " ,r_tc = $27";           
+        strSQL = strSQL + " ,r_id_mediopago = $28"; 
+        strSQL = strSQL + " ,r_voucher_banco = $29";
+        strSQL = strSQL + " ,r_ccosto = $30";
+
+        strSQL = strSQL + " WHERE id_usuario = $1";
+        strSQL = strSQL + " AND documento_id = $2";
+        strSQL = strSQL + " AND periodo = $3";
+        strSQL = strSQL + " AND id_libro = $4";
+        strSQL = strSQL + " AND num_asiento = $5";
+        strSQL = strSQL + " AND item = $6";
  
         const result = await pool.query(strSQL,
         [   
-            ref_documento_id,   //01
-            ref_razon_social,   //02
-            id_zona_entrega,    //03
-            zona_entrega,       //04
-            id_producto,        //05
-            descripcion,        //06
-            precio_unitario,    //07
-            porc_igv,           //08
-            cantidad,           //09
-            ref_observacion,    //10
-            ref_direccion,      //11
-            unidad_medida,      //12
-            fecha_entrega2,     //13
+            id_anfitrion,   //01
+            documento_id,   //02
+            periodo,        //03
+            id_libro,       //04
+            num_asiento,    //05
+            item,           //06
 
-            cod,    //14 param
-            serie,  //15 param
-            num,    //16 param
-            elem,   //17 param
-            item    //18 param
+            fecha_asiento,  //07
+            
+            id_cuenta,      //08
+            glosa,          //09
+            r_id_doc,       //10
+            r_documento_id, //11
+            r_razon_social, //12
+            r_fecemi,       //13
+            r_fecvcto,      //14
+            r_cod,          //15
+            r_serie,        //16
+            r_numero,       //17
+            r_numero2,      //18
+            r_fecemi_ref,   //19
+            r_cod_ref,      //20
+            r_serie_ref,    //21
+            r_numero_ref,   //22
+    
+            debe_nac,       //23
+            haber_nac,      //24
+            debe_me,        //25
+            haber_me,       //26
+    
+            r_tc,           //27
+            r_id_mediopago, //28
+            r_voucher_banco, //29
+            r_ccosto        //30
         ]
         );
 
