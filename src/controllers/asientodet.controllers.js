@@ -1,5 +1,5 @@
 const pool = require('../db');
-const { param } = require('../routes/asientodet.routes');
+//const { param } = require('../routes/asientodet.routes');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN} = require('../utils/libreria.utils');
 
 const obtenerTodosAsientosDet = async (req,res,next)=> {
