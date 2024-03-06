@@ -302,10 +302,10 @@ const crearAsientoDet = async (req,res,next)=> {
             devuelveCadenaNull(r_serie_ref),    //20
             devuelveCadenaNull(r_numero_ref),   //21
     
-            devuelveCadenaNull(debe_nac),       //22
-            devuelveCadenaNull(haber_nac),      //23
-            devuelveCadenaNull(debe_me),        //24
-            devuelveCadenaNull(haber_me),       //25
+            devuelveNumero(debe_nac),       //22
+            devuelveNumero(haber_nac),      //23
+            devuelveNumero(debe_me),        //24
+            devuelveNumero(haber_me),       //25
     
             devuelveCadenaNull(r_tc),           //26
             devuelveCadenaNull(r_id_mediopago), //27
