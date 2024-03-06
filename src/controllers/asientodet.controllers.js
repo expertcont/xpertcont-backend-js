@@ -1,4 +1,5 @@
 const pool = require('../db');
+const { param } = require('../routes/asientodet.routes');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN} = require('../utils/libreria.utils');
 
 const obtenerTodosAsientosDet = async (req,res,next)=> {
@@ -313,7 +314,7 @@ const crearAsientoDet = async (req,res,next)=> {
             asiento_cierre, //30
             r_ccosto        //31
         ];
-        
+        console.log(parametros);
         const result = await pool.query(strSQL,parametros);
         res.json(result.rows[0]);
     }catch(error){
