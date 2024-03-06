@@ -416,8 +416,7 @@ const actualizarAsientoDet = async (req,res,next)=> {
         strSQL = strSQL + " AND num_asiento = $5";
         strSQL = strSQL + " AND item = $6";
         console.log(strSQL);
-        const result = await pool.query(strSQL,
-        [   
+        const parametros = [   
             id_anfitrion,   //01
             documento_id,   //02
             periodo,        //03
@@ -452,8 +451,9 @@ const actualizarAsientoDet = async (req,res,next)=> {
             r_id_mediopago, //28
             r_voucher_banco, //29
             r_ccosto        //30
-        ]
-        );
+        ];
+        console.log(parametros);
+        const result = await pool.query(strSQL,parametros);
 
         if (result.rowCount === 0)
             return res.status(404).json({
