@@ -287,32 +287,32 @@ const crearAsientoDet = async (req,res,next)=> {
             devuelveCadenaNull(convertirFechaStringComplete(fecha_asiento)),  //06
             
             id_cuenta,      //07
-            glosa,          //08
-            r_id_doc,       //09
-            r_documento_id, //10
-            r_razon_social, //11
+            devuelveCadenaNull(glosa),          //08
+            devuelveCadenaNull(r_id_doc),       //09
+            devuelveCadenaNull(r_documento_id), //10
+            devuelveCadenaNull(r_razon_social), //11
             devuelveCadenaNull(convertirFechaStringComplete(r_fecemi)),       //12
             devuelveCadenaNull(convertirFechaStringComplete(r_fecvcto)),      //13
-            r_cod,          //14
-            r_serie,        //15
-            r_numero,       //16
-            r_numero2,      //17
+            devuelveCadenaNull(r_cod),          //14
+            devuelveCadenaNull(r_serie),        //15
+            devuelveCadenaNull(r_numero),       //16
+            devuelveCadenaNull(r_numero2),      //17
             devuelveCadenaNull(convertirFechaStringComplete(r_fecemi_ref)),   //18
-            r_cod_ref,      //19
-            r_serie_ref,    //20
-            r_numero_ref,   //21
+            devuelveCadenaNull(r_cod_ref),      //19
+            devuelveCadenaNull(r_serie_ref),    //20
+            devuelveCadenaNull(r_numero_ref),   //21
     
-            debe_nac,       //22
-            haber_nac,      //23
-            debe_me,        //24
-            haber_me,       //25
+            devuelveCadenaNull(debe_nac),       //22
+            devuelveCadenaNull(haber_nac),      //23
+            devuelveCadenaNull(debe_me),        //24
+            devuelveCadenaNull(haber_me),       //25
     
-            r_tc,           //26
-            r_id_mediopago, //27
-            r_voucher_banco, //28
-            mayorizado,     //29
-            asiento_cierre, //30
-            r_ccosto        //31
+            devuelveCadenaNull(r_tc),           //26
+            devuelveCadenaNull(r_id_mediopago), //27
+            devuelveCadenaNull(r_voucher_banco), //28
+            devuelveCadenaNull(mayorizado),     //29
+            devuelveCadenaNull(asiento_cierre), //30
+            devuelveCadenaNull(r_ccosto)        //31
         ];
         console.log(parametros);
         const result = await pool.query(strSQL,parametros);
