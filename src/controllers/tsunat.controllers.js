@@ -39,7 +39,7 @@ const obtenerTodosComprobante = async (req,res,next)=> {
             strSQL += " WHERE c_ventas = '1'";
         }
         strSQL += " ORDER BY cod";
-
+        console.log(strSQL);
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
     }

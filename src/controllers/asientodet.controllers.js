@@ -275,29 +275,28 @@ const crearAsientoDet = async (req,res,next)=> {
     strSQL = strSQL + " ,$31"; 
     strSQL = strSQL + " ) RETURNING *";
     try {
-        //console.log(strSQL);
-        const result = await pool.query(strSQL, 
-        [   
+        console.log(strSQL);
+        const parametros = [   
             id_anfitrion,     //01
             documento_id,   //02
             periodo,        //03
             id_libro,       //04
             num_asiento,    //05
-    
-            convertirFechaStringComplete(fecha_asiento),  //06
+            
+            devuelveCadenaNull(convertirFechaStringComplete(fecha_asiento)),  //06
             
             id_cuenta,      //07
             glosa,          //08
             r_id_doc,       //09
             r_documento_id, //10
             r_razon_social, //11
-            convertirFechaStringComplete(r_fecemi),       //12
-            convertirFechaStringComplete(r_fecvcto),      //13
+            devuelveCadenaNull(convertirFechaStringComplete(r_fecemi)),       //12
+            devuelveCadenaNull(convertirFechaStringComplete(r_fecvcto)),      //13
             r_cod,          //14
             r_serie,        //15
             r_numero,       //16
             r_numero2,      //17
-            convertirFechaStringComplete(r_fecemi_ref),   //18
+            devuelveCadenaNull(convertirFechaStringComplete(r_fecemi_ref)),   //18
             r_cod_ref,      //19
             r_serie_ref,    //20
             r_numero_ref,   //21
@@ -313,8 +312,9 @@ const crearAsientoDet = async (req,res,next)=> {
             mayorizado,     //29
             asiento_cierre, //30
             r_ccosto        //31
-        ]
-        );
+        ];
+        
+        const result = await pool.query(strSQL,parametros);
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
@@ -415,7 +415,7 @@ const actualizarAsientoDet = async (req,res,next)=> {
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND num_asiento = $5";
         strSQL = strSQL + " AND item = $6";
-        console.log(strSQL);
+        //console.log(strSQL);
         const parametros = [   
             id_anfitrion,   //01
             documento_id,   //02
@@ -452,7 +452,7 @@ const actualizarAsientoDet = async (req,res,next)=> {
             r_voucher_banco, //29
             r_ccosto        //30
         ];
-        console.log(parametros);
+        //console.log(parametros);
         const result = await pool.query(strSQL,parametros);
 
         if (result.rowCount === 0)
