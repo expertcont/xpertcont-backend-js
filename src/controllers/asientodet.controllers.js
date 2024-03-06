@@ -424,20 +424,20 @@ const actualizarAsientoDet = async (req,res,next)=> {
             num_asiento,    //05
             item,           //06
 
-            convertirFechaStringComplete(fecha_asiento),  //07
+            devuelveCadenaNull(convertirFechaStringComplete(fecha_asiento)),  //07
             
             id_cuenta,      //08
             glosa,          //09
             r_id_doc,       //10
             r_documento_id, //11
             r_razon_social, //12
-            convertirFechaStringComplete(r_fecemi),       //13
-            convertirFechaStringComplete(r_fecvcto),      //14
+            devuelveCadenaNull(convertirFechaStringComplete(r_fecemi)),       //13
+            devuelveCadenaNull(convertirFechaStringComplete(r_fecvcto)),      //14
             r_cod,          //15
             r_serie,        //16
             r_numero,       //17
             r_numero2,      //18
-            convertirFechaStringComplete(r_fecemi_ref),   //19
+            devuelveCadenaNull(convertirFechaStringComplete(r_fecemi_ref)),   //19
             r_cod_ref,      //20
             r_serie_ref,    //21
             r_numero_ref,   //22
