@@ -214,7 +214,7 @@ const crearAsientoDet = async (req,res,next)=> {
     strSQL = strSQL + " ,id_cuenta";        //07
     strSQL = strSQL + " ,glosa";            //08
     strSQL = strSQL + " ,r_id_doc";         //09
-    strSQL = strSQL + " ,r_document_id";    //10
+    strSQL = strSQL + " ,r_documento_id";    //10
     strSQL = strSQL + " ,r_razon_social";   //11
     strSQL = strSQL + " ,r_fecemi";         //12
     strSQL = strSQL + " ,r_fecvcto";        //13
