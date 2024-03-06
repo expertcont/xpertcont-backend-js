@@ -247,7 +247,7 @@ const crearAsientoDet = async (req,res,next)=> {
     strSQL = strSQL + " ,$3";
     strSQL = strSQL + " ,$4";
     strSQL = strSQL + " ,$5";
-    strSQL = strSQL + " ,(select * from fct_genera_asiento_item('" + id_anfitrion + "','" + documento_id + "','" + periodo + "','" + id_libro + "','" + num_asiento + "'))"; //item
+    strSQL = strSQL + " ,(select * from fct_genera_asiento_item('" + id_anfitrion + "','" + documento_id + "','" + periodo + "','" + id_libro + "','" + num_asiento + "'))::integer"; //item
     strSQL = strSQL + " ,$6";
     strSQL = strSQL + " ,$7";
     strSQL = strSQL + " ,$8";
