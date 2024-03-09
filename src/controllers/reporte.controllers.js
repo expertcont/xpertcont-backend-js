@@ -1,8 +1,9 @@
 const pool = require('../db');
+const {devuelveCadena} = require('../utils/libreria.utils');
 
 const obtenerHojaTrabajo = async (req,res,next)=> {
     let strSQL;
-    const {id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,nivel} = req.params;
+    const {id_anfitrion,documento_id,periodo_ini,periodo_fin,nivel,id_libro} = req.params;
 
     strSQL = "select ht.*,";
     strSQL += "  CASE WHEN ht.saldo > 0 AND ht.cuenta_balance = '1' THEN ht.saldo ELSE NULL END AS balance_debe,";
@@ -29,9 +30,14 @@ const obtenerHojaTrabajo = async (req,res,next)=> {
     strSQL += " on( fct_libro_mayor_meses.id_master = mct_cuentacontable.id_cuenta and";
     strSQL += "     $1 = mct_cuentacontable.id_usuario)";
     strSQL += " ) as ht";
-
+    const parametros = [id_anfitrion,
+                        documento_id,
+                        periodo_ini,
+                        periodo_fin
+                        ,nivel,
+                        devuelveCadena(id_libro)];
     try {
-        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,nivel]);
+        const todosReg = await pool.query(strSQL,parametros);
         res.json(todosReg.rows);
     }
     catch(error){

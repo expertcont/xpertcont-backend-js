@@ -7,7 +7,16 @@ const devuelveCadenaNull = (value) => {
       return value;
     }
   };
-  
+
+  const devuelveCadena = (value) => {
+    //Obligatorio devuelve una cadena, así sea undefined o null
+    if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
+      return '';
+    } else {
+      return value;
+    }
+  };
+
   const devuelveNumero = (value) => {
     //Obligatorio devuelve número o cero, así sea (undefined - cadena vacía - null)
     if (value === undefined || (typeof value === 'string' && value.trim() === '') || value === null) {
@@ -108,6 +117,7 @@ const devuelveCadenaNull = (value) => {
  
   module.exports = {
     devuelveCadenaNull,
+    devuelveCadena,    
     devuelveNumero,
     convertirFechaString,
     convertirFechaStringComplete,
