@@ -3,6 +3,7 @@ const res = require('express/lib/response');
 const morgan = require('morgan');
 const cors = require('cors');
 
+const reporteRoutes = require('./src/routes/reporte.routes');
 const comprobanteRoutes = require('./src/routes/comprobante.routes');
 const asientodetRoutes = require('./src/routes/asientodet.routes');
 const asientoRoutes = require('./src/routes/asiento.routes');
@@ -26,6 +27,7 @@ app.use(morgan('dev'));
 app.use(express.json()); //para reconocer json en express, parametros POST
 app.use(express.text()); //new para text ;)
 
+app.use(reporteRoutes);
 app.use(comprobanteRoutes);
 app.use(asientodetRoutes);
 app.use(asientoRoutes);
