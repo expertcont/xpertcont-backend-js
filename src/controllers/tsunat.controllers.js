@@ -86,6 +86,15 @@ const obtenerTodosCCostoPopUp = async (req,res,next)=> {
     }
 };
 
+const obtenerTodosLibros = async (req,res,next)=> {
+    try {
+        const todosReg = await pool.query("SELECT id_libro as codigo,nombre as descripcion FROM mct_librocontable ORDER BY id_libro");
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
 
 module.exports = {
     obtenerTodosPais,
@@ -94,5 +103,6 @@ module.exports = {
     obtenerTodosComprobante,
     obtenerTodosMedioPago,
     obtenerTodosIdDoc,
-    obtenerTodosCCostoPopUp
+    obtenerTodosCCostoPopUp,
+    obtenerTodosLibros
  }; 
