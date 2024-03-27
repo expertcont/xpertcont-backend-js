@@ -88,7 +88,13 @@ const obtenerTodosCCostoPopUp = async (req,res,next)=> {
 
 const obtenerTodosLibros = async (req,res,next)=> {
     try {
-        const todosReg = await pool.query("SELECT id_libro as codigo,nombre as descripcion FROM mct_librocontable ORDER BY id_libro");
+        let strSQL;
+        strSQL = "SELECT id_libro as codigo,nombre as descripcion FROM mct_librocontable";
+        strSQL += " UNION ALL ";
+        strSQL += " SELECT 'todos' as codigo, 'TODOS' as descripcion ";
+        strSQL += " ORDER BY codigo";
+
+        const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
     }
     catch(error){
