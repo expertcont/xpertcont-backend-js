@@ -24,8 +24,8 @@ const obtenerHojaTrabajo = async (req,res,next)=> {
     strSQL += "    mct_cuentacontable.cuenta_naturaleza";
     strSQL += " from fct_libro_mayor_meses($1,$2,$3,$4,$5,$6)";
     strSQL += " as ( id_master varchar(30),";
-	strSQL += " debe numeric(14,4),";
-    strSQL += " haber numeric(14,4)";
+	strSQL += " debe numeric(14,2),";
+    strSQL += " haber numeric(14,2)";
     strSQL += " ) left join mct_cuentacontable";
     strSQL += " on( fct_libro_mayor_meses.id_master = mct_cuentacontable.id_cuenta and";
     strSQL += "     $1 = mct_cuentacontable.id_usuario)";
