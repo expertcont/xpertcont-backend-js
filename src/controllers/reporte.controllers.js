@@ -16,7 +16,7 @@ const obtenerHojaTrabajo = async (req,res,next)=> {
     strSQL += "  CASE WHEN ht.saldo < 0 AND ht.cuenta_naturaleza = '1' THEN -ht.saldo ELSE NULL END AS naturaleza_haber";
     strSQL += " from (";
     strSQL += " select fct_libro_mayor_meses.*,";
-	strSQL += "	(fct_libro_mayor_meses.debe-fct_libro_mayor_meses.haber)::numeric(14,4) as saldo,";
+	strSQL += "	(fct_libro_mayor_meses.debe-fct_libro_mayor_meses.haber)::numeric(14,2) as saldo,";
 	strSQL += "	mct_cuentacontable.descripcion,";
 	strSQL += "	mct_cuentacontable.cuenta_gestion,";
     strSQL += "    mct_cuentacontable.cuenta_balance,";
