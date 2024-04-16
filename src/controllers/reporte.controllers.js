@@ -62,12 +62,10 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " mct_asientocontabledet.glosa,";
 
     strSQL += " mct_asientocontabledet.r_fecemi, mct_asientocontabledet.r_fecvcto,";
-    strSQL += " mct_asientocontabledet.r_cod, mct_asientocontabledet.r_serie,";
-    strSQL += " mct_asientocontabledet.r_numero,";
+    strSQL += " (mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(100) as r_comprobante,";
 
     strSQL += " mct_asientocontabledet.r_fecemi_ref, mct_asientocontabledet.r_fecvcto_ref,";
-    strSQL += " mct_asientocontabledet.r_cod_ref, mct_asientocontabledet.r_serie_ref,";
-    strSQL += " mct_asientocontabledet.r_numero_ref,";
+    strSQL += " (mct_asientocontabledet.r_cod_ref || '-' || mct_asientocontabledet.r_serie_ref || '-' || mct_asientocontabledet.r_numero_ref)::varchar(100) as r_comprobante_ref,";
 
     strSQL += " mct_asientocontabledet.debe_nac, mct_asientocontabledet.haber_nac, mct_asientocontabledet.r_tc,";
     strSQL += " mct_asientocontabledet.debe_me, mct_asientocontabledet.haber_me";
