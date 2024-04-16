@@ -48,6 +48,8 @@ const obtenerHojaTrabajo = async (req,res,next)=> {
 const obtenerAnalisis = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,id_cuenta,ccosto} = req.params;
+    let id_cuentaB = id_cuenta + '%';
+    let ccostoB = ccosto + '%';
 
     strSQL = "SELECT mct_asientocontabledet.periodo,";
     strSQL += " mct_librocontable.nombre_corto,";
@@ -75,10 +77,14 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " WHERE mct_asientocontabledet.id_usuario = $1";
     strSQL += " AND mct_asientocontabledet.documento_id = $2";
     strSQL += " AND mct_asientocontabledet.periodo BETWEEN $3 AND $4";
+    strSQL += " AND mct_asientocontabledet.id_libro like $5";
+    strSQL += " AND mct_asientocontabledet.id_cuenta like $6";
+    strSQL += " AND mct_asientocontabledet.ccosto like $7";
+    
     strSQL += " ORDER BY mct_asientocontabledet.id_libro,mct_asientocontabledet.num_asiento,mct_asientocontabledet.item";
 
     try {
-        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,id_cuenta,ccosto]);
+        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,id_cuentaB,ccostoB]);
         res.json(todosReg.rows);
     }
     catch(error){
