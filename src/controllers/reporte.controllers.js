@@ -79,7 +79,7 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " AND mct_asientocontabledet.periodo BETWEEN $3 AND $4";
     strSQL += " AND mct_asientocontabledet.id_libro like $5";
     strSQL += " AND mct_asientocontabledet.id_cuenta like $6";
-    strSQL += " AND mct_asientocontabledet.ccosto like $7";
+    strSQL += " AND mct_asientocontabledet.r_ccosto like $7";
     
     strSQL += " ORDER BY mct_asientocontabledet.id_libro,mct_asientocontabledet.num_asiento,mct_asientocontabledet.item";
 
