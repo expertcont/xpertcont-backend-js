@@ -59,19 +59,15 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " mct_asientocontabledet.num_asiento,";
     strSQL += " mct_asientocontabledet.item,";
     strSQL += " mct_asientocontabledet.fecha_asiento,";
-    
     strSQL += " mct_asientocontabledet.id_cuenta,";
     strSQL += " mct_asientocontabledet.r_id_doc,";
     strSQL += " mct_asientocontabledet.r_documento_id,";
     strSQL += " mct_asientocontabledet.r_razon_social,";
     strSQL += " mct_asientocontabledet.glosa,";
-
     strSQL += " mct_asientocontabledet.r_fecemi, mct_asientocontabledet.r_fecvcto,";
     strSQL += " (mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(100) as r_comprobante,";
-
     strSQL += " mct_asientocontabledet.r_fecemi_ref, mct_asientocontabledet.r_fecvcto_ref,";
     strSQL += " (mct_asientocontabledet.r_cod_ref || '-' || mct_asientocontabledet.r_serie_ref || '-' || mct_asientocontabledet.r_numero_ref)::varchar(100) as r_comprobante_ref,";
-
     strSQL += " mct_asientocontabledet.debe_nac, mct_asientocontabledet.haber_nac, mct_asientocontabledet.r_tc,";
     strSQL += " mct_asientocontabledet.debe_me, mct_asientocontabledet.haber_me";
     strSQL += " FROM ";
@@ -83,15 +79,18 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " AND mct_asientocontabledet.id_libro like $5";
     strSQL += " AND mct_asientocontabledet.id_cuenta like $6";
     if (ccostoB !== '%') {
-        strSQL += " AND mct_asientocontabledet.r_ccosto like '" + ccostoB + "'";
+        strSQL += " AND mct_asientocontabledet.r_ccosto like $7";
     }
-    
     strSQL += " ORDER BY mct_asientocontabledet.id_libro,mct_asientocontabledet.num_asiento,mct_asientocontabledet.item";
-
+    
+    const parametros = [id_anfitrion, documento_id, periodo_ini, periodo_fin, id_libroB, id_cuentaB];
+    if (ccostoB !== '%') {
+        parametros.push(ccostoB);
+    }
     try {
-        console.log(strSQL);
-        console.log([id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libroB,id_cuentaB,ccostoB]);
-        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libroB,id_cuentaB]);
+        //console.log(strSQL);
+        //console.log(parametros);
+        const todosReg = await pool.query(strSQL,parametros);
         res.json(todosReg.rows);
     }
     catch(error){
