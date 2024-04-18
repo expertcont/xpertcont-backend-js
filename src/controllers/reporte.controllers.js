@@ -48,8 +48,11 @@ const obtenerHojaTrabajo = async (req,res,next)=> {
 const obtenerAnalisis = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,id_cuenta,ccosto} = req.params;
-    let id_cuentaB = id_cuenta + '%';
-    let ccostoB = ccosto + '%';
+
+    let id_libroB = (id_libro !== null || id_libro !== undefined) ? id_libro+'%' : '%';
+    let id_cuentaB = (id_cuenta !== null || id_cuenta !== undefined) ? id_cuenta+'%' : '%';
+    let ccostoB = (ccosto !== null || ccosto !== undefined) ? ccosto+'%' : '%';
+
 
     strSQL = "SELECT mct_asientocontabledet.periodo,";
     strSQL += " mct_librocontable.nombre_corto,";
@@ -84,7 +87,7 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " ORDER BY mct_asientocontabledet.id_libro,mct_asientocontabledet.num_asiento,mct_asientocontabledet.item";
 
     try {
-        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,id_cuentaB,ccostoB]);
+        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libroB,id_cuentaB,ccostoB]);
         res.json(todosReg.rows);
     }
     catch(error){
