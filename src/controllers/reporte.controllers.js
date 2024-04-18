@@ -82,14 +82,16 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " AND mct_asientocontabledet.periodo BETWEEN $3 AND $4";
     strSQL += " AND mct_asientocontabledet.id_libro like $5";
     strSQL += " AND mct_asientocontabledet.id_cuenta like $6";
-    strSQL += " AND mct_asientocontabledet.r_ccosto like $7";
+    if (ccostoB !== '%') {
+        strSQL += " AND mct_asientocontabledet.r_ccosto like '" + ccostoB + "'";
+    }
     
     strSQL += " ORDER BY mct_asientocontabledet.id_libro,mct_asientocontabledet.num_asiento,mct_asientocontabledet.item";
 
     try {
         console.log(strSQL);
         console.log([id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libroB,id_cuentaB,ccostoB]);
-        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libroB,id_cuentaB,ccostoB]);
+        const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libroB,id_cuentaB]);
         res.json(todosReg.rows);
     }
     catch(error){
