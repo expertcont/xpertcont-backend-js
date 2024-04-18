@@ -49,9 +49,9 @@ const obtenerAnalisis = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,id_cuenta,ccosto} = req.params;
 
-    let id_libroB = (id_libro !== null || id_libro !== undefined) ? id_libro+'%' : '%';
-    let id_cuentaB = (id_cuenta !== null || id_cuenta !== undefined) ? id_cuenta+'%' : '%';
-    let ccostoB = (ccosto !== null || ccosto !== undefined) ? ccosto+'%' : '%';
+    let id_libroB = (id_libro !== null && id_libro !== undefined) ? id_libro+'%' : '%';
+    let id_cuentaB = (id_cuenta !== null && id_cuenta !== undefined) ? id_cuenta+'%' : '%';
+    let ccostoB = (ccosto !== null && ccosto !== undefined) ? ccosto+'%' : '%';
 
 
     strSQL = "SELECT mct_asientocontabledet.periodo,";
