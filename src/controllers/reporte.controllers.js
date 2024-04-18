@@ -87,6 +87,8 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " ORDER BY mct_asientocontabledet.id_libro,mct_asientocontabledet.num_asiento,mct_asientocontabledet.item";
 
     try {
+        console.log(strSQL);
+        console.log([id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libroB,id_cuentaB,ccostoB]);
         const todosReg = await pool.query(strSQL,[id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libroB,id_cuentaB,ccostoB]);
         res.json(todosReg.rows);
     }
