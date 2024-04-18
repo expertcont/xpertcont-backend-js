@@ -58,15 +58,15 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " mct_librocontable.nombre_corto,";
     strSQL += " mct_asientocontabledet.num_asiento,";
     strSQL += " mct_asientocontabledet.item,";
-    strSQL += " mct_asientocontabledet.fecha_asiento,";
+    strSQL += " cast(mct_asientocontabledet.fecha_asiento as varchar)::varchar(50) as fecha_asiento,";
     strSQL += " mct_asientocontabledet.id_cuenta,";
     strSQL += " mct_asientocontabledet.r_id_doc,";
     strSQL += " mct_asientocontabledet.r_documento_id,";
     strSQL += " mct_asientocontabledet.r_razon_social,";
     strSQL += " mct_asientocontabledet.glosa,";
-    strSQL += " mct_asientocontabledet.r_fecemi, mct_asientocontabledet.r_fecvcto,";
+    strSQL += " cast(mct_asientocontabledet.r_fecemi as varchar)::varchar(50) as r_fecemi, cast(mct_asientocontabledet.r_fecvcto as varchar)::varchar(50) as r_fecvcto,";
     strSQL += " (mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(100) as r_comprobante,";
-    strSQL += " mct_asientocontabledet.r_fecemi_ref, mct_asientocontabledet.r_fecvcto_ref,";
+    strSQL += " cast(mct_asientocontabledet.r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref, cast(mct_asientocontabledet.r_fecvcto_ref as varchar)::varchar(50) as r_fecvcto_ref,";
     strSQL += " (mct_asientocontabledet.r_cod_ref || '-' || mct_asientocontabledet.r_serie_ref || '-' || mct_asientocontabledet.r_numero_ref)::varchar(100) as r_comprobante_ref,";
     strSQL += " mct_asientocontabledet.debe_nac, mct_asientocontabledet.haber_nac, mct_asientocontabledet.r_tc,";
     strSQL += " mct_asientocontabledet.debe_me, mct_asientocontabledet.haber_me";
@@ -87,6 +87,7 @@ const obtenerAnalisis = async (req,res,next)=> {
     if (ccostoB !== '%') {
         parametros.push(ccostoB);
     }
+
     try {
         //console.log(strSQL);
         //console.log(parametros);
