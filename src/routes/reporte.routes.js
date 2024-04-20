@@ -7,9 +7,9 @@ const {obtenerHojaTrabajo, obtenerAnalisis} = require('../controllers/reporte.co
 router.get('/reporte/hojatrabajo/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:nivel/:id_libro', obtenerHojaTrabajo);
 router.get('/reporte/hojatrabajo/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:nivel', obtenerHojaTrabajo);
 //Analisis de cuentas generico
-router.get('/reporte/analisis/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin', obtenerAnalisis);
-router.get('/reporte/analisis/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:id_libro', obtenerAnalisis);
-router.get('/reporte/analisis/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:id_libro/:id_cuenta', obtenerAnalisis);
-router.get('/reporte/analisis/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:id_libro/:id_cuenta/:ccosto', obtenerAnalisis);
+router.get('/reporte/analisis01/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin', obtenerAnalisis);
+router.get('/reporte/analisis02/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:id_libro', obtenerAnalisis);
+router.get('/reporte/analisis03/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:id_libro/:id_cuenta', obtenerAnalisis);
+router.get('/reporte/analisis04/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:id_cuenta', obtenerAnalisis);
 
 module.exports = router;

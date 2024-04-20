@@ -47,11 +47,10 @@ const obtenerHojaTrabajo = async (req,res,next)=> {
 
 const obtenerAnalisis = async (req,res,next)=> {
     let strSQL;
-    const {id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,id_cuenta,ccosto} = req.params;
+    const {id_anfitrion,documento_id,periodo_ini,periodo_fin,id_libro,id_cuenta} = req.params;
 
     let id_libroB = (id_libro !== null && id_libro !== undefined) ? id_libro+'%' : '%';
     let id_cuentaB = (id_cuenta !== null && id_cuenta !== undefined) ? id_cuenta+'%' : '%';
-    let ccostoB = (ccosto !== null && ccosto !== undefined) ? ccosto+'%' : '%';
 
 
     strSQL = "SELECT mct_asientocontabledet.periodo,";
@@ -78,15 +77,9 @@ const obtenerAnalisis = async (req,res,next)=> {
     strSQL += " AND mct_asientocontabledet.periodo BETWEEN $3 AND $4";
     strSQL += " AND mct_asientocontabledet.id_libro like $5";
     strSQL += " AND mct_asientocontabledet.id_cuenta like $6";
-    if (ccostoB !== '%') {
-        strSQL += " AND mct_asientocontabledet.r_ccosto like $7";
-    }
     strSQL += " ORDER BY mct_asientocontabledet.id_libro,mct_asientocontabledet.num_asiento,mct_asientocontabledet.item";
     
     const parametros = [id_anfitrion, documento_id, periodo_ini, periodo_fin, id_libroB, id_cuentaB];
-    if (ccostoB !== '%') {
-        parametros.push(ccostoB);
-    }
 
     try {
         //console.log(strSQL);
