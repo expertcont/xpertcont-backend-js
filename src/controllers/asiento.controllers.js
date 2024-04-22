@@ -599,6 +599,7 @@ const obtenerAsiento = async (req,res,next)=> {
         strSQL = strSQL + " ,cast(mct_asientocontable.r_fecemi as varchar)::varchar(50) as fecemi";
         strSQL = strSQL + " ,cast(mct_asientocontable.r_fecvcto as varchar)::varchar(50) as fecvcto";
         strSQL = strSQL + " ,cast(mct_asientocontable.r_fecemi_ref as varchar)::varchar(50) as fecemi_ref";
+        strSQL = strSQL + " ,cast(mct_asientocontable.fecha_asiento as varchar)::varchar(50) as fecha_asiento";
         strSQL = strSQL + " FROM mct_asientocontable";
         strSQL = strSQL + " WHERE id_usuario = $1";
         strSQL = strSQL + " AND documento_id = $2";
