@@ -677,6 +677,7 @@ const crearAsiento = async (req,res,next)=> {
         r_id_mediopago,     //42
         r_voucher_banco,    //43
         r_cuenta10,         //44 new efectivo o banco X
+        fecha_asiento,       //45 new solo caja y diario servira
     } = req.body;
 
     //cuando llega con dd/mm/yyyy o dd-mm-yyyy hay que invertir el orden, sino sale invalido
@@ -746,7 +747,8 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,r_id_mediopago";   //42
     strSQL += " ,r_voucher_banco";  //43
     strSQL += " ,r_cuenta10";       //44
-    strSQL += " ,origen";       //45 new
+    strSQL += " ,origen";       //45 
+    strSQL += " ,fecha_asiento";       //46 new
 
     strSQL += " )";
     strSQL += " VALUES";
@@ -799,6 +801,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,$43";
     strSQL += " ,$44";
     strSQL += " ,'MANUAL'";
+    strSQL += " ,$45"; //new
     strSQL += " ) RETURNING *";
 
     try {
@@ -855,6 +858,7 @@ const crearAsiento = async (req,res,next)=> {
             devuelveCadenaNull(r_id_mediopago),  //42
             devuelveCadenaNull(r_voucher_banco), //43
             devuelveCadenaNull(r_cuenta10),      //44
+            devuelveCadenaNull(fecha_asiento),    //45 newww
         ];
         console.log(parametros);
         const result = await pool.query(strSQL, parametros);
