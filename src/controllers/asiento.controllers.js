@@ -1201,7 +1201,7 @@ const importarExcelRegCompras = async (req, res, next) => {
             (row[pos+26] || ''),    //AA cod aduana
             (row[pos+27] || ''),    //AB numero ref
             (row[pos+28] || '')    //AC id_bss
-
+            (row[pos+29] || '')    //AD NEW retencion4ta  *******
         ].join(','))
         .join('\n');
         //console.log(csvData);
@@ -1240,7 +1240,8 @@ const importarExcelRegCompras = async (req, res, next) => {
             r_serie_ref VARCHAR(5),
             r_id_aduana VARCHAR(5),
             r_numero_ref VARCHAR(22),
-            r_idbss VARCHAR(5)
+            r_idbss VARCHAR(5),
+            retencion4ta NUMERIC(14,2)
         );
       `;  
       await pool.query(createTableQuery);
@@ -1314,6 +1315,7 @@ const importarExcelRegCompras = async (req, res, next) => {
         strSQL += " ,r_id_aduana";      //41
         strSQL += " ,r_idbss";          //42
         strSQL += " ,origen";           //43
+        strSQL += " ,retencion4ta";           //43
         strSQL += " )";
         strSQL += " SELECT ";
         strSQL += "  $1";             //01 id_anfitrion
@@ -1367,7 +1369,8 @@ const importarExcelRegCompras = async (req, res, next) => {
         if (fileExtension==='.xlsx') {
             strSQL += " ,'EXCEL'";          //origen
         } //Excel datos propios
-        
+        strSQL += " ,retencion4ta";          //43 excel new
+
         strSQL += " FROM mct_datos";
         const parametros = [   
             id_anfitrion,    //01
