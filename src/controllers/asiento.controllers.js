@@ -56,7 +56,7 @@ const obtenerTodosAsientosCompra = async (req,res,next)=> {
     strSQL = strSQL + " ,glosa";
     strSQL = strSQL + " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref)::varchar(50) as comprobante_ref"; //(07-08-09)
     strSQL = strSQL + " ,origen";
-
+    strSQL = strSQL + " ,retencion4ta"; //new
     strSQL = strSQL + " FROM";
     strSQL = strSQL + " mct_asientocontable ";
     strSQL = strSQL + " WHERE id_usuario = '" + id_anfitrion + "'";
