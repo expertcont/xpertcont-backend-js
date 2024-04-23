@@ -1200,7 +1200,7 @@ const importarExcelRegCompras = async (req, res, next) => {
             (row[pos+25] || ''),    //Z serie ref
             (row[pos+26] || ''),    //AA cod aduana
             (row[pos+27] || ''),    //AB numero ref
-            (row[pos+28] || '')    //AC id_bss
+            (row[pos+28] || ''),    //AC id_bss
             (row[pos+29] || '')    //AD NEW retencion4ta  *******
         ].join(','))
         .join('\n');
