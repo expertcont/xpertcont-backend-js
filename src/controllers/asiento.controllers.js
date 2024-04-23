@@ -678,6 +678,7 @@ const crearAsiento = async (req,res,next)=> {
         r_voucher_banco,    //43
         r_cuenta10,         //44 new efectivo o banco X
         fecha_asiento,       //45 new solo caja y diario servira
+        retencion4ta,       //46 new retencion4ta opcional
     } = req.body;
 
     //cuando llega con dd/mm/yyyy o dd-mm-yyyy hay que invertir el orden, sino sale invalido
@@ -749,7 +750,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,r_cuenta10";       //44
     strSQL += " ,origen";       //45 
     strSQL += " ,fecha_asiento";       //46 new
-
+    strSQL += " ,retencion4ta";       //47 new
     strSQL += " )";
     strSQL += " VALUES";
     strSQL += " (";
@@ -802,6 +803,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ,$44";
     strSQL += " ,'MANUAL'";
     strSQL += " ,$45"; //new
+    strSQL += " ,$46"; //new ret4ta
     strSQL += " ) RETURNING *";
 
     try {
@@ -859,6 +861,7 @@ const crearAsiento = async (req,res,next)=> {
             devuelveCadenaNull(r_voucher_banco), //43
             devuelveCadenaNull(r_cuenta10),      //44
             devuelveCadenaNull(fecha_asiento),    //45 newww
+            devuelveCadenaNull(retencion4ta),    //46 newww
         ];
         console.log(parametros);
         const result = await pool.query(strSQL, parametros);
@@ -2047,15 +2050,16 @@ const actualizarAsiento = async (req,res,next)=> {
             r_id_mediopago,     //37
             r_voucher_banco,    //38
             r_cuenta10,         //39 new efectivo o banco X
+            retencion4ta,         //40 new opcional
 
         } = req.body;
         
         const {
-            id_anfitrion,       //40
-            documento_id,       //41
-            periodo,            //42
-            id_libro,           //43
-            num_asiento,        //44
+            id_anfitrion,       //41
+            documento_id,       //42
+            periodo,            //43
+            id_libro,           //44
+            num_asiento,        //45
         } = req.params;
 
         var strSQL;
@@ -2106,12 +2110,13 @@ const actualizarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " ,r_id_mediopago = $37";
         strSQL = strSQL + " ,r_voucher_banco = $38";
         strSQL = strSQL + " ,r_cuenta10 = $39";
+        strSQL = strSQL + " ,retencion4ta = $40"; //new opcional
 
-        strSQL = strSQL + " WHERE id_usuario = $40";
-        strSQL = strSQL + " AND documento_id = $41";
-        strSQL = strSQL + " AND periodo = $42";
-        strSQL = strSQL + " AND id_libro = $43";
-        strSQL = strSQL + " AND num_asiento = $44";
+        strSQL = strSQL + " WHERE id_usuario = $41";
+        strSQL = strSQL + " AND documento_id = $42";
+        strSQL = strSQL + " AND periodo = $43";
+        strSQL = strSQL + " AND id_libro = $44";
+        strSQL = strSQL + " AND num_asiento = $45";
 
         const parametros = [   
             devuelveCadenaNull(glosa),          //01
@@ -2159,13 +2164,14 @@ const actualizarAsiento = async (req,res,next)=> {
             devuelveCadenaNull(r_id_mediopago),  //37
             devuelveCadenaNull(r_voucher_banco), //38
             devuelveCadenaNull(r_cuenta10),      //39
+            devuelveCadenaNull(retencion4ta),      //40
 
             //Seccion parametros
-            id_anfitrion,       //40
-            documento_id,       //41
-            periodo,            //42
-            id_libro,           //43
-            num_asiento,        //44
+            id_anfitrion,       //41
+            documento_id,       //42
+            periodo,            //43
+            id_libro,           //44
+            num_asiento,        //45
         ];
 
         console.log(strSQL);
