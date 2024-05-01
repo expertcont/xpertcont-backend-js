@@ -474,7 +474,7 @@ const obtenerTodosAsientosDiario = async (req,res,next)=> {
 
 const generarSireCompras = async (req,res,next)=> {
     //Solo Cabeceras
-    const {id_anfitrion, documento_id, razon_social, periodo, moneda} = req.params;
+    const {id_anfitrion, documento_id, razon_social, periodo} = req.params;
 
     let strSQL;
     strSQL = "SELECT ";
@@ -537,7 +537,7 @@ const generarSireCompras = async (req,res,next)=> {
     strSQL += " ORDER BY num_asiento DESC";
     //console.log(strSQL);
     try {
-        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo, moneda]);
+        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo]);
         res.json(todosReg.rows);
     }
     catch(error){
@@ -546,7 +546,7 @@ const generarSireCompras = async (req,res,next)=> {
 };
 const generarSireVentas = async (req,res,next)=> {
     //Solo Cabeceras
-    const {id_anfitrion, documento_id, razon_social, periodo, moneda} = req.params;
+    const {id_anfitrion, documento_id, razon_social, periodo} = req.params;
 
     let strSQL;
     strSQL = "SELECT ";
@@ -599,7 +599,7 @@ const generarSireVentas = async (req,res,next)=> {
     strSQL += " ORDER BY num_asiento DESC";
     //console.log(strSQL);
     try {
-        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo, moneda]);
+        const todosReg = await pool.query(strSQL,[id_anfitrion, documento_id, razon_social, periodo]);
         res.json(todosReg.rows);
     }
     catch(error){
