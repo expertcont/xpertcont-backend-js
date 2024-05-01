@@ -235,6 +235,68 @@ const obtenerTodosAsientosPrev = async (req,res,next)=> {
     }
 };
 
+const obtenerTodosAsientosPrevCaja = async (req,res,next)=> {
+    //Listado con cuentas corrientes 12,13,42,43 ... y demas solicitas
+    //para generar contrasasiento de cancelacion
+    const {id_anfitrion, periodo, documento_id, id_libro} = req.params;
+
+    let strSQL;
+    strSQL = "SELECT 'Por Contabilizar'::varchar(20) as resultado";
+    strSQL += " ,cast(r_fecemi as varchar)::varchar(50) as r_fecemi";
+    strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto";
+    strSQL += " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante";
+    strSQL += " ,r_cod";
+    strSQL += " ,r_serie";
+    strSQL += " ,r_numero";
+    strSQL += " ,r_numero2";
+    strSQL += " ,r_id_doc";
+    strSQL += " ,r_documento_id";
+    strSQL += " ,r_razon_social";
+    strSQL += " ,r_monto_total"; 
+    strSQL += " ,r_moneda";
+    strSQL += " ,r_tc";
+    strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";
+    strSQL += " ,r_cod_ref";
+    strSQL += " ,r_serie_ref";
+    strSQL += " ,r_numero_ref";
+    strSQL += " ,r_id_aduana";
+    strSQL += " ,r_ano_dam";
+    strSQL += " ,origen";
+    strSQL += " ,num_asiento";
+    strSQL += " ,r_base001";
+    strSQL += " ,r_base002";
+    strSQL += " ,r_base003";
+    strSQL += " ,r_base004";
+    strSQL += " ,r_igv001";
+    strSQL += " ,r_igv002";
+    strSQL += " ,r_igv003";
+    strSQL += " ,r_monto_icbp";
+    strSQL += " FROM mct_asientocontable AS ac";
+    strSQL += " WHERE ac.id_usuario = '" + id_anfitrion + "'";
+    strSQL += " AND ac.documento_id = '" + documento_id + "'";
+    strSQL += " AND ac.periodo = '" + periodo + "'";
+    strSQL += " AND ac.id_libro = '" + id_libro + "'";
+    strSQL += " AND NOT EXISTS (";
+    strSQL += "         SELECT 1";
+    strSQL += "         FROM mct_asientocontabledet AS acd";
+    strSQL += "         WHERE";
+    strSQL += "             acd.id_usuario = ac.id_usuario";
+    strSQL += "             AND acd.documento_id = ac.documento_id";
+    strSQL += "             AND acd.periodo = ac.periodo";
+    strSQL += "             AND acd.id_libro = ac.id_libro";
+    strSQL += "             AND acd.num_asiento = ac.num_asiento";
+    strSQL += "     )";
+    
+    //console.log(strSQL);
+    try {
+        const todosReg = await pool.query(strSQL);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 const obtenerTodosAsientosVenta = async (req,res,next)=> {
     //Solo Cabeceras
     const {id_anfitrion, id_invitado, periodo, documento_id} = req.params;
@@ -432,17 +494,20 @@ const generarSireCompras = async (req,res,next)=> {
     strSQL += " ,r_id_doc";                                             //12
     strSQL += " ,r_documento_id";                                       //13
     strSQL += " ,r_razon_social";                                       //14
-    strSQL += " ,r_base001";                                            //15
-    strSQL += " ,r_igv001";                                             //16
-    strSQL += " ,r_base002";                                            //17
-    strSQL += " ,r_igv002";                                             //18
-    strSQL += " ,r_base003";                                            //19
-    strSQL += " ,r_igv003";                                             //20
-    strSQL += " ,r_base004";                                            //21 no gravado
-    strSQL += " ,r_monto_isc";                                          //22
-    strSQL += " ,r_monto_icbp";                                         //23
-    strSQL += " ,r_monto_otros";                                        //24
-    strSQL += " ,r_monto_total";                                        //25
+    //Aqui los montos necesitan CERO, para SIRE sino sale error
+
+    strSQL += " ,coalesce(r_base001,0) as r_base001";                                            //15
+    strSQL += " ,coalesce(r_igv001,0) as r_igv001";                                             //16
+    strSQL += " ,coalesce(r_base002,0) as r_base002";                                            //17
+    strSQL += " ,coalesce(r_igv002,0) as r_igv002";                                             //18
+    strSQL += " ,coalesce(r_base003,0) as r_base003";                                            //19
+    strSQL += " ,coalesce(r_igv003,0) as r_igv003";                                             //20
+    strSQL += " ,coalesce(r_base004,0) as r_base004";                                            //21 no gravado
+    strSQL += " ,coalesce(r_monto_isc,0) as r_monto_isc";                                          //22
+    strSQL += " ,coalesce(r_monto_icbp,0) as r_monto_icbp";                                         //23
+    strSQL += " ,coalesce(r_monto_otros,0) as r_monto_otros";                                        //24
+    strSQL += " ,coalesce(r_monto_total,0) as r_monto_total";                                        //25
+    
     strSQL += " ,r_moneda";                                             //26
     strSQL += " ,r_tc";                                                 //27
     //strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//28
@@ -464,8 +529,11 @@ const generarSireCompras = async (req,res,next)=> {
     strSQL += " WHERE id_usuario = $1";
     strSQL += " AND documento_id = $2";
     strSQL += " AND periodo = $4";
-    strSQL += " AND r_moneda = $5"; //new
+    //strSQL += " AND r_moneda = $5"; //new La moneda no se tiene en cuenta por el momento
     strSQL += " AND id_libro = '008'"; //compras
+    strSQL += " AND r_cod <> '91'"; //no domiciliados
+    strSQL += " AND r_cod <> '97'"; //no domiciliados
+    strSQL += " AND r_cod <> '98'"; //no domiciliados
     strSQL += " ORDER BY num_asiento DESC";
     //console.log(strSQL);
     try {
@@ -498,19 +566,21 @@ const generarSireVentas = async (req,res,next)=> {
     strSQL += " ,r_id_doc";                                             //11
     strSQL += " ,r_documento_id";                                       //12
     strSQL += " ,r_razon_social";                                       //13
-    strSQL += " ,r_base001";                                            //14 export
-    strSQL += " ,r_base002";                                            //15 base grav
-    strSQL += " ,r_base_desc";                                          //16 base desc
-    strSQL += " ,r_igv002";                                             //17 igv grv
-    strSQL += " ,r_igv_desc";                                           //18 igv desc
-    strSQL += " ,r_base003";                                            //19 exonerado
-    strSQL += " ,r_base004";                                            //20 inafecto
-    strSQL += " ,r_monto_isc";                                          //21
-    strSQL += " ,r_base_ivap";                                          //22
-    strSQL += " ,r_igv_ivap";                                           //23
-    strSQL += " ,r_monto_icbp";                                         //24
-    strSQL += " ,r_monto_otros";                                        //25
-    strSQL += " ,r_monto_total";                                        //26
+    
+    strSQL += " ,coalesce(r_base001,0) as r_base001";                                            //14 export
+    strSQL += " ,coalesce(r_base002,0) as r_base002";                                            //15 base grav
+    strSQL += " ,coalesce(r_base_desc,0) as r_base_desc";                                          //16 base desc
+    strSQL += " ,coalesce(r_igv002,0) as r_igv002";                                             //17 igv grv
+    strSQL += " ,coalesce(r_igv_desc,0) as r_igv_desc";                                           //18 igv desc
+    strSQL += " ,coalesce(r_base003,0) as r_base003";                                            //19 exonerado
+    strSQL += " ,coalesce(r_base004,0) as r_base004";                                            //20 inafecto
+    strSQL += " ,coalesce(r_monto_isc,0) as r_monto_isc";                                          //21
+    strSQL += " ,coalesce(r_base_ivap,0) as r_base_ivap";                                          //22
+    strSQL += " ,coalesce(r_igv_ivap,0) as r_igv_ivap";                                           //23
+    strSQL += " ,coalesce(r_monto_icbp,0) as r_monto_icbp";                                         //24
+    strSQL += " ,coalesce(r_monto_otros,0) as r_monto_otros";                                        //25
+    strSQL += " ,coalesce(r_monto_total,0) as r_monto_total";                                        //26
+    
     strSQL += " ,r_moneda";                                             //27
     strSQL += " ,r_tc";                                                 //28
     //strSQL += " ,cast(r_fecemi_ref as varchar)::v//archar(50) as r_fecemi_ref";//29
@@ -524,7 +594,7 @@ const generarSireVentas = async (req,res,next)=> {
     strSQL += " WHERE id_usuario = $1";
     strSQL += " AND documento_id = $2";
     strSQL += " AND periodo = $4";
-    strSQL += " AND r_moneda = $5";     //new
+    //strSQL += " AND r_moneda = $5";     //new La moneda no se tiene en cuenta por el momento
     strSQL += " AND id_libro = '014'";  //Ventas
     strSQL += " ORDER BY num_asiento DESC";
     //console.log(strSQL);
@@ -2290,6 +2360,7 @@ module.exports = {
     obtenerTodosAsientosVenta,
     obtenerTodosAsientosComparacion,
     obtenerTodosAsientosPrev,
+    obtenerTodosAsientosPrevCaja,
     obtenerTodosAsientosCaja,
     obtenerTodosAsientosDiario,
     generarSireCompras,
