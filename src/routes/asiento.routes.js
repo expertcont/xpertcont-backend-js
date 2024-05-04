@@ -4,7 +4,7 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,importarExcelRegVentas,importarExcelRegCompras,generarSireCompras,generarSireVentas,importarSireRegVentas,importarSireRegCompras,obtenerTodosAsientosComparacion, obtenerTodosAsientosPrev, crearAsientoMasivoVentas, crearAsientoMasivoCompras} = require('../controllers/asiento.controllers')
+const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,importarExcelRegVentas,importarExcelRegCompras,generarSireCompras,generarSireVentas,importarSireRegVentas,importarSireRegCompras,obtenerTodosAsientosComparacion, obtenerTodosAsientosPrev, crearAsientoMasivoVentas, crearAsientoMasivoCompras, generarSireComprasNoDomic} = require('../controllers/asiento.controllers')
 
 router.get('/asiento/compras/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCompra);
 router.get('/asiento/ventas/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosVenta);
@@ -13,8 +13,9 @@ router.get('/asientoprev/:id_anfitrion/:periodo/:documento_id/:id_libro', obtene
 router.get('/asiento/caja/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCaja);
 router.get('/asiento/diario/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosDiario);
 
-router.get('/sire/compras/:id_anfitrion/:documento_id/:razon_social/:periodo/:moneda', generarSireCompras); //new moneda PEN o USD
-router.get('/sire/ventas/:id_anfitrion/:documento_id/:razon_social/:periodo/:moneda', generarSireVentas);//new moneda PEN o USD
+router.get('/sire/compras/:id_anfitrion/:documento_id/:razon_social/:periodo', generarSireCompras); //new moneda PEN o USD
+router.get('/sire/compras/nodomic/:id_anfitrion/:documento_id/:razon_social/:periodo', generarSireComprasNoDomic); //new moneda PEN o USD
+router.get('/sire/ventas/:id_anfitrion/:documento_id/:razon_social/:periodo', generarSireVentas);//new moneda PEN o USD
 
 router.get('/asiento/:fecha_ini/:fecha_proceso', obtenerTodosAsientosPlan);
 router.get('/asiento/todos/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', obtenerAsiento);
