@@ -603,9 +603,9 @@ const generarSireComprasNoDomic = async (req,res,next)=> {
     strSQL += " AND periodo = $4";
     //strSQL += " AND r_moneda = $5"; //new La moneda no se tiene en cuenta por el momento
     strSQL += " AND id_libro = '008'"; //compras
-    strSQL += " AND r_cod <> '91'"; //no domiciliados
-    strSQL += " AND r_cod <> '97'"; //no domiciliados
-    strSQL += " AND r_cod <> '98'"; //no domiciliados
+    strSQL += " AND r_cod = '91'"; //no domiciliados
+    strSQL += " AND r_cod = '97'"; //no domiciliados
+    strSQL += " AND r_cod = '98'"; //no domiciliados
     strSQL += " ORDER BY num_asiento DESC";
     //console.log(strSQL);
     try {
@@ -2403,6 +2403,46 @@ const crearAsientoMasivoCompras = async (req,res,next)=> {
         next(error)
     }
 };
+const crearAsientoMasivoVentasContado = async (req,res,next)=> {
+    let strSQL;
+    const {id_anfitrion,documento_id,periodo} = req.params;
+
+    const datos = req.body;
+    //console.log(datos);
+    //console.log('parametros: ',id_anfitrion,documento_id,periodo);
+
+    strSQL = "CALL pgenerarcontraasientoscaja($1,$2,$3)";
+    try {
+        const parametros = [datos,id_anfitrion,documento_id,periodo];
+        const result = await pool.query(strSQL, parametros);
+        console.log('contrasientos ventas al contado ok');
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        console.log('hubo un problema: ', error.message);
+        next(error)
+    }
+};
+const crearAsientoMasivoDifCambio = async (req,res,next)=> {
+    let strSQL;
+    const {id_anfitrion,documento_id,periodo} = req.params;
+
+    const datos = req.body;
+    //console.log(datos);
+    //console.log('parametros: ',id_anfitrion,documento_id,periodo);
+
+    strSQL = "CALL pgenerarasientodifcambio($1,$2,$3)";
+    try {
+        const parametros = [datos,id_anfitrion,documento_id,periodo];
+        const result = await pool.query(strSQL, parametros);
+        console.log('diferencia de cambio ok');
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        console.log('hubo un problema: ', error.message);
+        next(error)
+    }
+};
 
 //version json
 /*const crearAsientoMasivoCompras = async (req,res,next)=> {
@@ -2444,6 +2484,8 @@ module.exports = {
     crearAsiento,
     crearAsientoMasivoVentas,
     crearAsientoMasivoCompras,
+    crearAsientoMasivoVentasContado,
+    crearAsientoMasivoDifCambio,
     importarExcelRegVentas,
     importarExcelRegCompras,
     importarSireRegVentas,
