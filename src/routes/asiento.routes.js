@@ -30,7 +30,7 @@ router.post('/asientosirecompras', upload.single('archivoExcel'), importarSireRe
 router.post('/asientomasivoventas/:id_anfitrion/:documento_id/:periodo/:id_cuenta', crearAsientoMasivoVentas); //new para ejecutar proc almac con jsonb
 router.post('/asientomasivocompras/:id_anfitrion/:documento_id/:periodo/:id_cuenta/:id_cuenta_cargo/:id_cuenta_abono', crearAsientoMasivoCompras); //new para ejecutar proc almac con jsonb
 router.post('/asientomasivoventascontado/:id_anfitrion/:documento_id/:periodo', crearAsientoMasivoVentasContado); //new 
-router.post('/asientomasivoventasdifcambio/:id_anfitrion/:documento_id/:periodo', crearAsientoMasivoDifCambio); //new 
+router.post('/asientomasivodifcambio/:id_anfitrion/:documento_id/:periodo', crearAsientoMasivoDifCambio); //new 
 
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', actualizarAsiento);
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', anularAsiento);
