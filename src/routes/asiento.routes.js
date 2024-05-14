@@ -4,7 +4,7 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,importarExcelRegVentas,importarExcelRegCompras,generarSireCompras,generarSireVentas,importarSireRegVentas,importarSireRegCompras,obtenerTodosAsientosComparacion, obtenerTodosAsientosPrev, crearAsientoMasivoVentas, crearAsientoMasivoCompras, generarSireComprasNoDomic, crearAsientoMasivoVentasContado, crearAsientoMasivoDifCambio} = require('../controllers/asiento.controllers')
+const {obtenerTodosAsientosCompra,obtenerTodosAsientosVenta,obtenerTodosAsientosCaja,obtenerTodosAsientosDiario,obtenerTodosAsientosPlan,obtenerAsiento,crearAsiento,actualizarAsiento,anularAsiento,eliminarAsiento,eliminarAsientoOrigen,importarExcelRegVentas,importarExcelRegCompras,generarSireCompras,generarSireVentas,importarSireRegVentas,importarSireRegCompras,obtenerTodosAsientosComparacion, obtenerTodosAsientosPrev, crearAsientoMasivoVentas, crearAsientoMasivoCompras, generarSireComprasNoDomic, crearAsientoMasivoVentasContado, crearAsientoMasivoDifCambio, crearAsientoMayorizado} = require('../controllers/asiento.controllers')
 
 router.get('/asiento/compras/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosCompra);
 router.get('/asiento/ventas/:id_anfitrion/:id_invitado/:periodo/:documento_id', obtenerTodosAsientosVenta);
@@ -31,6 +31,7 @@ router.post('/asientomasivoventas/:id_anfitrion/:documento_id/:periodo/:id_cuent
 router.post('/asientomasivocompras/:id_anfitrion/:documento_id/:periodo/:id_cuenta/:id_cuenta_cargo/:id_cuenta_abono', crearAsientoMasivoCompras); //new para ejecutar proc almac con jsonb
 router.post('/asientomasivoventascontado/:id_anfitrion/:documento_id/:periodo', crearAsientoMasivoVentasContado); //new 
 router.post('/asientomasivodifcambio/:id_anfitrion/:documento_id/:periodo', crearAsientoMasivoDifCambio); //new 
+router.post('/asientomayorizado/:id_anfitrion/:documento_id/:periodo/:id_libro', crearAsientoMayorizado); //new 
 
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', actualizarAsiento);
 router.put('/asiento/:id_anfitrion/:documento_id/:periodo/:id_libro/:num_asiento', anularAsiento);

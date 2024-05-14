@@ -2443,6 +2443,26 @@ const crearAsientoMasivoDifCambio = async (req,res,next)=> {
         next(error)
     }
 };
+const crearAsientoMayorizado = async (req,res,next)=> {
+    let strSQL;
+    const {id_anfitrion,documento_id,periodo,id_libro} = req.params;
+
+    //const datos = req.body;
+    //console.log(datos);
+    //console.log('parametros: ',id_anfitrion,documento_id,periodo);
+
+    strSQL = "CALL pgenerarasientomayorizado($1,$2,$3,$4)";
+    try {
+        const parametros = [id_anfitrion,documento_id,periodo,id_libro];
+        const result = await pool.query(strSQL, parametros);
+        console.log('mayor en diario ok');
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        console.log('hubo un problema: ', error.message);
+        next(error)
+    }
+};
 
 //version json
 /*const crearAsientoMasivoCompras = async (req,res,next)=> {
@@ -2486,6 +2506,7 @@ module.exports = {
     crearAsientoMasivoCompras,
     crearAsientoMasivoVentasContado,
     crearAsientoMasivoDifCambio,
+    crearAsientoMayorizado,
     importarExcelRegVentas,
     importarExcelRegCompras,
     importarSireRegVentas,
