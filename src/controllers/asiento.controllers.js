@@ -2407,13 +2407,13 @@ const crearAsientoMasivoVentasContado = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo} = req.params;
 
-    const datos = req.body;
+    //const datos = req.body;
     //console.log(datos);
     //console.log('parametros: ',id_anfitrion,documento_id,periodo);
 
     strSQL = "CALL pgenerarcontraasientoscaja($1,$2,$3)";
     try {
-        const parametros = [datos,id_anfitrion,documento_id,periodo];
+        const parametros = [id_anfitrion,documento_id,periodo];
         const result = await pool.query(strSQL, parametros);
         console.log('contrasientos ventas al contado ok');
         res.json(result.rows[0]);
@@ -2427,13 +2427,13 @@ const crearAsientoMasivoDifCambio = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo} = req.params;
 
-    const datos = req.body;
+    //const datos = req.body;
     //console.log(datos);
     //console.log('parametros: ',id_anfitrion,documento_id,periodo);
 
     strSQL = "CALL pgenerarasientodifcambio($1,$2,$3)";
     try {
-        const parametros = [datos,id_anfitrion,documento_id,periodo];
+        const parametros = [id_anfitrion,documento_id,periodo];
         const result = await pool.query(strSQL, parametros);
         console.log('diferencia de cambio ok');
         res.json(result.rows[0]);
