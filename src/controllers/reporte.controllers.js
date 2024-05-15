@@ -96,14 +96,16 @@ const obtenerCuentasCorrientes = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo_fin} = req.params;
 
-    strSQL = "select * from fct_cuentascorrientes($1,$2,$3)";
+    strSQL = "select fct_cuentascorrientes.* ";
+    strSQL += " ,(fct_cuentascorrientes.r_cod || '-' || fct_cuentascorrientes.r_serie || '-' || fct_cuentascorrientes.r_numero)::varchar(100) as r_comprobante";
+    strSQL += " from fct_cuentascorrientes($1,$2,$3)";
     strSQL += " as (";
 	strSQL += " tipo varchar(20),";
     strSQL += " id_cuenta varchar(17),";
     strSQL += " r_id_doc varchar(2),";
     strSQL += " r_documento_id varchar(20),";
     strSQL += " r_razon_social varchar(200),"
-    strSQL += " r_fecemi date,";
+    strSQL += " r_fecemi varchar(50),";
     strSQL += " r_cod varchar(2),";
     strSQL += " r_serie varchar(5),";
     strSQL += " r_numero varchar(22),";
