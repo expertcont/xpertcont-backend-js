@@ -92,7 +92,43 @@ const obtenerAnalisis = async (req,res,next)=> {
     }
 };
 
+const obtenerCuentasCorrientes = async (req,res,next)=> {
+    let strSQL;
+    const {id_anfitrion,documento_id,periodo_fin} = req.params;
+
+    strSQL = "select * from fct_cuentascorrientes($1,$2,$3)";
+    strSQL += " as (";
+	strSQL += " tipo varchar(20),";
+    strSQL += " id_cuenta varchar(17),";
+    strSQL += " r_id_doc varchar(2),";
+    strSQL += " r_documento_id varchar(20),";
+    strSQL += " r_razon_social varchar(200),"
+    strSQL += " r_fecemi date,";
+    strSQL += " r_cod varchar(2),";
+    strSQL += " r_serie varchar(5),";
+    strSQL += " r_numero varchar(22),";
+    strSQL += " saldo_soles numeric(14,2),";
+    strSQL += " saldo_dolares numeric(14,2),";
+    strSQL += " saldo_deudor_mn numeric,";
+    strSQL += " saldo_acreedor_mn numeric,";
+    strSQL += " saldo_deudor_me numeric,";
+    strSQL += " saldo_acreedor_me numeric";
+    strSQL += " )";
+    const parametros = [id_anfitrion, documento_id, periodo_fin];
+
+    try {
+        //console.log(strSQL);
+        //console.log(parametros);
+        const todosReg = await pool.query(strSQL,parametros);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 module.exports = {
     obtenerHojaTrabajo,
-    obtenerAnalisis
+    obtenerAnalisis,
+    obtenerCuentasCorrientes
  }; 
