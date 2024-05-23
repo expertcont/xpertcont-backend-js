@@ -98,6 +98,7 @@ const obtenerCuentasCorrientes = async (req,res,next)=> {
 
     strSQL = "select fct_cuentascorrientes.* ";
     strSQL += " ,(fct_cuentascorrientes.r_cod || '-' || fct_cuentascorrientes.r_serie || '-' || fct_cuentascorrientes.r_numero)::varchar(100) as r_comprobante";
+    strSQL += " ,null::numeric as monto_efec";    
     strSQL += " from fct_cuentascorrientes($1,$2,$3)";
     strSQL += " as (";
 	strSQL += " tipo varchar(20),";
