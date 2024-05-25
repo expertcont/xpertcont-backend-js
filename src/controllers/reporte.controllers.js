@@ -95,17 +95,17 @@ const obtenerAnalisis = async (req,res,next)=> {
 const obtenerCuentasCorrientes = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo_fin} = req.params;
-
-    strSQL = "select fct_cuentascorrientes.* ";
+    
+    strSQL = "SELECT row_number() OVER () AS id, fct_cuentascorrientes.* ";
     strSQL += " ,(fct_cuentascorrientes.r_cod || '-' || fct_cuentascorrientes.r_serie || '-' || fct_cuentascorrientes.r_numero)::varchar(100) as r_comprobante";
     strSQL += " ,null::numeric as monto_efec";    
-    strSQL += " from fct_cuentascorrientes($1,$2,$3)";
-    strSQL += " as (";
-	strSQL += " tipo varchar(20),";
+    strSQL += " FROM fct_cuentascorrientes($1,$2,$3)";
+    strSQL += " AS (";
+    strSQL += " tipo varchar(20),";
     strSQL += " id_cuenta varchar(17),";
     strSQL += " r_id_doc varchar(2),";
     strSQL += " r_documento_id varchar(20),";
-    strSQL += " r_razon_social varchar(200),"
+    strSQL += " r_razon_social varchar(200),";
     strSQL += " r_fecemi varchar(50),";
     strSQL += " r_cod varchar(2),";
     strSQL += " r_serie varchar(5),";
@@ -116,7 +116,8 @@ const obtenerCuentasCorrientes = async (req,res,next)=> {
     strSQL += " saldo_acreedor_mn numeric,";
     strSQL += " saldo_deudor_me numeric,";
     strSQL += " saldo_acreedor_me numeric";
-    strSQL += " )";
+    strSQL += " );";
+
     const parametros = [id_anfitrion, documento_id, periodo_fin];
 
     try {
