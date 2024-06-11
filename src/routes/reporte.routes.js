@@ -12,5 +12,5 @@ router.get('/reporte/analisis02/:id_anfitrion/:documento_id/:periodo_ini/:period
 router.get('/reporte/analisis03/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:id_libro/:id_cuenta', obtenerAnalisis);
 router.get('/reporte/analisis04/:id_anfitrion/:documento_id/:periodo_ini/:periodo_fin/:id_cuenta', obtenerAnalisis);
 //Cuentas corrientes general
-router.get('/reporte/cuentascorrientes/:id_anfitrion/:documento_id/:periodo_fin', obtenerCuentasCorrientes);
+router.get('/reporte/cuentascorrientes/:id_anfitrion/:documento_id/:periodo_fin/:saldo', obtenerCuentasCorrientes);
 module.exports = router;

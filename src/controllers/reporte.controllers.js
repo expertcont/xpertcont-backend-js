@@ -92,9 +92,9 @@ const obtenerAnalisis = async (req,res,next)=> {
     }
 };
 
-const obtenerCuentasCorrientes = async (req,res,next)=> {
+/*const obtenerCuentasCorrientes = async (req,res,next)=> {
     let strSQL;
-    const {id_anfitrion,documento_id,periodo_fin} = req.params;
+    const {id_anfitrion,documento_id,periodo_fin,saldo} = req.params;
     
     strSQL = "SELECT row_number() OVER () AS id, fct_cuentascorrientes.* ";
     strSQL += " ,(fct_cuentascorrientes.r_cod || '-' || fct_cuentascorrientes.r_serie || '-' || fct_cuentascorrientes.r_numero)::varchar(100) as r_comprobante";
@@ -116,7 +116,12 @@ const obtenerCuentasCorrientes = async (req,res,next)=> {
     strSQL += " saldo_acreedor_mn numeric,";
     strSQL += " saldo_deudor_me numeric,";
     strSQL += " saldo_acreedor_me numeric";
-    strSQL += " );";
+    strSQL += " ) ";
+    if (saldo ==='deudores'){
+        strSQL += " where saldo_deudor_mn > 0 or saldo_deudor_me > 0";
+    }else{
+        strSQL += " where saldo_acreedor_mn > 0 or saldo_acreedor_me > 0";
+    }
 
     const parametros = [id_anfitrion, documento_id, periodo_fin];
 
@@ -129,7 +134,59 @@ const obtenerCuentasCorrientes = async (req,res,next)=> {
     catch(error){
         console.log(error.message);
     }
+};*/
+const obtenerCuentasCorrientes = async (req, res, next) => {
+    try {
+        const { id_anfitrion, documento_id, periodo_fin, saldo } = req.params;
+
+        // Validación de parámetros
+        if ([id_anfitrion, documento_id, periodo_fin, saldo].some(param => param === null || param === undefined)) {
+            return res.status(400).json({ error: 'Todos los parámetros son requeridos y no pueden ser null o undefined' });
+        }
+
+        // Construcción segura de la consulta SQL
+        const baseQuery = `
+            SELECT row_number() OVER () AS id, fct_cuentascorrientes.*,
+                   (fct_cuentascorrientes.r_cod || '-' || fct_cuentascorrientes.r_serie || '-' || fct_cuentascorrientes.r_numero)::varchar(100) as r_comprobante,
+                   null::numeric as monto_efec
+            FROM fct_cuentascorrientes($1, $2, $3)
+            AS (
+                tipo varchar(20),
+                id_cuenta varchar(17),
+                r_id_doc varchar(2),
+                r_documento_id varchar(20),
+                r_razon_social varchar(200),
+                r_fecemi varchar(50),
+                r_cod varchar(2),
+                r_serie varchar(5),
+                r_numero varchar(22),
+                saldo_soles numeric(14,2),
+                saldo_dolares numeric(14,2),
+                saldo_deudor_mn numeric,
+                saldo_acreedor_mn numeric,
+                saldo_deudor_me numeric,
+                saldo_acreedor_me numeric
+            )
+        `;
+
+        // Determinación de la cláusula WHERE basada en el parámetro 'saldo'
+        const whereClause = saldo === 'deudores' 
+            ? 'WHERE saldo_deudor_mn > 0 OR saldo_deudor_me > 0' 
+            : 'WHERE saldo_acreedor_mn > 0 OR saldo_acreedor_me > 0';
+
+        const strSQL = `${baseQuery} ${whereClause}`;
+        const parametros = [id_anfitrion, documento_id, periodo_fin];
+
+        // Ejecución de la consulta
+        const todosReg = await pool.query(strSQL, parametros);
+        res.json(todosReg.rows);
+
+    } catch (error) {
+        console.error('Error ejecutando la consulta:', error.message);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
 };
+
 
 module.exports = {
     obtenerHojaTrabajo,
