@@ -109,7 +109,7 @@ const obtenerTCSunat = async (req, res, next) => {
         
         // Pasamos los parámetros a la consulta
         const todosReg = await pool.query(strSQL, [fecha, tipo]);
-        console.log([fecha, tipo]);
+        //console.log([fecha, tipo]);
         // Verificamos si hay resultados y enviamos el resultado
         if (todosReg.rows.length > 0) {
             res.json(todosReg.rows[0]);  // Devuelve el primer (y único) resultado
