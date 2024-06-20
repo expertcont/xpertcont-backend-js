@@ -102,6 +102,26 @@ const obtenerTodosLibros = async (req,res,next)=> {
     }
 };
 
+const obtenerTCSunat = async (req, res, next) => {
+    try {
+        const { fecha, tipo } = req.params;
+        const strSQL = "SELECT fct_extrae_tc($1, $2) AS tc";
+        
+        // Pasamos los parámetros a la consulta
+        const todosReg = await pool.query(strSQL, [fecha, tipo]);
+        console.log([fecha, tipo]);
+        // Verificamos si hay resultados y enviamos el resultado
+        if (todosReg.rows.length > 0) {
+            res.json(todosReg.rows[0]);  // Devuelve el primer (y único) resultado
+        } else {
+            res.status(404).json({ message: "No data found" });  // En caso de no encontrar resultados
+        }
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 module.exports = {
     obtenerTodosPais,
     obtenerTodosBss,
@@ -110,5 +130,6 @@ module.exports = {
     obtenerTodosMedioPago,
     obtenerTodosIdDoc,
     obtenerTodosCCostoPopUp,
-    obtenerTodosLibros
+    obtenerTodosLibros,
+    obtenerTCSunat
  }; 
