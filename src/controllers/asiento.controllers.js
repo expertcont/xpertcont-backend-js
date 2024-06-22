@@ -1,7 +1,7 @@
 const pool = require('../db');
 const xlsx = require('xlsx');
 const { Readable } = require('stream');
-const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN} = require('../utils/libreria.utils');
+const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
 
@@ -1063,21 +1063,23 @@ const importarExcelRegVentas = async (req, res, next) => {
             (row[pos+6] || '').toString().replace(/,/g, ''),    //G tipo
             (row[pos+7] || '').toString().replace(/,/g, ''),    //H documento_id
             (row[pos+8] || '').toString().replace(/,/g, ''),    //I razon social
-            (row[pos+9] || ''),    //J export
-            (row[pos+10] || ''),    //K base
-            (row[pos+11] || ''),    //L DESC BASE (NEW)***
-            (row[pos+12] || ''),    //M igv
-            (row[pos+13] || ''),    //N DESC IGV (NEW)***
-            (row[pos+14] || ''),    //O exo
-            (row[pos+15] || ''),    //P inafect
-            (row[pos+16] || ''),    //Q ISC (NEW)***
-            (row[pos+17] || ''),    //R BASE PILADO (NEW)***
-            (row[pos+18] || ''),    //S IGV PILADO (NEW)***
+            
+            (corregirMontoNotaCredito(row[pos+9],row[pos+2]) || ''),    //J export
+            (corregirMontoNotaCredito(row[pos+10],row[pos+2]) || ''),    //K base
+            (corregirMontoNotaCredito(row[pos+11],row[pos+2]) || ''),    //L DESC BASE (NEW)***
+            (corregirMontoNotaCredito(row[pos+12],row[pos+2]) || ''),    //M igv
+            (corregirMontoNotaCredito(row[pos+13],row[pos+2]) || ''),    //N DESC IGV (NEW)***
+            (corregirMontoNotaCredito(row[pos+14],row[pos+2]) || ''),    //O exo
+            (corregirMontoNotaCredito(row[pos+15],row[pos+2]) || ''),    //P inafect
+            (corregirMontoNotaCredito(row[pos+16],row[pos+2]) || ''),    //Q ISC (NEW)***
+            (corregirMontoNotaCredito(row[pos+17],row[pos+2]) || ''),    //R BASE PILADO (NEW)***
+            (corregirMontoNotaCredito(row[pos+18],row[pos+2]) || ''),    //S IGV PILADO (NEW)***
 
-            (row[pos+19] || ''),    //T icbp
-            (row[pos+20] || ''),    //U otros
-            (row[pos+21] || ''),    //V total
-            (row[pos+22] || ''),    //W moneda
+            (corregirMontoNotaCredito(row[pos+19],row[pos+2]) || ''),    //T icbp
+            (corregirMontoNotaCredito(row[pos+20],row[pos+2]) || ''),    //U otros
+            (corregirMontoNotaCredito(row[pos+21],row[pos+2]) || ''),    //V total
+            (corregirMontoNotaCredito(row[pos+22],row[pos+2]) || ''),    //W moneda
+
             (corregirTCPEN(row[pos+23],row[pos+22]) || ''),    //X tc
             index > 0 ? convertirFechaStringComplete(row[pos+24]) : row[pos+24], //Y emision ref
             (row[pos+25] || ''),    //Z cod ref

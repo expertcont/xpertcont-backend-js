@@ -114,7 +114,23 @@ const devuelveCadenaNull = (value) => {
     let fechaFormateada = `${anio}-${mes}-${dia}`;
     return fechaFormateada;
   }
- 
+
+  function corregirMontoNotaCredito(sValor, sCod) {
+    // Convierte en negativo el sValor dependiendo si sCod === '07'
+    if (sCod === undefined || sCod.toString().trim() === '') {
+      return sValor;
+    }
+    if (sCod.toString().trim() === '07') {
+      const nValorNumerico = parseFloat(sValor);
+      if (!isNaN(nValorNumerico)) {
+        const nValorNumericoCorregido = Math.abs(nValorNumerico) * (-1);
+        return nValorNumericoCorregido.toString();
+      }
+    }
+  
+    return sValor;
+  }
+  
   module.exports = {
     devuelveCadenaNull,
     devuelveCadena,    
@@ -122,6 +138,7 @@ const devuelveCadenaNull = (value) => {
     convertirFechaString,
     convertirFechaStringComplete,
     corregirTCPEN,
+    corregirMontoNotaCredito,
     formatearFecha
   };
   
