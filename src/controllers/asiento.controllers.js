@@ -2490,6 +2490,29 @@ const crearAsientoMayorizado = async (req,res,next)=> {
     }
 };*/
 
+const crearAsientoMasivoCaja = async (req,res,next)=> {
+    let strSQL;
+    const {id_anfitrion,documento_id,periodo} = req.params;
+
+    const datos = req.body;
+    //const primerElemento = datos[0];
+    //console.log(datos);
+    //console.log('parametros: ',id_anfitrion,documento_id,periodo);
+    const datosJSON = JSON.stringify(datos);
+    //console.log(datosJSON);
+    strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4)";
+    try {
+        const parametros = [datosJSON,id_anfitrion,documento_id,periodo];
+        const result = await pool.query(strSQL, parametros);
+        console.log('caja cancelacion ok');
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        console.log('hubo un problema: ', error.message);
+        next(error)
+    }
+};
+
 module.exports = {
     obtenerTodosAsientosCompra,
     obtenerTodosAsientosVenta,
@@ -2509,6 +2532,7 @@ module.exports = {
     crearAsientoMasivoVentasContado,
     crearAsientoMasivoDifCambio,
     crearAsientoMayorizado,
+    crearAsientoMasivoCaja,
     importarExcelRegVentas,
     importarExcelRegCompras,
     importarSireRegVentas,
