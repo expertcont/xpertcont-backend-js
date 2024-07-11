@@ -2496,7 +2496,7 @@ const crearAsientoMasivoCaja = async (req,res,next)=> {
 
     const datos = req.body;
     //const primerElemento = datos[0];
-    //console.log(datos);
+    console.log(datos);
     //console.log('parametros: ',id_anfitrion,documento_id,periodo);
     const datosJSON = JSON.stringify(datos);
     console.log(datosJSON);
