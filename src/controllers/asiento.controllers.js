@@ -2499,7 +2499,7 @@ const crearAsientoMasivoCaja = async (req,res,next)=> {
     //console.log(datos);
     //console.log('parametros: ',id_anfitrion,documento_id,periodo);
     const datosJSON = JSON.stringify(datos);
-    //console.log(datosJSON);
+    console.log(datosJSON);
     strSQL = "CALL pgenerarasientocajajson($1,$2,$3,$4)";
     try {
         const parametros = [datosJSON,id_anfitrion,documento_id,periodo];
