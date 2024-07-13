@@ -2490,7 +2490,7 @@ const crearAsientoMayorizado = async (req,res,next)=> {
     }
 };*/
 
-const crearAsientoMasivoCaja = async (req,res,next)=> {
+/*const crearAsientoMasivoCaja = async (req,res,next)=> {
     let strSQL;
     const {id_anfitrion,documento_id,periodo} = req.params;
 
@@ -2511,7 +2511,27 @@ const crearAsientoMasivoCaja = async (req,res,next)=> {
         console.log('hubo un problema: ', error.message);
         next(error)
     }
+};*/
+const crearAsientoMasivoCaja = async (req, res, next) => {
+    let strSQL;
+    const { id_anfitrion, documento_id, periodo } = req.params;
+
+    const datos = req.body;
+    console.log(datos);
+    const datosJSON = JSON.stringify(datos);
+    console.log(datosJSON);
+    strSQL = "SELECT fgenerarasientocajajson($1, $2, $3, $4) AS resultado";
+    try {
+        const parametros = [datosJSON, id_anfitrion, documento_id, periodo];
+        const result = await pool.query(strSQL, parametros);
+        console.log('caja cancelacion ok');
+        res.json({ success: result.rows[0].resultado });
+    } catch (error) {
+        console.log('hubo un problema: ', error.message);
+        res.json({ success: false });
+    }
 };
+
 
 module.exports = {
     obtenerTodosAsientosCompra,
