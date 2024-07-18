@@ -90,7 +90,8 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         }else{
             strSQL = strSQL + " ORDER BY id_cuenta";
         }
-
+        
+        console.log(strSQL);
         const todasCuentas = await pool.query(strSQL);
         res.json(todasCuentas.rows);
     }
