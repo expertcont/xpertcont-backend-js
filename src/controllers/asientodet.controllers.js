@@ -48,7 +48,8 @@ const obtenerAsientoDet = async (req,res,next)=> {
         strSQL += ",(mct_asientocontabledet.r_cod || '-' || mct_asientocontabledet.r_serie || '-' || mct_asientocontabledet.r_numero)::varchar(50) as comprobante";
         strSQL += " from mct_asientocontabledet left join mct_cuentacontable_det";
         strSQL += " on (mct_asientocontabledet.id_cuenta = mct_cuentacontable_det.id_cuenta and";
-        strSQL += "     mct_asientocontabledet.id_usuario = mct_cuentacontable_det.id_usuario)";
+        strSQL += "     mct_asientocontabledet.id_usuario = mct_cuentacontable_det.id_usuario and";
+        strSQL += "     mct_asientocontabledet.documento_id = mct_cuentacontable_det.documento_id )";
         strSQL += " where mct_asientocontabledet.id_usuario = $1";
         strSQL += " and mct_asientocontabledet.documento_id = $2";
         strSQL += " and mct_asientocontabledet.periodo = $3";
