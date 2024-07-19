@@ -1591,41 +1591,13 @@ const importarSireRegVentas = async (req, res, next) => {
               (row[24] || ''), //U otros
               (row[25] || ''), //V total
               (row[26] || ''), //W moneda
-              (row[27] || ''), //X tc
+              //(row[27] || ''), //X tc
+              (corregirTCPEN(row[27],row[26]) || ''),    //X tc
+              
               index > 0 ? convertirFechaStringComplete(row[28]) : row[28], //Y emision ref
               (row[29] || ''), //Z cod ref
               (row[30] || ''), //AA serie ref
               (row[31] || '') //AB num ref
-                /*
-              index > 0 ? convertirFechaStringComplete(row[0]) : row[0], //A emision
-              index > 0 ? convertirFechaStringComplete(row[1]) : row[1], //B vcto
-              (row[2] || '').toString().replace(/,/g, ''), //C cod
-              (row[3] || '').toString().replace(/,/g, ''), //D serie
-              (row[4] || '').toString().replace(/,/g, ''), //E numero
-              (row[5] || '').toString().replace(/,/g, ''), //F numero2
-              (row[6] || '').toString().replace(/,/g, ''), //G tipo
-              (row[7] || '').toString().replace(/,/g, ''), //H documento_id
-              (row[8] || '').toString().replace(/,/g, ''), //I razon social
-              (row[9] || ''), //J export
-              (row[10] || ''), //K base
-              (row[11] || ''), //L base desc    NEW
-              (row[12] || ''), //M igv
-              (row[13] || ''), //N igv desc     NEW
-              (row[14] || ''), //O exo
-              (row[15] || ''), //P inafect
-              (row[16] || ''), //Q isc          NEW
-              (row[17] || ''), //R base ivap    NEW
-              (row[18] || ''), //S ivap         NEW
-                
-              (row[19] || ''), //T icbp
-              (row[20] || ''), //U otros
-              (row[21] || ''), //V total
-              (row[22] || ''), //W moneda
-              (row[23] || ''), //X tc
-              index > 0 ? convertirFechaStringComplete(row[24]) : row[24], //Y emision ref
-              (row[25] || ''), //Z cod ref
-              (row[26] || ''), //AA serie ref
-              (row[27] || '') //AB num ref */
 
           ].join(',');
       })
@@ -1868,7 +1840,9 @@ const importarSireRegCompras = async (req, res, next) => {
                 (row[23] || ''),    //T otros
                 (row[24] || ''),    //U total
                 (row[25] || ''),    //V moneda
-                (row[26] || ''),    //W tc
+                //(row[26] || ''),    //W tc
+                (corregirTCPEN(row[26],row[25]) || ''),    //X tc
+
                 index > 0 ? convertirFechaStringComplete(row[27]) : row[27], //X emision ref
                 (row[28] || ''),    //Y cod ref
                 (row[29] || ''),    //Z serie ref
