@@ -1,4 +1,6 @@
 const pool = require('../db');
+require('dotenv').config();
+const fetch = require('node-fetch');
 
 const obtenerTodosPais = async (req,res,next)=> {
     try {
@@ -122,6 +124,29 @@ const obtenerTCSunat = async (req, res, next) => {
     }
 };
 
+const generarTCSunat = async (req, res, next) => {
+    const apiToken = process.env.APIPERU_TOKEN;
+    const { fecha } = req.body;
+    try {
+        const response = await fetch('https://apiperu.dev/api/tipo_de_cambio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiToken}`
+            },
+            body: JSON.stringify({ fecha })  // Enviar ref_documento_id en el cuerpo de la solicitud
+        });
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error('Error en la solicitud a la API de terceros');
+        }
+        res.json(data);
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = {
     obtenerTodosPais,
     obtenerTodosBss,
@@ -131,5 +156,6 @@ module.exports = {
     obtenerTodosIdDoc,
     obtenerTodosCCostoPopUp,
     obtenerTodosLibros,
-    obtenerTCSunat
+    obtenerTCSunat,
+    generarTCSunat
  }; 
