@@ -127,6 +127,7 @@ const obtenerTCSunat = async (req, res, next) => {
 const generarTCSunat = async (req, res, next) => {
     const apiToken = process.env.APIPERU_TOKEN;
     const { fecha } = req.body;
+    console.log('fecha: ',fecha);
     try {
         const response = await fetch('https://apiperu.dev/api/tipo_de_cambio', {
             method: 'POST',
