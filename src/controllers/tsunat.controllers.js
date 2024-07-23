@@ -141,12 +141,16 @@ const generarTCSunat = async (req, res, next) => {
         const todosReg = await pool.query(strSQL, [fecha]);
         // Verificamos si hay resultados
         if (todosReg.rows.length > 0) {
-            // Devuelve el primer (y único) resultado
-            //json simple {compra, venta}
-            res.json(todosReg.rows[0]);  
+            //res.json(todosReg.rows[0]);  
+            // json simple {compra, venta} Convertir los valores a numéricos
+            const resultado = {
+                compra: parseFloat(todosReg.rows[0].compra),
+                venta: parseFloat(todosReg.rows[0].venta)
+            };
+            res.json(resultado);
         } else {
             //En caso de no encontrar resultados
-
+            
             //consumir API tercero
             const response = await fetch('https://apiperu.dev/api/tipo_de_cambio', {
                 method: 'POST',
