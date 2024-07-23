@@ -124,7 +124,7 @@ const obtenerTCSunat = async (req, res, next) => {
     }
 };
 
-const generarTCSunat = async (req, res, next) => {
+/*const generarTCSunat = async (req, res, next) => {
     const apiToken = process.env.APIPERU_TOKEN;
     const { fecha } = req.body;
     console.log('fecha: ',fecha);
@@ -150,7 +150,7 @@ const generarTCSunat = async (req, res, next) => {
             res.json(resultado);
         } else {
             //En caso de no encontrar resultados
-            
+
             //consumir API tercero
             const response = await fetch('https://apiperu.dev/api/tipo_de_cambio', {
                 method: 'POST',
@@ -192,6 +192,79 @@ const generarTCSunat = async (req, res, next) => {
         }
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+};*/
+
+const TCSunatFetchFromAPI = async (fecha, apiToken) => {
+    const response = await fetch('https://apiperu.dev/api/tipo_de_cambio', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiToken}`
+        },
+        body: JSON.stringify({ fecha })
+    });
+    return response.json();
+};
+const TCSunatInsertIntoDatabase = async (fecha, compra, venta) => {
+    try {
+        const insertQuery = `
+            INSERT INTO mct_tc (fecha, compra_of, venta_of)
+            VALUES ($1, $2, $3) RETURNING *
+        `;
+        const values = [fecha, compra, venta];
+        const insertResult = await pool.query(insertQuery, values);
+        console.log('Dato insertado:', insertResult.rows[0]);
+    } catch (dbError) {
+        if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
+            console.log('El dato ya existe en la base de datos, finalizamos simplemente');
+        } else {
+            throw dbError;
+        }
+    }
+};
+const TCSunatFetchFromDatabase = async (fecha) => {
+    const strSQL = `
+        SELECT compra::numeric(5,3), venta::numeric(5,3)
+        FROM fct_extrae_tc2($1)
+    `;
+    const { rows } = await pool.query(strSQL, [fecha]);
+    return rows;
+};
+
+const generarTCSunat = async (req, res, next) => {
+    const apiToken = process.env.APIPERU_TOKEN;
+    const { fecha } = req.body;
+    console.log('Fecha: ', fecha);
+
+    try {
+        const rows = await TCSunatFetchFromDatabase(fecha);
+
+        if (rows.length > 0) {
+            const resultado = {
+                compra: parseFloat(rows[0].compra),
+                venta: parseFloat(rows[0].venta)
+            };
+            return res.json(resultado); // Aquí se detiene la ejecución si se cumple esta condición
+        } 
+
+        const resultado = await TCSunatFetchFromAPI(fecha, apiToken);
+
+        if (resultado.success) {
+            const { compra, venta } = resultado.data;
+            await TCSunatInsertIntoDatabase(fecha, compra, venta);
+
+            const resultadoReducido = {
+                compra: parseFloat(compra),
+                venta: parseFloat(venta)
+            };
+            return res.json(resultadoReducido); // Aquí se detiene la ejecución si se cumple esta condición
+        }
+
+        return res.json({ compra: 0, venta: 0 }); // Aquí se detiene la ejecución si `resultado.success` es falso
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
     }
 };
 
