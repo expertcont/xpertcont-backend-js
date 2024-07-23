@@ -170,15 +170,18 @@ const generarTCSunat = async (req, res, next) => {
                         console.log('El dato ya existe en la base de datos, finalizamos simplemente');
                     } 
                 } 
+                //res.json(resultado);
+                //aqui reducimos el json del tercero a json simple {compra,venta}
+                // Extraer los campos "venta" y "compra"
+                const resultadoReducido = {
+                    compra: resultado.data.compra,
+                    venta: resultado.data.venta
+                };
+                res.json(resultadoReducido);
             }
-            //res.json(resultado);
-            //aqui reducimos el json del tercero a json simple {compra,venta}
-            // Extraer los campos "venta" y "compra"
-            const resultadoReducido = {
-                compra: resultado.data.compra,
-                venta: resultado.data.venta
-            };
-            res.json(resultadoReducido);
+            else{
+                res.json({compra:0,venta:0});
+            }
         }
     } catch (error) {
         res.status(500).json({ error: error.message });
