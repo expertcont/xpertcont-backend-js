@@ -225,8 +225,11 @@ const TCSunatInsertIntoDatabase = async (fecha, compra, venta) => {
 };
 const TCSunatFetchFromDatabase = async (fecha) => {
     const strSQL = `
-        SELECT compra::numeric(5,3), venta::numeric(5,3)
-        FROM fct_extrae_tc2($1)
+        SELECT * FROM fct_extrae_tc2($1)
+        AS (
+            compra numeric(5,3),
+            venta numeric(5,3)
+        )
     `;
     const { rows } = await pool.query(strSQL, [fecha]);
     return rows;
