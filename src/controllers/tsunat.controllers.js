@@ -137,12 +137,22 @@ const generarTCSunat = async (req, res, next) => {
             },
             body: JSON.stringify({ fecha })  // Enviar ref_documento_id en el cuerpo de la solicitud
         });
-        const data = await response.json();
-        if (!data.success) {
-            throw new Error('Error en la solicitud a la API de terceros');
+        
+        const resultado = await response.json();
+        if (resultado.success) {
+            //Intentar insertar el dato en la base de datos
+            try {
+                const insertQuery = 'INSERT INTO mct_tc (fecha, compra_of, venta_of) VALUES ($1, $2, $3) RETURNING *';
+                const values = [fecha, resultado.data.compra, resultado.data.venta]; // Ajusta los campos según la respuesta de la API y tu tabla
+                const insertResult = await pool.query(insertQuery, values);
+                console.log('Dato insertado:', insertResult.rows[0]);
+            } catch (dbError) {
+                if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
+                    console.log('El dato ya existe en la base de datos, finalizamos simplemente');
+                } 
+            } 
         }
-        res.json(data);
-
+        res.json(resultado);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
