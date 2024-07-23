@@ -129,30 +129,57 @@ const generarTCSunat = async (req, res, next) => {
     const { fecha } = req.body;
     console.log('fecha: ',fecha);
     try {
-        const response = await fetch('https://apiperu.dev/api/tipo_de_cambio', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiToken}`
-            },
-            body: JSON.stringify({ fecha })  // Enviar ref_documento_id en el cuerpo de la solicitud
-        });
+        //Consultar si existe en BD Interna
+        let strSQL;
+        strSQL = "select * from fct_extrae_tc2($1)";
+        strSQL += " as (";
+	    strSQL += "  compra numeric(5,3)";
+        strSQL += " ,venta numeric(5,3)";
+        strSQL += " )";
         
-        const resultado = await response.json();
-        if (resultado.success) {
+        // Pasamos los parámetros a la consulta
+        const todosReg = await pool.query(strSQL, [fecha]);
+        // Verificamos si hay resultados
+        if (todosReg.rows.length > 0) {
+            // Devuelve el primer (y único) resultado
+            //json simple {compra, venta}
+            res.json(todosReg.rows[0]);  
+        } else {
+            //En caso de no encontrar resultados
+
+            //consumir API tercero
+            const response = await fetch('https://apiperu.dev/api/tipo_de_cambio', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiToken}`
+                },
+                body: JSON.stringify({ fecha })  // Enviar ref_documento_id en el cuerpo de la solicitud
+            });
+            const resultado = await response.json();
+            
             //Intentar insertar el dato en la base de datos
-            try {
-                const insertQuery = 'INSERT INTO mct_tc (fecha, compra_of, venta_of) VALUES ($1, $2, $3) RETURNING *';
-                const values = [fecha, resultado.data.compra, resultado.data.venta]; // Ajusta los campos según la respuesta de la API y tu tabla
-                const insertResult = await pool.query(insertQuery, values);
-                console.log('Dato insertado:', insertResult.rows[0]);
-            } catch (dbError) {
-                if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
-                    console.log('El dato ya existe en la base de datos, finalizamos simplemente');
+            if (resultado.success) {
+                try {
+                    const insertQuery = 'INSERT INTO mct_tc (fecha, compra_of, venta_of) VALUES ($1, $2, $3) RETURNING *';
+                    const values = [fecha, resultado.data.compra, resultado.data.venta]; // Ajusta los campos según la respuesta de la API y tu tabla
+                    const insertResult = await pool.query(insertQuery, values);
+                    console.log('Dato insertado:', insertResult.rows[0]);
+                } catch (dbError) {
+                    if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
+                        console.log('El dato ya existe en la base de datos, finalizamos simplemente');
+                    } 
                 } 
-            } 
+            }
+            //res.json(resultado);
+            //aqui reducimos el json del tercero a json simple {compra,venta}
+            // Extraer los campos "venta" y "compra"
+            const resultadoReducido = {
+                compra: resultado.data.compra,
+                venta: resultado.data.venta
+            };
+            res.json(resultadoReducido);
         }
-        res.json(resultado);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
