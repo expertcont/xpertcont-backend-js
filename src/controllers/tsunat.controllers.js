@@ -174,8 +174,8 @@ const generarTCSunat = async (req, res, next) => {
                 //aqui reducimos el json del tercero a json simple {compra,venta}
                 // Extraer los campos "venta" y "compra"
                 const resultadoReducido = {
-                    compra: resultado.data.compra,
-                    venta: resultado.data.venta
+                    compra: parseFloat(resultado.data.compra),
+                    venta: parseFloat(resultado.data.venta)
                 };
                 res.json(resultadoReducido);
             }
