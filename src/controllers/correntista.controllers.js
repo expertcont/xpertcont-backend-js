@@ -78,7 +78,8 @@ const generarCorrentistaFetchFromAPI = async (documento_id, apiToken) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiToken}`
         },
-        body: JSON.stringify({ documento_id })
+        //cambiamos de nombrem porque sino conserva el nombre del parametro
+        body: JSON.stringify({ ruc: documento_id })
     });
     return response.json();
 };
