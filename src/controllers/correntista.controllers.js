@@ -59,11 +59,11 @@ const obtenerCorrentistaPopUp = async (req,res,next)=> {
     }
 };
 
+
 const generarCorrentistaFetchFromAPI = async (documento_id, apiToken) => {
     //tipo = 'ruc' o 'dni'
     //ruc = 'XXXXXXXX' 11 digitos o variable
-    let tipo;
-    if (documento_id.length===11) {tipo = 'ruc';} else {tipo='dni';}
+    let tipo = (documento_id.length === 11) ? 'ruc' : 'dni';
 
     const response = await fetch(`https://apiperu.dev/api/${tipo}`, {
         method: 'POST',
@@ -81,6 +81,7 @@ const generarCorrentistaFromDB = async (documento_id) => {
         WHERE documento_id = $1
     `;
     const { rows } = await pool.query(strSQL, [documento_id]);
+    console.log(rows);
     return rows;
 };
 const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc) => {
@@ -100,7 +101,6 @@ const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc) =>
         }
     }
 };
-
 const generarCorrentista = async (req, res, next) => {
     const apiToken = process.env.APIPERU_TOKEN;
     const { ruc } = req.body;
@@ -139,6 +139,7 @@ const generarCorrentista = async (req, res, next) => {
         return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
     }
 };
+
 
 const crearCorrentista = async (req,res,next)=> {
     //const {id_usuario,nombres} = req.body
