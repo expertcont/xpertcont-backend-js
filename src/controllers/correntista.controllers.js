@@ -112,8 +112,8 @@ const generarCorrentista = async (req, res, next) => {
 
         if (rows.length > 0) {
             const resultado = {
-                nombre_o_razon_social: parseFloat(rows[0].razon_social),
-                r_id_doc: parseFloat(rows[0].id_doc)
+                nombre_o_razon_social: rows[0].razon_social,
+                r_id_doc: rows[0].id_doc
             };
             return res.json(resultado); // Aquí se detiene la ejecución si se cumple esta condición
         } 
