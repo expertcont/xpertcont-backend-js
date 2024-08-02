@@ -64,6 +64,10 @@ const generarCorrentistaFetchFromAPI = async (documento_id, apiToken) => {
     //tipo = 'ruc' o 'dni'
     //ruc = 'XXXXXXXX' 11 digitos o variable
     let tipo = (documento_id.length === 11) ? 'ruc' : 'dni';
+    
+    console.log(`https://apiperu.dev/api/${tipo}`);
+    console.log(apiToken);
+    console.log(JSON.stringify({ documento_id }));
 
     const response = await fetch(`https://apiperu.dev/api/${tipo}`, {
         method: 'POST',
