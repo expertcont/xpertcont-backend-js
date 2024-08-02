@@ -59,6 +59,87 @@ const obtenerCorrentistaPopUp = async (req,res,next)=> {
     }
 };
 
+const generarCorrentistaFetchFromAPI = async (documento_id, apiToken) => {
+    //tipo = 'ruc' o 'dni'
+    //ruc = 'XXXXXXXX' 11 digitos o variable
+    let tipo;
+    if (documento_id.length===11) {tipo = 'ruc';} else {tipo='dni';}
+
+    const response = await fetch(`https://apiperu.dev/api/${tipo}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiToken}`
+        },
+        body: JSON.stringify({ documento_id })
+    });
+    return response.json();
+};
+const generarCorrentistaFromDB = async (documento_id) => {
+    const strSQL = `
+        SELECT * FROM mad_correntista
+        WHERE documento_id = $1
+    `;
+    const { rows } = await pool.query(strSQL, [documento_id]);
+    return rows;
+};
+const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc) => {
+    try {
+        const insertQuery = `
+            INSERT INTO mad_correntista (documento_id, razon_social, id_doc)
+            VALUES ($1, $2, $3) RETURNING *
+        `;
+        const values = [documento_id, razon_social, id_doc];
+        const insertResult = await pool.query(insertQuery, values);
+        console.log('Dato insertado:', insertResult.rows[0]);
+    } catch (dbError) {
+        if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
+            console.log('El dato ya existe en la base de datos, finalizamos simplemente');
+        } else {
+            throw dbError;
+        }
+    }
+};
+
+const generarCorrentista = async (req, res, next) => {
+    const apiToken = process.env.APIPERU_TOKEN;
+    const { ruc } = req.body;
+    
+    let id_doc = (ruc.length === 11) ? '6' : '1';
+
+    try {
+        const rows = await generarCorrentistaFromDB(ruc);
+
+        if (rows.length > 0) {
+            const resultado = {
+                nombre_o_razon_social: parseFloat(rows[0].razon_social),
+                r_id_doc: parseFloat(rows[0].id_doc)
+            };
+            return res.json(resultado); // Aquí se detiene la ejecución si se cumple esta condición
+        } 
+
+        const resultado = await generarCorrentistaFetchFromAPI(ruc, apiToken);
+
+        if (resultado.success) {
+            //la respuesta del api, puede ser ruc o dni
+            const { nombre_o_razon_social } = resultado.data;
+            await generarCorrentistaInsertDB(ruc, nombre_o_razon_social, id_doc);
+            
+            //conforme a condicion se retorna valores
+            const resultadoReducido = {
+                nombre_o_razon_social: nombre_o_razon_social,
+                r_id_doc: id_doc
+            };
+            return res.json(resultadoReducido); // Aquí se detiene la ejecución si se cumple esta condición
+        }
+
+        return res.json({ nombre_o_razon_social: '', r_id_doc: ''}); // Aquí se detiene la ejecución si `resultado.success` es falso
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
+    }
+};
+
 const crearCorrentista = async (req,res,next)=> {
     //const {id_usuario,nombres} = req.body
     const {
@@ -178,5 +259,6 @@ module.exports = {
     obtenerCorrentistaPopUp,
     crearCorrentista,
     eliminarCorrentista,
-    actualizarCorrentista
+    actualizarCorrentista,
+    generarCorrentista //new para consutla de api y insert bd interna expercont
  }; 
