@@ -86,6 +86,7 @@ const generarCorrentistaFromDB = async (documento_id) => {
 };
 const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc) => {
     try {
+        console.log(documento_id, razon_social, id_doc);
         const insertQuery = `
             INSERT INTO mad_correntista (documento_id, razon_social, id_doc)
             VALUES ($1, $2, $3) RETURNING *
@@ -121,6 +122,7 @@ const generarCorrentista = async (req, res, next) => {
         const resultado = await generarCorrentistaFetchFromAPI(ruc, apiToken);
 
         if (resultado.success) {
+            console.log(resultado);
             //la respuesta del api, puede ser ruc o dni
             const { nombre_o_razon_social } = resultado.data;
             await generarCorrentistaInsertDB(ruc, nombre_o_razon_social, id_doc);
