@@ -124,12 +124,20 @@ const generarCorrentista = async (req, res, next) => {
         const resultado = await generarCorrentistaFetchFromAPI(ruc, apiToken);
         if (resultado.success) {
             //la respuesta del api, puede ser ruc o dni
-            const { nombre_o_razon_social } = resultado.data;
-            await generarCorrentistaInsertDB(ruc, nombre_o_razon_social, id_doc);
+            let sRazonSocial;
+            if (id_doc===6) {
+                const { nombre_o_razon_social } = resultado.data;    
+                sRazonSocial = nombre_o_razon_social;
+            }else{
+                const { nombre_completo } = resultado.data;
+                sRazonSocial = nombre_completo;
+            }
+
+            await generarCorrentistaInsertDB(ruc, sRazonSocial, id_doc);
             
             //conforme a condicion se retorna valores
             const resultadoReducido = {
-                nombre_o_razon_social: nombre_o_razon_social,
+                nombre_o_razon_social: sRazonSocial,
                 r_id_doc: id_doc
             };
             return res.json(resultadoReducido); // Aquí se detiene la ejecución si se cumple esta condición
