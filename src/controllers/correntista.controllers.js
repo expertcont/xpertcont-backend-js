@@ -124,7 +124,7 @@ const generarCorrentista = async (req, res, next) => {
             };
             return res.json(resultado); // Aquí se detiene la ejecución si se cumple esta condición
         } 
-
+        console.log('ruc ', ruc);
         const resultado = await generarCorrentistaFetchFromAPI(ruc, apiToken);
 
         if (resultado.success) {
