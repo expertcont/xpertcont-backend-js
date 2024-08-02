@@ -67,11 +67,6 @@ const generarCorrentistaFetchFromAPI = async (documento_id, apiToken) => {
     //ruc = 'XXXXXXXX' 11 digitos o variable
     let tipo = (documento_id.length === 11) ? 'ruc' : 'dni';
     
-    console.log(`https://apiperu.dev/api/${tipo}`);
-    console.log(apiToken);
-    console.log('documento_id', documento_id);
-    console.log('JSON.stringify({ documento_id })', JSON.stringify({ documento_id }));
-
     const response = await fetch(`https://apiperu.dev/api/${tipo}`, {
         method: 'POST',
         headers: {
@@ -89,19 +84,18 @@ const generarCorrentistaFromDB = async (documento_id) => {
         WHERE documento_id = $1
     `;
     const { rows } = await pool.query(strSQL, [documento_id]);
-    console.log(rows);
     return rows;
 };
 const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc) => {
     try {
-        console.log(documento_id, razon_social, id_doc);
+        //console.log(documento_id, razon_social, id_doc);
         const insertQuery = `
             INSERT INTO mad_correntista (documento_id, razon_social, id_doc)
             VALUES ($1, $2, $3) RETURNING *
         `;
         const values = [documento_id, razon_social, id_doc];
         const insertResult = await pool.query(insertQuery, values);
-        console.log('Dato insertado:', insertResult.rows[0]);
+        //console.log('Dato insertado:', insertResult.rows[0]);
     } catch (dbError) {
         if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
             console.log('El dato ya existe en la base de datos, finalizamos simplemente');
@@ -126,11 +120,9 @@ const generarCorrentista = async (req, res, next) => {
             };
             return res.json(resultado); // Aquí se detiene la ejecución si se cumple esta condición
         } 
-        console.log('ruc ', ruc);
+        
         const resultado = await generarCorrentistaFetchFromAPI(ruc, apiToken);
-
         if (resultado.success) {
-            console.log(resultado);
             //la respuesta del api, puede ser ruc o dni
             const { nombre_o_razon_social } = resultado.data;
             await generarCorrentistaInsertDB(ruc, nombre_o_razon_social, id_doc);
