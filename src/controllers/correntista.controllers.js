@@ -1,4 +1,6 @@
 const pool = require('../db');
+require('dotenv').config();
+const fetch = require('node-fetch');
 
 const obtenerTodosCorrentista = async (req,res,next)=> {
     //console.log("select documento_id, razon_social, telefono from mad_correntista order by razon_social");
