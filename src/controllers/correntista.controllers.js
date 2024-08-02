@@ -69,7 +69,8 @@ const generarCorrentistaFetchFromAPI = async (documento_id, apiToken) => {
     
     console.log(`https://apiperu.dev/api/${tipo}`);
     console.log(apiToken);
-    console.log(JSON.stringify({ documento_id }));
+    console.log('documento_id', documento_id);
+    console.log('JSON.stringify({ documento_id })', JSON.stringify({ documento_id }));
 
     const response = await fetch(`https://apiperu.dev/api/${tipo}`, {
         method: 'POST',
