@@ -2342,15 +2342,15 @@ const anularAsiento = async (req,res,next)=> {
 
 const crearAsientoMasivoVentas = async (req,res,next)=> {
     let strSQL;
-    const {id_anfitrion,documento_id,periodo,id_cuenta} = req.params;
+    const {id_anfitrion,documento_id,periodo,id_cuenta,glosa} = req.params;
 
     const datos = req.body;
     //console.log(datos);
     //console.log('parametros: ',id_anfitrion,documento_id,periodo,id_cuenta);
 
-    strSQL = "CALL pgenerarasientosventa($1,$2,$3,$4,$5)";
+    strSQL = "CALL pgenerarasientosventa($1,$2,$3,$4,$5,$6)";
     try {
-        const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta];
+        const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta,glosa];
         const result = await pool.query(strSQL, parametros);
         console.log('ventas ok');
         res.json(result.rows[0]);
@@ -2363,13 +2363,13 @@ const crearAsientoMasivoVentas = async (req,res,next)=> {
 
 const crearAsientoMasivoCompras = async (req,res,next)=> {
     let strSQL;
-    const {id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono } = req.params;
+    const {id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono,glosa } = req.params;
 
     const datos = req.body;
     console.log(datos);
-    strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7)";
+    strSQL = "CALL pgenerarasientoscompra($1,$2,$3,$4,$5,$6,$7,$8)";
     try {
-        const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono];
+        const parametros = [datos,id_anfitrion,documento_id,periodo,id_cuenta,id_cuenta_cargo,id_cuenta_abono,glosa];
         const result = await pool.query(strSQL, parametros);
         console.log('compras ok');
         res.json(result.rows[0]);

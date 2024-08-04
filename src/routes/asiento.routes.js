@@ -27,8 +27,8 @@ router.post('/asientoexcelcompras', upload.single('archivoExcel'), importarExcel
 router.post('/asientosireventas', upload.single('archivoExcel'), importarSireRegVentas);//ahora es cvs o excel 97
 router.post('/asientosirecompras', upload.single('archivoExcel'), importarSireRegCompras);//ahora es cvs o excel 97
 
-router.post('/asientomasivoventas/:id_anfitrion/:documento_id/:periodo/:id_cuenta', crearAsientoMasivoVentas); //new para ejecutar proc almac con jsonb
-router.post('/asientomasivocompras/:id_anfitrion/:documento_id/:periodo/:id_cuenta/:id_cuenta_cargo/:id_cuenta_abono', crearAsientoMasivoCompras); //new para ejecutar proc almac con jsonb
+router.post('/asientomasivoventas/:id_anfitrion/:documento_id/:periodo/:id_cuenta/:glosa', crearAsientoMasivoVentas); //new para ejecutar proc almac con jsonb
+router.post('/asientomasivocompras/:id_anfitrion/:documento_id/:periodo/:id_cuenta/:id_cuenta_cargo/:id_cuenta_abono/:glosa', crearAsientoMasivoCompras); //new para ejecutar proc almac con jsonb
 router.post('/asientomasivocaja/:id_anfitrion/:documento_id/:periodo', crearAsientoMasivoCaja); //new con jsonb
 
 router.post('/asientomasivoventascontado/:id_anfitrion/:documento_id/:periodo', crearAsientoMasivoVentasContado); //new 
