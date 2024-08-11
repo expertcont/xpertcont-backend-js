@@ -6,7 +6,7 @@ const {obtenerTodasContabilidades,obtenerContabilidad, crearContabilidad, actual
 router.get('/contabilidad/:id_anfitrion', obtenerTodasContabilidades);//aumentado id_usuario(correo anfitrion)
 router.get('/contabilidad/:id_anfitrion/:documento_id/:tipo', obtenerContabilidad);
 router.post('/contabilidad', crearContabilidad);
-router.put('/contabilidad/:id_anfitrion/:documento_id', actualizarContabilidad);
+router.put('/contabilidad/:id_anfitrion/:documento_id/:tipo', actualizarContabilidad);
 router.delete('/contabilidad/:id_anfitrion/:documento_id/:tipo', eliminarContabilidad);
 
 module.exports = router;

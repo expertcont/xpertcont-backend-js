@@ -93,10 +93,10 @@ const eliminarContabilidad = async (req,res,next)=> {
 };
 const actualizarContabilidad = async (req,res,next)=> {
     try {
-        const {id_anfitrion, documento_id} = req.params;
+        const {id_anfitrion, documento_id, tipo} = req.params;
         const {razon_social,activo} = req.body
  
-        const result = await pool.query("update mad_usuariocontabilidad set razon_social=$1,activo=$2 where id_usuario=$3 and documento_id=$4",[razon_social,activo,id_anfitrion,documento_id]);
+        const result = await pool.query("update mad_usuariocontabilidad set razon_social=$1,activo=$2 where id_usuario=$3 and documento_id=$4 and tipo=$5",[razon_social,activo,id_anfitrion,documento_id,tipo]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
