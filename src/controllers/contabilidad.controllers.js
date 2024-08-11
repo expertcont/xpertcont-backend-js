@@ -18,6 +18,7 @@ const obtenerTodasContabilidades = async (req,res,next)=> {
         strSQL += " GROUP BY ";
         strSQL += " mad_usuariocontabilidad.documento_id,";
         strSQL += " mad_usuariocontabilidad.razon_social,";
+        strSQL += " mad_usuariocontabilidad.tipo,";
         strSQL += " mad_usuariocontabilidad.activo";
         strSQL += " ORDER BY mad_usuariocontabilidad.razon_social";
 
