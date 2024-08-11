@@ -5,20 +5,21 @@ const obtenerTodasContabilidades = async (req,res,next)=> {
         let strSQL;
         const {id_anfitrion} = req.params;
         strSQL = "SELECT ";
-        strSQL = strSQL + " mad_usuariocontabilidad.documento_id,";
-        strSQL = strSQL + " mad_usuariocontabilidad.razon_social,";
-        strSQL = strSQL + " mad_usuariocontabilidad.activo,";
-        strSQL = strSQL + " count(mct_cuentacontable_det.id_cuenta)::numeric(10) as cuentas";
-        strSQL = strSQL + " FROM";
-        strSQL = strSQL + " mad_usuariocontabilidad LEFT JOIN mct_cuentacontable_det";
-        strSQL = strSQL + " ON (mad_usuariocontabilidad.id_usuario = mct_cuentacontable_det.id_usuario and";
-        strSQL = strSQL + "     mad_usuariocontabilidad.documento_id = mct_cuentacontable_det.documento_id)";
-        strSQL = strSQL + " WHERE mad_usuariocontabilidad.id_usuario = '" + id_anfitrion + "'";
-        strSQL = strSQL + " GROUP BY ";
-        strSQL = strSQL + " mad_usuariocontabilidad.documento_id,";
-        strSQL = strSQL + " mad_usuariocontabilidad.razon_social,";
-        strSQL = strSQL + " mad_usuariocontabilidad.activo";
-        strSQL = strSQL + " ORDER BY mad_usuariocontabilidad.razon_social";
+        strSQL += " mad_usuariocontabilidad.documento_id,";
+        strSQL += " mad_usuariocontabilidad.razon_social,";
+        strSQL += " mad_usuariocontabilidad.tipo,"; //new
+        strSQL += " mad_usuariocontabilidad.activo,";
+        strSQL += " count(mct_cuentacontable_det.id_cuenta)::numeric(10) as cuentas";
+        strSQL += " FROM";
+        strSQL += " mad_usuariocontabilidad LEFT JOIN mct_cuentacontable_det";
+        strSQL += " ON (mad_usuariocontabilidad.id_usuario = mct_cuentacontable_det.id_usuario and";
+        strSQL += "     mad_usuariocontabilidad.documento_id = mct_cuentacontable_det.documento_id)";
+        strSQL += " WHERE mad_usuariocontabilidad.id_usuario = '" + id_anfitrion + "'";
+        strSQL += " GROUP BY ";
+        strSQL += " mad_usuariocontabilidad.documento_id,";
+        strSQL += " mad_usuariocontabilidad.razon_social,";
+        strSQL += " mad_usuariocontabilidad.activo";
+        strSQL += " ORDER BY mad_usuariocontabilidad.razon_social";
 
         const todasZonas = await pool.query(strSQL);
         res.json(todasZonas.rows);
@@ -30,8 +31,8 @@ const obtenerTodasContabilidades = async (req,res,next)=> {
 };
 const obtenerContabilidad = async (req,res,next)=> {
     try {
-        const {id_anfitrion,documento_id} = req.params;
-        const result = await pool.query("select * from mad_usuariocontabilidad where id_usuario = $1 and documento_id = $2",[id_anfitrion, documento_id]);
+        const {id_anfitrion,documento_id,tipo} = req.params;
+        const result = await pool.query("select * from mad_usuariocontabilidad where id_usuario = $1 and documento_id = $2 and tipo =$3",[id_anfitrion, documento_id, tipo]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -47,20 +48,22 @@ const obtenerContabilidad = async (req,res,next)=> {
 const crearContabilidad = async (req,res,next)=> {
     const { id_anfitrion,     //correo anfitrion
             documento_id,   //contabilidad
+            tipo,           //new
             razon_social   //contabilidad
             } = req.body
     try {
         let strSQL;
         strSQL = "INSERT INTO mad_usuariocontabilidad";
         strSQL = strSQL + " (";
-        strSQL = strSQL + " id_usuario,documento_id,razon_social,activo";
+        strSQL = strSQL + " id_usuario,documento_id,tipo,razon_social,activo";
         strSQL = strSQL + " )";
-        strSQL = strSQL + " VALUES ($1,$2,$3,'1')"; 
+        strSQL = strSQL + " VALUES ($1,$2,$3,$4,'1')"; 
         strSQL = strSQL + " RETURNING *";
         const result = await pool.query(strSQL, 
         [   
             id_anfitrion,
             documento_id,
+            tipo,
             razon_social
         ]
         );
@@ -73,8 +76,8 @@ const crearContabilidad = async (req,res,next)=> {
 
 const eliminarContabilidad = async (req,res,next)=> {
     try {
-        const {id_anfitrion, documento_id} = req.params;
-        const result = await pool.query("delete from mad_usuariocontabilidad where id_usuario = $1 and documento_id = $2",[id_anfitrion,documento_id]);
+        const {id_anfitrion, documento_id, tipo} = req.params;
+        const result = await pool.query("delete from mad_usuariocontabilidad where id_usuario = $1 and documento_id = $2 and tipo =$3",[id_anfitrion,documento_id,tipo]);
 
         if (result.rowCount === 0)
             return res.status(404).json({

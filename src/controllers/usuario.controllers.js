@@ -16,11 +16,13 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         const {id_usuario} = req.params;
         var strSQL;
         
+        //Acceso a tu propio estudio contable, si eres anfitrion claro
         strSQL = " select * from (";
         strSQL = strSQL + "SELECT id_usuario, razon_social from mad_usuario";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
         strSQL = strSQL + " AND anfitrion = '1'";
 
+        //Acceso a otros estudios como invitado (tabla mad_seguridad_contabilidad)
         strSQL = strSQL + " UNION ALL";
         //ahora es tabla mad_seguridad_contabilidad
         strSQL = strSQL + " SELECT consulta.*,";
@@ -36,6 +38,7 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         strSQL = strSQL + " INNER JOIN mad_usuario";
         strSQL = strSQL + " ON (consulta.id_usuario = mad_usuario.id_usuario)";
 
+        //Acceso para el rico administrador o moderador
         strSQL = strSQL + " UNION ALL";
         //new para los admin super (moderadores en un futuro :P), el resto de estudios, para monitoreo
         strSQL = strSQL + " SELECT id_usuario, razon_social";
@@ -48,6 +51,11 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         strSQL = strSQL + " )";
         strSQL = strSQL + " ) as consulta";
         strSQL = strSQL +" order by consulta.razon_social ASC";
+
+        //Ahora debemos aumentar los negocios
+        //Ejemplo Sonia Cahuaya, es contable y negocio
+        //deberan aparecer 2 opciones, como minimo ESTUDIOS XCONT y NEGOCIO
+        
 
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
