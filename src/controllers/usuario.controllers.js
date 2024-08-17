@@ -153,7 +153,7 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += " group by consulta.documento_id,consulta.razon_social";
         strSQL += " order by consulta.razon_social";
 
-        console.log(strSQL);
+        //console.log(strSQL);
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
     }
@@ -161,6 +161,25 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+const obtenerTodosModulos = async (req,res,next)=> {
+    //Todas las contabilidades autorizadas por el anfitrion y permisos al auxiliar contable
+    try {
+        const {id_usuario,id_invitado} = req.params;
+        var strSQL;
+        //Si es el anfitrion esta autorizado a todos sin permiso
+        strSQL = "SELECT tipo FROM mad_seguridad_contabilidad";
+        strSQL += " WHERE id_usuario = '" + id_usuario + "'";
+        strSQL += " AND id_usuario = '" + id_invitado + "'";
+        strSQL += " GROUP BY tipo";
+
+        const todosReg = await pool.query(strSQL);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 
 const obtenerUsuario = async (req,res,next)=> {
     try {
@@ -267,6 +286,7 @@ module.exports = {
     obtenerTodosPeriodos,
     obtenerAnfitrion,
     obtenerTodosContabilidades,
+    obtenerTodosModulos,
     obtenerUsuario,
     crearUsuario,
     eliminarUsuario,
