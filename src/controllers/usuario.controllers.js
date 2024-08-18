@@ -168,11 +168,11 @@ const obtenerTodosModulos = async (req,res,next)=> {
         var strSQL;
         //Si es el anfitrion esta autorizado a todos sin permiso
         strSQL = "SELECT tipo FROM mad_seguridad_contabilidad";
-        strSQL += " WHERE id_usuario = '" + id_usuario + "'";
-        strSQL += " AND id_usuario = '" + id_invitado + "'";
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND id_invitado = $2";
         strSQL += " GROUP BY tipo";
 
-        const todosReg = await pool.query(strSQL);
+        const todosReg = await pool.query(strSQL,[id_usuario,id_invitado]);
         res.json(todosReg.rows);
     }
     catch(error){
