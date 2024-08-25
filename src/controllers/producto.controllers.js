@@ -2,7 +2,14 @@ const pool = require('../db');
 
 const obtenerTodosProductos = async (req,res,next)=> {
     try {
-        const todosRegistros = await pool.query("select id_producto, nombre, id_unidad_medida from mst_producto order by id_producto");
+        let strSQL;
+        const {id_usuario,documento_id} = req.params;
+        strSQL = "SELECT * FROM mst_producto "
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND documento_id = $2";
+        strSQL += " ORDER BY nombre";
+
+        const todosRegistros = await pool.query(strSQL,[id_usuario,documento_id]);
         res.json(todosRegistros.rows);
     }
     catch(error){
@@ -13,8 +20,15 @@ const obtenerTodosProductos = async (req,res,next)=> {
 };
 const obtenerProducto = async (req,res,next)=> {
     try {
-        const {id} = req.params;
-        const result = await pool.query("select * from mst_producto where id_producto = $1",[id]);
+        let strSQL;
+        const {id_usuario,documento_id,id_producto} = req.params;
+
+        strSQL = "select * from mst_producto "
+        strSQL += " where id_usuario = $1";
+        strSQL += " and documento_id = $2";
+        strSQL += " and id_producto = $3";
+
+        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -28,8 +42,14 @@ const obtenerProducto = async (req,res,next)=> {
 };
 const obtenerProductoIgv = async (req,res,next)=> {
     try {
-        const {id} = req.params;
-        const result = await pool.query("select porc_igv from mst_producto where id_producto = $1",[id]);
+        let strSQL;
+        const {id_usuario,documento_id,id_producto} = req.params;
+        strSQL = "select porc_igv from mst_producto "
+        strSQL += " where id_usuario = $1";
+        strSQL += " and documento_id = $2";
+        strSQL += " and id_producto = $3";
+
+        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
 
         if (result.rows.length === 0){
             res.json({porc_igv:"0.00"});
@@ -42,13 +62,39 @@ const obtenerProductoIgv = async (req,res,next)=> {
 };
 
 const crearProducto = async (req,res,next)=> {
-    const {id_producto,nombre,id_unidad_medida} = req.body
+    const { 
+            id_usuario,     //01
+            documento_id,   //02
+            id_producto,    //03    
+            nombre,         //04
+            descripcion,    //05
+            precio_venta,   //06
+            cont_und        //07
+        } = req.body
+    let strSQL;
     try {
-        const result = await pool.query("INSERT INTO mst_producto(id_empresa,id_producto,nombre,id_unidad_medida) VALUES ('1',$1,$2,$3) RETURNING *", 
+        strSQL = "INSERT INTO mst_producto(";
+        strSQL += " id_usuario";    //01
+        strSQL += ",documento_id";  //02
+        strSQL += ",id_producto";   //03
+        strSQL += ",nombre";        //04
+        strSQL += ",descripcion";   //05
+        strSQL += ",precio_venta";  //06
+        strSQL += ",cont_und";      //07
+        strSQL += ") VALUES ( ";
+
+        strSQL += " $1,$2,$3,$4,$5,$6,$7 ";
+        strSQL += " ) RETURNING *";
+
+        const result = await pool.query(strSQL, 
         [   
-            id_producto,
-            nombre,
-            id_unidad_medida
+            id_usuario,     //01
+            documento_id,   //02
+            id_producto,    //03    
+            nombre,         //04
+            descripcion,    //05
+            precio_venta,   //06
+            cont_und        //07
         ]
         );
         res.json(result.rows[0]);
@@ -60,12 +106,18 @@ const crearProducto = async (req,res,next)=> {
 
 const eliminarProducto = async (req,res,next)=> {
     try {
-        const {id} = req.params;
-        const result = await pool.query("delete from mst_producto where id_producto = $1",[id]);
+        let strSQL;
+        const {id_usuario,documento_id,id_producto} = req.params;
+        strSQL = "delete from mst_producto "
+        strSQL += " where id_usuario = $1";
+        strSQL += " and documento_id = $2";
+        strSQL += " and id_producto = $3";
+
+        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
-                message:"Zona no encontrada"
+                message:"Producto no encontrado"
             });
 
         return res.sendStatus(204);
@@ -76,10 +128,26 @@ const eliminarProducto = async (req,res,next)=> {
 };
 const actualizarProducto = async (req,res,next)=> {
     try {
-        const {id} = req.params;
-        const {nombre,id_unidad_medida} = req.body
- 
-        const result = await pool.query("update mst_producto set nombre=$1,id_unidad_medida=$2 where id_producto=$3",[nombre,id_unidad_medida,id]);
+        let strSQL;
+        const {id_usuario,documento_id,id_producto} = req.params; //03
+        const { nombre,         //04
+                descripcion,    //05
+                precio_venta,   //06
+                porc_igv,       //07
+                cont_und        //08
+        } = req.body    
+        strSQL = "UPDATE from mst_producto SET"
+        strSQL += "  nombre = $4";
+        strSQL += " ,descripcion = $5";
+        strSQL += " ,precio_venta = $6";
+        strSQL += " ,porc_igv = $7";                
+        strSQL += " ,cont_und= $8";
+        
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND documento_id = $2";
+        strSQL += " AND id_producto = $3";
+
+        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
