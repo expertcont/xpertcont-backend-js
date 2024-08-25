@@ -2,14 +2,21 @@ const pool = require('../db');
 
 const obtenerTodosProductos = async (req,res,next)=> {
     try {
-        console.log(req.params);
+        //console.log(req.params);
         let strSQL;
         const {id_usuario,documento_id} = req.params;
-        strSQL = "SELECT * FROM mst_producto "
+        strSQL = "SELECT "
+        strSQL += " id_producto";   //03
+        strSQL += ",nombre";        //04
+        strSQL += ",descripcion";   //05
+        strSQL += ",precio_venta";  //06
+        strSQL += ",cont_und";      //07
+        strSQL += " FROM mst_producto";   //03
+
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND documento_id = $2";
         strSQL += " ORDER BY nombre";
-        console.log(strSQL,[id_usuario,documento_id]);
+        //console.log(strSQL,[id_usuario,documento_id]);
         const todosRegistros = await pool.query(strSQL,[id_usuario,documento_id]);
         res.json(todosRegistros.rows);
     }
