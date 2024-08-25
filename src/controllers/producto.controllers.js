@@ -2,6 +2,7 @@ const pool = require('../db');
 
 const obtenerTodosProductos = async (req,res,next)=> {
     try {
+        console.log(req.params);
         let strSQL;
         const {id_usuario,documento_id} = req.params;
         strSQL = "SELECT * FROM mst_producto "
