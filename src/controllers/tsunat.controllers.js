@@ -271,6 +271,20 @@ const generarTCSunat = async (req, res, next) => {
     }
 };
 
+const obtenerTodosUnidadesMedida = async (req,res,next)=> {
+    try {
+        let strSQL;
+        strSQL = "SELECT id_unidad as codigo, nombre as descripcion FROM mct_unidad";
+        strSQL += " ORDER BY codigo";
+
+        const todosReg = await pool.query(strSQL);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 module.exports = {
     obtenerTodosPais,
     obtenerTodosBss,
@@ -281,5 +295,6 @@ module.exports = {
     obtenerTodosCCostoPopUp,
     obtenerTodosLibros,
     obtenerTCSunat,
-    generarTCSunat
+    generarTCSunat,
+    obtenerTodosUnidadesMedida
  }; 
