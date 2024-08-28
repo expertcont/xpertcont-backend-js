@@ -11,6 +11,7 @@ const obtenerTodosProductos = async (req,res,next)=> {
         strSQL += ",descripcion";   //05
         strSQL += ",precio_venta";  //06
         strSQL += ",cont_und";      //07
+        strSQL += ",porc_igv";      //08
         strSQL += " FROM mst_producto";   //03
 
         strSQL += " WHERE id_usuario = $1";
