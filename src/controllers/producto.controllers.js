@@ -118,14 +118,15 @@ const eliminarProducto = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_usuario,documento_id,id_producto} = req.params;
-        strSQL = "delete from mst_producto "
-        strSQL += " where id_usuario = $1";
-        strSQL += " and documento_id = $2";
-        strSQL += " and id_producto = $3";
+        strSQL = "DELETE FROM mst_producto "
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND documento_id = $2";
+        strSQL += " AND id_producto = $3";
 
         console.log(strSQL,[id_usuario,documento_id,id_producto]);
         const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
-
+        console.log('ELIMINADO OK');
+        
         if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Producto no encontrado"
