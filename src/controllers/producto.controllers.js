@@ -94,16 +94,6 @@ const crearProducto = async (req,res,next)=> {
 
         strSQL += " $1,$2,$3,$4,$5,$6,$7 ";
         strSQL += " ) RETURNING *";
-        console.log(strSQL,        [   
-            id_usuario,     //01
-            documento_id,   //02
-            id_producto,    //03    
-            nombre,         //04
-            descripcion,    //05
-            precio_venta,   //06
-            cont_und        //07
-        ]
-        );
 
         const result = await pool.query(strSQL, 
         [   
@@ -116,7 +106,7 @@ const crearProducto = async (req,res,next)=> {
             cont_und        //07
         ]
         );
-        console.log('insert producto ok');
+        
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
@@ -133,6 +123,7 @@ const eliminarProducto = async (req,res,next)=> {
         strSQL += " and documento_id = $2";
         strSQL += " and id_producto = $3";
 
+        console.log(strSQL,[id_usuario,documento_id,id_producto]);
         const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
 
         if (result.rowCount === 0)
