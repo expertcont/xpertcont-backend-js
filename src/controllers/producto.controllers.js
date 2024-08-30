@@ -123,10 +123,8 @@ const eliminarProducto = async (req,res,next)=> {
         strSQL += " AND documento_id = $2";
         strSQL += " AND id_producto = $3";
 
-        console.log(strSQL,[id_usuario,documento_id,id_producto]);
         const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
-        console.log('ELIMINADO OK');
-        
+
         if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Producto no encontrado"
@@ -148,7 +146,7 @@ const actualizarProducto = async (req,res,next)=> {
                 porc_igv,       //07
                 cont_und        //08
         } = req.body    
-        strSQL = "UPDATE from mst_producto SET"
+        strSQL = "UPDATE mst_producto SET"
         strSQL += "  nombre = $4";
         strSQL += " ,descripcion = $5";
         strSQL += " ,precio_venta = $6";
