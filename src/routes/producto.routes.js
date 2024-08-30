@@ -1,5 +1,8 @@
 const {Router} = require('express');
+const multer = require('multer');
 const router = Router();
+const upload = multer();
+
 const {obtenerTodosProductos,obtenerProducto,crearProducto, actualizarProducto, eliminarProducto, obtenerProductoIgv, importarExcelProductos} = require('../controllers/producto.controllers')
 
 router.get('/ad_producto/:id_usuario/:documento_id', obtenerTodosProductos);
