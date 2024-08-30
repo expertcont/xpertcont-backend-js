@@ -157,7 +157,12 @@ const actualizarProducto = async (req,res,next)=> {
         strSQL += " AND documento_id = $2";
         strSQL += " AND id_producto = $3";
 
-        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
+        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto,
+                                                nombre,
+                                                descripcion,
+                                                precio_venta,
+                                                porc_igv,
+                                                cont_und]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
