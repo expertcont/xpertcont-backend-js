@@ -1,4 +1,9 @@
 const pool = require('../db');
+const xlsx = require('xlsx');
+const { Readable } = require('stream');
+//const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
+const { from: copyFrom } = require('pg-copy-streams');
+const { pipeline } = require('node:stream/promises');
 
 const obtenerTodosProductos = async (req,res,next)=> {
     try {
@@ -175,11 +180,75 @@ const actualizarProducto = async (req,res,next)=> {
     }
 };
 
+const importarExcelProductos = async (req, res, next) => {
+    //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
+    const datosCarga = JSON.parse(req.body.datosCarga);
+    const {
+        id_anfitrion,
+        documento_id
+    } = datosCarga;
+    
+    try {
+      const fileBuffer = req.file.buffer;
+
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        header: 1,
+      });
+  
+        const csvData = sheetData
+        .map((row,index) => [
+            id_anfitrion,                                 // id_anfitrion
+            documento_id,                                 // documento_id            
+            (row[0] || '').toString().replace(/,/g, ''),    //A id_producto
+            (row[1] || '').toString().replace(/,/g, ''),    //B nombre
+            (row[2] || '').toString().replace(/,/g, ''),    //C descripcion
+            (row[3] || '').toString().replace(/,/g, ''),    //D precio_unitario
+            (row[4] || '').toString().replace(/,/g, ''),    //E porc_igv
+            (row[5] || '').toString().replace(/,/g, '')     //F cont_und
+        ].join(','))
+        .join('\n');
+        
+        //console.log(csvData);
+
+      await pool.query('BEGIN');
+  
+      /////////////////////////////////////////////////////////////
+      //console.log(csvData);
+      // Convertimos la cadena CSV a un flujo de lectura
+      const csvReadableStream = Readable.from([csvData]);
+
+      // Insertamos los datos desde el CSV a la tabla mct_datos
+      const client = await pool.connect();
+      try {
+        //const ingestStream = client.query(copyFrom(`COPY mst_producto FROM STDIN WITH CSV HEADER DELIMITER ','`))
+        const ingestStream = client.query(copyFrom(`
+            COPY mst_producto (id_usuario, documento_id, id_producto, nombre, descripcion, precio_venta, porc_igv, cont_und)
+            FROM STDIN WITH CSV DELIMITER ',' HEADER;
+        `));
+        await pipeline(csvReadableStream, ingestStream)
+      } finally {
+        client.release();
+      }
+
+      await pool.query('COMMIT');
+      /////////////////////////////////////////////////////////////
+      //console.log("final");
+      res.status(200).json({ mensaje: 'Hoja Excel insertado correctamente en base de datos' });
+    } catch (error) {
+      console.log(error);
+      await pool.query('ROLLBACK');
+      next(error);
+    }
+};
+
 module.exports = {
     obtenerTodosProductos,
     obtenerProducto,
     obtenerProductoIgv,
     crearProducto,
     eliminarProducto,
-    actualizarProducto
+    actualizarProducto,
+    importarExcelProductos    
  }; 
