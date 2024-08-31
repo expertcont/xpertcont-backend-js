@@ -9,7 +9,7 @@ const obtenerTodosProductos = async (req,res,next)=> {
     try {
         //console.log(req.params);
         let strSQL;
-        const {id_usuario,documento_id} = req.params;
+        const {id_anfitrion,documento_id} = req.params;
         strSQL = "SELECT "
         strSQL += " id_producto";   //03
         strSQL += ",nombre";        //04
@@ -24,7 +24,7 @@ const obtenerTodosProductos = async (req,res,next)=> {
         strSQL += " AND documento_id = $2";
         strSQL += " ORDER BY nombre";
         //console.log(strSQL,[id_usuario,documento_id]);
-        const todosRegistros = await pool.query(strSQL,[id_usuario,documento_id]);
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
         res.json(todosRegistros.rows);
     }
     catch(error){
@@ -36,14 +36,14 @@ const obtenerTodosProductos = async (req,res,next)=> {
 const obtenerProducto = async (req,res,next)=> {
     try {
         let strSQL;
-        const {id_usuario,documento_id,id_producto} = req.params;
+        const {id_anfitrion,documento_id,id_producto} = req.params;
 
         strSQL = "select * from mst_producto "
         strSQL += " where id_usuario = $1";
         strSQL += " and documento_id = $2";
         strSQL += " and id_producto = $3";
 
-        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -58,13 +58,13 @@ const obtenerProducto = async (req,res,next)=> {
 const obtenerProductoIgv = async (req,res,next)=> {
     try {
         let strSQL;
-        const {id_usuario,documento_id,id_producto} = req.params;
+        const {id_anfitrion,documento_id,id_producto} = req.params;
         strSQL = "select porc_igv from mst_producto "
         strSQL += " where id_usuario = $1";
         strSQL += " and documento_id = $2";
         strSQL += " and id_producto = $3";
 
-        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
 
         if (result.rows.length === 0){
             res.json({porc_igv:"0.00"});
@@ -78,7 +78,7 @@ const obtenerProductoIgv = async (req,res,next)=> {
 
 const crearProducto = async (req,res,next)=> {
     const { 
-            id_usuario,     //01
+            id_anfitrion,     //01
             documento_id,   //02
             id_producto,    //03    
             nombre,         //04
@@ -105,7 +105,7 @@ const crearProducto = async (req,res,next)=> {
 
         const result = await pool.query(strSQL, 
         [   
-            id_usuario,     //01
+            id_anfitrion,     //01
             documento_id,   //02
             id_producto,    //03    
             nombre,         //04
@@ -126,13 +126,13 @@ const crearProducto = async (req,res,next)=> {
 const eliminarProducto = async (req,res,next)=> {
     try {
         let strSQL;
-        const {id_usuario,documento_id,id_producto} = req.params;
+        const {id_anfitrion,documento_id,id_producto} = req.params;
         strSQL = "DELETE FROM mst_producto "
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND documento_id = $2";
         strSQL += " AND id_producto = $3";
 
-        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto]);
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
@@ -148,7 +148,7 @@ const eliminarProducto = async (req,res,next)=> {
 const actualizarProducto = async (req,res,next)=> {
     try {
         let strSQL;
-        const {id_usuario,documento_id,id_producto} = req.params; //03
+        const {id_anfitrion,documento_id,id_producto} = req.params; //03
         const { nombre,         //04
                 descripcion,    //05
                 precio_venta,   //06
@@ -166,7 +166,7 @@ const actualizarProducto = async (req,res,next)=> {
         strSQL += " AND documento_id = $2";
         strSQL += " AND id_producto = $3";
 
-        const result = await pool.query(strSQL,[id_usuario,documento_id,id_producto,
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto,
                                                 nombre,
                                                 descripcion,
                                                 precio_venta,
