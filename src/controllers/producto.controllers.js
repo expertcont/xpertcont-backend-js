@@ -83,7 +83,8 @@ const crearProducto = async (req,res,next)=> {
             nombre,         //04
             descripcion,    //05
             precio_venta,   //06
-            cont_und        //07
+            cont_und,       //07
+            origen,         //08
         } = req.body
     let strSQL;
     try {
@@ -95,9 +96,10 @@ const crearProducto = async (req,res,next)=> {
         strSQL += ",descripcion";   //05
         strSQL += ",precio_venta";  //06
         strSQL += ",cont_und";      //07
+        strSQL += ",origen";        //08
         strSQL += ") VALUES ( ";
 
-        strSQL += " $1,$2,$3,$4,$5,$6,$7 ";
+        strSQL += " $1,$2,$3,$4,$5,$6,$7,$8 ";
         strSQL += " ) RETURNING *";
 
         const result = await pool.query(strSQL, 
@@ -108,7 +110,8 @@ const crearProducto = async (req,res,next)=> {
             nombre,         //04
             descripcion,    //05
             precio_venta,   //06
-            cont_und        //07
+            cont_und,        //07
+            origen,        //08
         ]
         );
         
@@ -201,6 +204,7 @@ const importarExcelProductos = async (req, res, next) => {
         .map((row,index) => [
             id_anfitrion,                                 // id_anfitrion
             documento_id,                                 // documento_id            
+            'EXCEL',                                        //origen
             (row[0] || '').toString().replace(/,/g, ''),    //A id_producto
             (row[1] || '').toString().replace(/,/g, ''),    //B nombre
             (row[2] || '').toString().replace(/,/g, ''),    //C descripcion
@@ -224,7 +228,7 @@ const importarExcelProductos = async (req, res, next) => {
       try {
         //const ingestStream = client.query(copyFrom(`COPY mst_producto FROM STDIN WITH CSV HEADER DELIMITER ','`))
         const ingestStream = client.query(copyFrom(`
-            COPY mst_producto (id_usuario, documento_id, id_producto, nombre, descripcion, precio_venta, porc_igv, cont_und)
+            COPY mst_producto (id_usuario, documento_id, origen, id_producto, nombre, descripcion, precio_venta, porc_igv, cont_und)
             FROM STDIN WITH CSV DELIMITER ',' HEADER;
         `));
         await pipeline(csvReadableStream, ingestStream)
