@@ -14,6 +14,6 @@ router.post('/ad_productoexcel', upload.single('archivoExcel'), importarExcelPro
 
 router.put('/ad_producto/:id_usuario/:documento_id/:id_producto', actualizarProducto);
 router.delete('/ad_producto/:id_usuario/:documento_id/:id_producto', eliminarProducto);
-router.delete('/ad_productomasivo/:id_usuario/:documento_id', eliminarProductoMasivo);
+router.delete('/ad_productomasivo/:id_usuario/:documento_id/:origen', eliminarProductoMasivo);
 
 module.exports = router;

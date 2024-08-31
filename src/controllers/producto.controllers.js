@@ -248,15 +248,16 @@ const importarExcelProductos = async (req, res, next) => {
 };
 const eliminarProductoMasivo = async (req,res,next)=> {
     try {
-        const {id_anfitrion, documento_id} = req.params;
+        const {id_anfitrion, documento_id,origen} = req.params;
         let strSQL;
         
         //primero eliminar todos detalles
         strSQL = "DELETE FROM mst_producto ";
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND documento_id = $2";
+        strSQL += " AND origen = $3";
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,origen]);
         if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Productos no encontrados"
