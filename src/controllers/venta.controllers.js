@@ -4,7 +4,7 @@ const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaSt
 
 const obtenerRegistroTodos = async (req,res,next)=> {
     //Solo Cabeceras
-    const {id_anfitrion, id_invitado, periodo, documento_id} = req.params;
+    const {id_anfitrion,documento_id,periodo} = req.params;
 
     let strSQL;
     strSQL = "SELECT ";
