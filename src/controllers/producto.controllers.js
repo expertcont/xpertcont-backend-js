@@ -259,6 +259,7 @@ const eliminarProductoMasivo = async (req,res,next)=> {
         strSQL += " AND origen = $3";
 
         const result = await pool.query(strSQL,[id_anfitrion,documento_id,origen]);
+        console.log(strSQL,[id_anfitrion,documento_id,origen]);
         if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Productos no encontrados"
