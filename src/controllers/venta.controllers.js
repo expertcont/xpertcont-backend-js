@@ -5,7 +5,8 @@ const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaSt
 const obtenerRegistroTodos = async (req,res,next)=> {
     //Solo Cabeceras
     const {id_anfitrion,documento_id,periodo} = req.params;
-
+    console.log(id_anfitrion,documento_id,periodo);
+    
     let strSQL;
     strSQL = "SELECT ";
         //01 ruc gen        (campos vacios)
