@@ -246,6 +246,29 @@ const importarExcelProductos = async (req, res, next) => {
       next(error);
     }
 };
+const eliminarProductoMasivo = async (req,res,next)=> {
+    try {
+        const {id_anfitrion, documento_id} = req.params;
+        let strSQL;
+        
+        //primero eliminar todos detalles
+        strSQL = "DELETE FROM mst_producto ";
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND documento_id = $2";
+
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Productos no encontrados"
+            });
+
+
+        return res.sendStatus(204);
+    } catch (error) {
+        console.log(error.message);
+    }
+
+};
 
 module.exports = {
     obtenerTodosProductos,
@@ -253,6 +276,7 @@ module.exports = {
     obtenerProductoIgv,
     crearProducto,
     eliminarProducto,
+    eliminarProductoMasivo,
     actualizarProducto,
     importarExcelProductos    
  }; 
