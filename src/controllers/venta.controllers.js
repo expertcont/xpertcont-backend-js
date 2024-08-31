@@ -45,7 +45,8 @@ const obtenerRegistroTodos = async (req,res,next)=> {
     strSQL = strSQL + " AND id_usuario = '" + id_anfitrion + "'";
     strSQL = strSQL + " AND documento_id = '" + documento_id + "'";
     strSQL = strSQL + " ORDER BY r_cod,r_serie,r_numero DESC";
-    //console.log(strSQL);
+    
+    console.log(strSQL);
     try {
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
