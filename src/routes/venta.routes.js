@@ -7,7 +7,7 @@ router.get('/ad_venta/:id_anfitrion/:documento_id/:periodo', obtenerRegistroTodo
 
 router.get('/ad_venta/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerRegistro);
 router.post('/ad_venta/:id_anfitrion/:documento_id', crearRegistro);
-router.post('/ad_venta/:id_anfitrion/:documento_id/:periodo/:id_invitado/:fecha', generarRegistro);
+router.post('/ad_venta', generarRegistro);
 
 router.put('/ad_venta/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', actualizarRegistro);
 router.put('/ad_venta/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem/anular', anularRegistro);
