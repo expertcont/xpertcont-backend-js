@@ -288,6 +288,39 @@ const crearRegistro = async (req,res,next)=> {
     }
 };
 
+const generarRegistro = async (req,res,next)=> {
+    const { id_anfitrion, documento_id, periodo, id_invitado, fecha } = req.body;
+
+    try {
+      // Ejecutar la función fve_crear_pedido en PostgreSQL
+      const result = await pool.query(
+        `SELECT r_numero, r_fecemi, r_monto_total 
+         FROM fve_crear_pedido($1, $2, $3, $4, $5)`,
+        [id_anfitrion, documento_id, periodo, id_invitado, fecha]
+      );
+  
+      // Si la función devolvió resultados, enviarlos al frontend
+      if (result.rows.length > 0) {
+        res.status(200).json({
+          success: true,
+          data: result.rows[0], // Devolver el primer (y único) resultado
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'No se encontraron resultados o no se pudo crear el pedido.',
+        });
+      }
+    } catch (error) {
+      console.error('Error al ejecutar la función fve_crear_pedido:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor.',
+      });
+    }
+
+};
+
 const eliminarRegistro = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num,elem} = req.params;
@@ -632,6 +665,7 @@ module.exports = {
     obtenerRegistroTodos,
     obtenerRegistro,
     crearRegistro,
+    generarRegistro,
     eliminarRegistro,
     eliminarRegistroItem,
     eliminarRegistroMasivo,
