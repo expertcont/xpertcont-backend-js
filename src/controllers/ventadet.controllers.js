@@ -4,7 +4,7 @@ const obtenerVentaDet = async (req,res,next)=> {
     //Detalles de un Pedido
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num,elem} = req.params;
-        let strSQL ;
+        let strSQL;
         strSQL = "SELECT * ";
         strSQL += " FROM mve_ventadet ";
         strSQL += " WHERE periodo = $1";
