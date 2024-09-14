@@ -4,8 +4,8 @@ const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaSt
 
 const obtenerRegistroTodos = async (req,res,next)=> {
     //Solo Cabeceras
-    const {id_anfitrion,documento_id,periodo} = req.params;
-    console.log(id_anfitrion,documento_id,periodo);
+    const {periodo,id_anfitrion,documento_id} = req.params;
+    console.log(periodo,id_anfitrion,documento_id);
     
     let strSQL;
     strSQL = "SELECT ";
@@ -477,17 +477,6 @@ const actualizarRegistro = async (req,res,next)=> {
             r_monto_total,      //30
             r_moneda,           //31            
             r_tc,               //32
-            
-            r_idbss,            //33
-            //datos compras exterior
-            r_id_pais,          //34
-            r_id_aduana,        //35
-            r_ano_dam,          //36
-            //datos financiero
-            r_id_mediopago,     //37
-            r_voucher_banco,    //38
-            r_cuenta10,         //39 new efectivo o banco X
-            retencion4ta,         //40 new opcional
 
         } = req.body;
         
