@@ -15,7 +15,7 @@ const obtenerVentaDet = async (req,res,next)=> {
         strSQL += " AND r_numero = $6";
         strSQL += " AND elemento = $7";
         strSQL += " ORDER BY item";
-        //console.log(strSQL,[cod,serie,num,elem]);
+        console.log(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
         
         const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
         
