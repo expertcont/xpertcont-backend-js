@@ -18,6 +18,7 @@ const obtenerTodosProductos = async (req,res,next)=> {
         strSQL += ",cont_und";      //07
         strSQL += ",porc_igv";      //08
         strSQL += ",origen";        //09
+        strSQL += ",(precio_venta || '-' || cont_und || '-' || porc_igv )::varchar as auxiliar";
         strSQL += " FROM mst_producto";   //03
 
         strSQL += " WHERE id_usuario = $1";
