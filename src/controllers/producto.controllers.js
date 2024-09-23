@@ -38,7 +38,7 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
         strSQL = "SELECT "
-        strSQL += " id_producto";   
+        strSQL += " id_producto as codigo";   
         strSQL += ",nombre as descripcion";
         strSQL += ",(precio_venta || '-' || cont_und || '-' || porc_igv )::varchar as auxiliar";
         strSQL += " FROM mst_producto";
