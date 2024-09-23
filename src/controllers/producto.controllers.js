@@ -31,9 +31,29 @@ const obtenerTodosProductos = async (req,res,next)=> {
     catch(error){
         console.log(error.message);
     }
-
     //res.send('Listado de todas los zonas');
 };
+const obtenerTodosProductosPopUp = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_anfitrion,documento_id} = req.params;
+        strSQL = "SELECT "
+        strSQL += " id_producto";   
+        strSQL += ",nombre as descripcion";
+        strSQL += ",(precio_venta || '-' || cont_und || '-' || porc_igv )::varchar as auxiliar";
+        strSQL += " FROM mst_producto";
+
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND documento_id = $2";
+        strSQL += " ORDER BY nombre";
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 const obtenerProducto = async (req,res,next)=> {
     try {
         let strSQL;
@@ -276,6 +296,7 @@ const eliminarProductoMasivo = async (req,res,next)=> {
 
 module.exports = {
     obtenerTodosProductos,
+    obtenerTodosProductosPopUp,
     obtenerProducto,
     obtenerProductoIgv,
     crearProducto,

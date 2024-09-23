@@ -3,9 +3,10 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosProductos,obtenerProducto,crearProducto, actualizarProducto, eliminarProducto, obtenerProductoIgv, importarExcelProductos, eliminarProductoMasivo} = require('../controllers/producto.controllers')
+const {obtenerTodosProductos,obtenerProducto,crearProducto, actualizarProducto, eliminarProducto, obtenerProductoIgv, importarExcelProductos, eliminarProductoMasivo, obtenerTodosProductosPopUp} = require('../controllers/producto.controllers')
 
 router.get('/ad_producto/:id_anfitrion/:documento_id', obtenerTodosProductos);
+router.get('/ad_productopopup/:id_anfitrion/:documento_id', obtenerTodosProductosPopUp);
 router.get('/ad_producto/:id_anfitrion/:documento_id/:id_producto', obtenerProducto);
 router.get('/ad_productoigv/:id_anfitrion/:documento_id/:id_producto', obtenerProductoIgv);
 //version multiempresa multiusario
