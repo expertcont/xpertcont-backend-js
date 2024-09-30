@@ -88,10 +88,10 @@ const crearVentaDet = async (req,res,next)=> {
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
         ) AS resultado;
         `;
-        
+
     try {
         // Ejecuta la consulta a la función de PostgreSQL
-        const result = await pool.query(query, values);
+        const result = await pool.query(strSQL, values);
         const resultado = result.rows[0].resultado;
 
         // Si la operación fue exitosa, devolver true
