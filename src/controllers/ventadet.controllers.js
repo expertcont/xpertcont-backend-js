@@ -124,7 +124,8 @@ const eliminarVentaDet = async (req,res,next)=> {
             $1, $2, $3, $4, $5, $6, $7, $8
         ) AS resultado;
         `;
-
+    console.log(strSQL);
+    console.log(values);
     try {
         // Ejecuta la consulta a la función de PostgreSQL
         const result = await pool.query(strSQL, values);
