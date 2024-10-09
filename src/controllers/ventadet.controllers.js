@@ -84,7 +84,7 @@ const crearVentaDet = async (req,res,next)=> {
     ];
         
     const strSQL = `
-        SELECT public.fve_insertaventadet(
+        SELECT public.fve_ventadetinserta(
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
         ) AS resultado;
         `;
@@ -108,6 +108,83 @@ const crearVentaDet = async (req,res,next)=> {
 };
 
 const eliminarVentaDet = async (req,res,next)=> {
+    const values = [
+        req.params.id_anfitrion,      //01
+        req.params.documento_id,      //02
+        req.params.periodo,           //03
+        req.params.r_cod,             //04
+        req.params.r_serie,           //05
+        req.params.r_numero,          //06
+        req.params.elemento,          //07
+        req.params.item               //08
+    ];
+        
+    const strSQL = `
+        SELECT public.fve_ventadetelimina(
+            $1, $2, $3, $4, $5, $6, $7, $8
+        ) AS resultado;
+        `;
+
+    try {
+        // Ejecuta la consulta a la función de PostgreSQL
+        const result = await pool.query(strSQL, values);
+        const resultado = result.rows[0].resultado;
+
+        // Si la operación fue exitosa, devolver true
+        if (resultado) {
+            return res.status(200).json({ success: true });
+        } else{
+            return res.status(400).json({ success: false });
+        }
+    } catch (error) {
+        console.error('Error ejecutando la función:', error);
+        // Si hay un error en la base de datos o backend, devuelve false
+        return res.status(500).json({ success: false });
+    }
+};
+
+const actualizarVentaDet = async (req,res,next)=> {
+    const values = [
+        req.params.id_anfitrion,      //01
+        req.params.documento_id,      //02
+        req.params.periodo,           //03
+        req.params.r_cod,             //04
+        req.params.r_serie,           //05
+        req.params.r_numero,          //06
+        req.params.elemento,          //07
+        req.params.item,              //08
+        
+        req.body.descripcion,       //09
+        req.body.cantidad,          //10
+        req.body.precio_unitario,   //11
+        req.body.precio_neto        //12
+    ];
+        
+    const strSQL = `
+        SELECT public.fve_ventadetactualiza(
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        ) AS resultado;
+        `;
+
+    try {
+        // Ejecuta la consulta a la función de PostgreSQL
+        const result = await pool.query(strSQL, values);
+        const resultado = result.rows[0].resultado;
+
+        // Si la operación fue exitosa, devolver true
+        if (resultado) {
+            return res.status(200).json({ success: true });
+        } else{
+            return res.status(400).json({ success: false });
+        }
+    } catch (error) {
+        console.error('Error ejecutando la función:', error);
+        // Si hay un error en la base de datos o backend, devuelve false
+        return res.status(500).json({ success: false });
+    }
+};
+
+/*const eliminarVentaDet = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num,elem,item} = req.params;
         let strSQL;
@@ -135,9 +212,9 @@ const eliminarVentaDet = async (req,res,next)=> {
     } catch (error) {
         console.log(error.message);
     }
-};
+};*/
 
-const actualizarVentaDet = async (req,res,next)=> {
+/*const actualizarVentaDet = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num,elem,item} = req.params; //08 parametros
         const { 
@@ -202,7 +279,7 @@ const actualizarVentaDet = async (req,res,next)=> {
     } catch (error) {
         console.log(error.message);
     }
-};
+};*/
 
 module.exports = {
     obtenerVentaDet,
