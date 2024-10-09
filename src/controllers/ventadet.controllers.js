@@ -112,10 +112,10 @@ const eliminarVentaDet = async (req,res,next)=> {
         req.params.id_anfitrion,      //01
         req.params.documento_id,      //02
         req.params.periodo,           //03
-        req.params.r_cod,             //04
-        req.params.r_serie,           //05
-        req.params.r_numero,          //06
-        req.params.elemento,          //07
+        req.params.cod,             //04
+        req.params.serie,           //05
+        req.params.num,          //06
+        req.params.elem,          //07
         req.params.item               //08
     ];
         
@@ -124,8 +124,8 @@ const eliminarVentaDet = async (req,res,next)=> {
             $1, $2, $3, $4, $5, $6, $7, $8
         ) AS resultado;
         `;
-    console.log(strSQL);
-    console.log(values);
+    //console.log(strSQL);
+    //console.log(values);
     try {
         // Ejecuta la consulta a la función de PostgreSQL
         const result = await pool.query(strSQL, values);
@@ -146,14 +146,14 @@ const eliminarVentaDet = async (req,res,next)=> {
 
 const actualizarVentaDet = async (req,res,next)=> {
     const values = [
-        req.params.id_anfitrion,      //01
-        req.params.documento_id,      //02
-        req.params.periodo,           //03
-        req.params.r_cod,             //04
-        req.params.r_serie,           //05
-        req.params.r_numero,          //06
-        req.params.elemento,          //07
-        req.params.item,              //08
+        req.params.id_anfitrion,    //01
+        req.params.documento_id,    //02
+        req.params.periodo,         //03
+        req.params.cod,             //04
+        req.params.serie,           //05
+        req.params.num,             //06
+        req.params.elem,            //07
+        req.params.item,            //08
         
         req.body.descripcion,       //09
         req.body.cantidad,          //10
