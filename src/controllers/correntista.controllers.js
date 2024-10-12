@@ -127,16 +127,18 @@ const generarCorrentista = async (req, res, next) => {
             //la respuesta del api, puede ser ruc o dni
             let sRazonSocial;
             let sDireccion;
+            console.log('id_doc identificado: ',id_doc);
             if (id_doc===6) {
                 const { nombre_o_razon_social } = resultado.data; 
                 sRazonSocial = nombre_o_razon_social;
-                console.log('cnsultado: ',sRazonSocial);
+                console.log('cnosultado ruc: ',sRazonSocial);
 
                 const { direccion_completa } = resultado.data; 
                 sDireccion = direccion_completa;
             }else{
                 const { nombre_completo } = resultado.data;
                 sRazonSocial = nombre_completo;
+                console.log('cnosultado dni: ',sRazonSocial);
 
                 const { direccion } = resultado.data; 
                 sDireccion = direccion;
