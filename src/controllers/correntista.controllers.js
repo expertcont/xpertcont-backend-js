@@ -95,7 +95,7 @@ const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc, di
         `;
         const values = [documento_id, razon_social, id_doc, direccion];
         const insertResult = await pool.query(insertQuery, values);
-        //console.log('Dato insertado:', insertResult.rows[0]);
+        console.log('Dato insertado:', insertResult.rows[0]);
     } catch (dbError) {
         if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
             console.log('El dato ya existe en la base de datos, finalizamos simplemente');
