@@ -86,14 +86,14 @@ const generarCorrentistaFromDB = async (documento_id) => {
     const { rows } = await pool.query(strSQL, [documento_id]);
     return rows;
 };
-const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc) => {
+const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc, direccion) => {
     try {
         //console.log(documento_id, razon_social, id_doc);
         const insertQuery = `
-            INSERT INTO mad_correntista (documento_id, razon_social, id_doc)
-            VALUES ($1, $2, $3) RETURNING *
+            INSERT INTO mad_correntista (documento_id, razon_social, id_doc, direccion)
+            VALUES ($1, $2, $3, $4) RETURNING *
         `;
-        const values = [documento_id, razon_social, id_doc];
+        const values = [documento_id, razon_social, id_doc, direccion];
         const insertResult = await pool.query(insertQuery, values);
         //console.log('Dato insertado:', insertResult.rows[0]);
     } catch (dbError) {
@@ -116,7 +116,8 @@ const generarCorrentista = async (req, res, next) => {
         if (rows.length > 0) {
             const resultado = {
                 nombre_o_razon_social: rows[0].razon_social,
-                r_id_doc: rows[0].id_doc
+                r_id_doc: rows[0].id_doc,
+                direccion_completa: rows[0].direccion
             };
             return res.json(resultado); // Aquí se detiene la ejecución si se cumple esta condición
         } 
@@ -125,25 +126,33 @@ const generarCorrentista = async (req, res, next) => {
         if (resultado.success) {
             //la respuesta del api, puede ser ruc o dni
             let sRazonSocial;
+            let sDireccion;
             if (id_doc===6) {
-                const { nombre_o_razon_social } = resultado.data;    
+                const { nombre_o_razon_social } = resultado.data; 
                 sRazonSocial = nombre_o_razon_social;
+
+                const { direccion_completa } = resultado.data; 
+                sRazonSocial = direccion_completa;
             }else{
                 const { nombre_completo } = resultado.data;
                 sRazonSocial = nombre_completo;
+
+                const { direccion } = resultado.data; 
+                sDireccion = direccion;
             }
 
-            await generarCorrentistaInsertDB(ruc, sRazonSocial, id_doc);
+            await generarCorrentistaInsertDB(ruc, sRazonSocial, id_doc, sDireccion);
             
             //conforme a condicion se retorna valores
             const resultadoReducido = {
                 nombre_o_razon_social: sRazonSocial,
-                r_id_doc: id_doc
+                r_id_doc: id_doc,
+                direccion: sDireccion
             };
             return res.json(resultadoReducido); // Aquí se detiene la ejecución si se cumple esta condición
         }
 
-        return res.json({ nombre_o_razon_social: '', r_id_doc: ''}); // Aquí se detiene la ejecución si `resultado.success` es falso
+        return res.json({ nombre_o_razon_social: '', r_id_doc: '',direccion:''}); // Aquí se detiene la ejecución si `resultado.success` es falso
     } catch (error) {
         console.error('Error:', error);
         return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
