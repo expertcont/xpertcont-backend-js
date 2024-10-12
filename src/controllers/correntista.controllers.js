@@ -130,6 +130,7 @@ const generarCorrentista = async (req, res, next) => {
             if (id_doc===6) {
                 const { nombre_o_razon_social } = resultado.data; 
                 sRazonSocial = nombre_o_razon_social;
+                console.log('cnsultado: ',sRazonSocial);
 
                 const { direccion_completa } = resultado.data; 
                 sDireccion = direccion_completa;
@@ -140,7 +141,7 @@ const generarCorrentista = async (req, res, next) => {
                 const { direccion } = resultado.data; 
                 sDireccion = direccion;
             }
-
+            console.log('antes de insert: ',ruc, sRazonSocial, id_doc, sDireccion);
             await generarCorrentistaInsertDB(ruc, sRazonSocial, id_doc, sDireccion);
             
             //conforme a condicion se retorna valores
