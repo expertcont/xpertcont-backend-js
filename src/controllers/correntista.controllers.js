@@ -95,7 +95,7 @@ const generarCorrentistaInsertDB = async (documento_id, razon_social, id_doc, di
         `;
         const values = [documento_id, razon_social, id_doc, direccion];
         const insertResult = await pool.query(insertQuery, values);
-        console.log('Dato insertado:', insertResult.rows[0]);
+        //console.log('Dato insertado:', insertResult.rows[0]);
     } catch (dbError) {
         if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
             console.log('El dato ya existe en la base de datos, finalizamos simplemente');
@@ -127,23 +127,23 @@ const generarCorrentista = async (req, res, next) => {
             //la respuesta del api, puede ser ruc o dni
             let sRazonSocial;
             let sDireccion;
-            console.log('id_doc identificado: ',id_doc);
-            if (id_doc===6) {
+            //console.log('id_doc identificado: ',id_doc);
+            if (id_doc==='6') {
                 const { nombre_o_razon_social } = resultado.data; 
                 sRazonSocial = nombre_o_razon_social;
-                console.log('cnosultado ruc: ',sRazonSocial);
+                //console.log('cnosultado ruc: ',sRazonSocial);
 
                 const { direccion_completa } = resultado.data; 
                 sDireccion = direccion_completa;
             }else{
                 const { nombre_completo } = resultado.data;
                 sRazonSocial = nombre_completo;
-                console.log('cnosultado dni: ',sRazonSocial);
+                //console.log('cnosultado dni: ',sRazonSocial);
 
                 const { direccion } = resultado.data; 
                 sDireccion = direccion;
             }
-            console.log('antes de insert: ',ruc, sRazonSocial, id_doc, sDireccion);
+            //console.log('antes de insert: ',ruc, sRazonSocial, id_doc, sDireccion);
             await generarCorrentistaInsertDB(ruc, sRazonSocial, id_doc, sDireccion);
             
             //conforme a condicion se retorna valores
