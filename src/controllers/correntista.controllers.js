@@ -132,7 +132,7 @@ const generarCorrentista = async (req, res, next) => {
                 sRazonSocial = nombre_o_razon_social;
 
                 const { direccion_completa } = resultado.data; 
-                sRazonSocial = direccion_completa;
+                sDireccion = direccion_completa;
             }else{
                 const { nombre_completo } = resultado.data;
                 sRazonSocial = nombre_completo;
