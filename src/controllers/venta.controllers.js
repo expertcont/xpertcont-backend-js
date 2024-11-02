@@ -45,6 +45,7 @@ const obtenerRegistroTodos = async (req,res,next)=> {
     strSQL += " WHERE periodo = '" + periodo + "'";
     strSQL += " AND id_usuario = '" + id_anfitrion + "'";
     strSQL += " AND documento_id = '" + documento_id + "'";
+    strSQL += " AND r_cod <> 'NP'"; //evitar pedidos en proceso
     strSQL += " ORDER BY r_cod,r_serie,r_numero DESC";
     
     console.log(strSQL);
@@ -297,6 +298,48 @@ const generarRegistro = async (req,res,next)=> {
         `SELECT r_numero, r_fecemi, r_monto_total 
          FROM fve_crear_pedido($1, $2, $3, $4, $5)`,
         [id_anfitrion, documento_id, periodo, id_invitado, fecha]
+      );
+  
+      // Si la función devolvió resultados, enviarlos al frontend
+      if (result.rows.length > 0) {
+        res.status(200).json({
+          success: true,
+          data: result.rows[0], // Devolver el primer (y único) resultado
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'No se encontraron resultados o no se pudo crear el pedido.',
+        });
+      }
+    } catch (error) {
+      console.error('Error al ejecutar la función fve_crear_pedido:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor.',
+      });
+    }
+
+};
+const generarComprobante = async (req,res,next)=> {
+    const { id_anfitrion,   //01
+            documento_id,   //02    
+            periodo,        //03
+            id_invitado,    //04
+            fecha,          //05
+            r_cod,          //06
+            r_serie,        //07
+            r_numero,       //08
+            r_cod_emitir    //09
+    } = req.body;
+    //faltan mas parametros de razon social ruc y direccion
+
+    try {
+      // Ejecutar la función fve_crear_pedido en PostgreSQL
+      const result = await pool.query(
+        `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
+         FROM fve_crear_comprobante($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir]
       );
   
       // Si la función devolvió resultados, enviarlos al frontend
@@ -655,6 +698,7 @@ module.exports = {
     obtenerRegistro,
     crearRegistro,
     generarRegistro,
+    generarComprobante,
     eliminarRegistro,
     eliminarRegistroItem,
     eliminarRegistroMasivo,
