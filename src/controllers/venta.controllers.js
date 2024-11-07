@@ -331,7 +331,11 @@ const generarComprobante = async (req,res,next)=> {
             r_cod,          //06
             r_serie,        //07
             r_numero,       //08
-            r_cod_emitir    //09
+            r_cod_emitir,    //09
+            r_id_doc,           //10
+            r_documento_id,     //11
+            r_razon_social,     //12
+            r_direccion,        //13
     } = req.body;
     //faltan mas parametros de razon social ruc y direccion
 
@@ -339,8 +343,10 @@ const generarComprobante = async (req,res,next)=> {
       // Ejecutar la función fve_crear_pedido en PostgreSQL
       const result = await pool.query(
         `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
-         FROM fve_crear_comprobante($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir]
+         FROM fve_crear_comprobante($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
+         r_id_doc, r_documento_id, r_razon_social, r_direccion
+        ]
       );
   
       // Si la función devolvió resultados, enviarlos al frontend
