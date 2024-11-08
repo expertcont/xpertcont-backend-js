@@ -305,7 +305,7 @@ const generarRegistro = async (req,res,next)=> {
       if (result.rows.length > 0) {
         res.status(200).json({
           success: true,
-          data: result.rows[0], // Devolver el primer (y único) resultado
+          ... result.rows[0], // Devolver el primer (y único) resultado
         });
       } else {
         res.status(404).json({
@@ -353,7 +353,7 @@ const generarComprobante = async (req,res,next)=> {
       if (result.rows.length > 0) {
         res.status(200).json({
           success: true,
-          data: result.rows[0], // Devolver el primer (y único) resultado
+          ... result.rows[0], // Devolver el primer (y único) resultado
         });
       } else {
         res.status(404).json({
