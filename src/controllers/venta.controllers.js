@@ -39,6 +39,7 @@ const obtenerRegistroTodos = async (req,res,next)=> {
     
     strSQL += " ,glosa";
     strSQL += " ,r_vfirmado";
+    strSQL += " ,elemento";
     strSQL += " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref)::varchar(50) as comprobante_ref"; //(07-08-09)
 
     strSQL += " FROM";
