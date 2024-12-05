@@ -716,7 +716,7 @@ const generarCPE = async (req,res,next)=> {
         const datosQuery = await pool.query(
           `
           SELECT * FROM mad_usuariocontabilidad
-          WHERE id_usuario = $1 AND documento_id = $2
+          WHERE id_usuario = $1 AND documento_id = $2 AND tipo = 'ADMIN'
           `,
           [p_id_usuario, p_documento_id]
         );
@@ -730,7 +730,7 @@ const generarCPE = async (req,res,next)=> {
           `
           SELECT * FROM mve_venta
           WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
-            AND r_doc = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+            AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
           `,
           [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento]
         );
@@ -744,7 +744,7 @@ const generarCPE = async (req,res,next)=> {
           `
           SELECT * FROM mve_ventadet
           WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
-            AND r_doc = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+            AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
           `,
           [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento]
         );
