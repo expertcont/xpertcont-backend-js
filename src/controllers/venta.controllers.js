@@ -710,7 +710,8 @@ const generarCPE = async (req,res,next)=> {
         p_r_numero,
         p_elemento,
       } = req.body;
-    
+      
+      console.log(req.body);
       try {
         // 1. Lectura de datos de la tabla mad_usuario_contabilidad
         const datosQuery = await pool.query(
