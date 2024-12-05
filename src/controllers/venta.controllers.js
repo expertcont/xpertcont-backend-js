@@ -698,7 +698,130 @@ const anularRegistro = async (req,res,next)=> {
     } catch (error) {
         console.log(error.message);
     }
+};
 
+const generarCPE = async (req,res,next)=> {
+    const {
+        p_periodo,
+        p_id_usuario,
+        p_documento_id,
+        p_r_cod,
+        p_r_serie,
+        p_r_numero,
+        p_elemento,
+      } = req.body;
+    
+      try {
+        // 1. Lectura de datos de la tabla mad_usuario_contabilidad
+        const datosQuery = await pool.query(
+          `
+          SELECT * FROM mad_usuario_contabilidad
+          WHERE id_usuario = $1 AND documento_id = $2
+          `,
+          [p_id_usuario, p_documento_id]
+        );
+        const datos = datosQuery.rows[0];
+        if (!datos) {
+          return res.status(404).json({ error: "Datos de usuario no encontrados" });
+        }
+    
+        // 2. Lectura de datos de la tabla mve_venta
+        const ventaQuery = await pool.query(
+          `
+          SELECT * FROM mve_venta
+          WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+            AND r_doc = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+          `,
+          [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento]
+        );
+        const venta = ventaQuery.rows[0];
+        if (!venta) {
+          return res.status(404).json({ error: "Datos de venta no encontrados" });
+        }
+    
+        // 3. Lectura de datos de la tabla mve_ventadet
+        const ventadetQuery = await pool.query(
+          `
+          SELECT * FROM mve_ventadet
+          WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+            AND r_doc = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+          `,
+          [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento]
+        );
+        const ventadet = ventadetQuery.rows;
+    
+        // 4. Construir el JSON
+        const jsonPayload = {
+          empresa: {
+            ruc: datos.documento_id,
+            razon_social: datos.razon_social,
+            nombre_comercial: datos.razon_social,
+            domicilio_fiscal: datos.direccion,
+            ubigeo: datos.direccion,
+            distrito: datos.distrito,
+            provincia: datos.provincia,
+            departamento: datos.departamento,
+            modo: "0",
+            usu_secundario_produccion_user: datos.secund_user,
+            usu_secundario_produccion_password: datos.secund_pwd,
+          },
+          cliente: {
+            razon_social_nombres: venta.r_razon_social,
+            numero_documento: venta.r_documento_id,
+            codigo_tipo_entidad: venta.r_id_doc,
+            cliente_direccion: venta.r_direccion,
+          },
+          venta: {
+            serie: venta.r_serie,
+            numero: venta.r_numero,
+            fecha_emision: venta.r_fecemi,
+            hora_emision: venta.ctrl_crea,
+            fecha_vencimiento: "",
+            moneda_id: venta.r_moneda === "PEN" ? "1" : "2",
+            forma_pago_id: "1",
+            total_gravada: venta.r_base002,
+            total_igv: venta.r_igv002,
+            total_exonerada: "",
+            total_inafecta: "",
+            tipo_documento_codigo: venta.r_cod,
+            nota: venta.glosa || "",
+          },
+          items: ventadet.map((item) => ({
+            producto: item.descripcion,
+            cantidad: item.cantidad,
+            precio_base: item.monto_base,
+            codigo_sunat: "-",
+            codigo_producto: item.id_producto,
+            codigo_unidad: item.cont_und,
+            tipo_igv_codigo: "10",
+          })),
+        };
+    
+        // 5. Enviar JSON a la API de terceros
+        const response = await axios.post(
+          "https://facturaciondirecta.com/API_SUNAT/post.php",
+          jsonPayload
+        );
+    
+        // 6. Procesar respuesta de la API
+        if (response.status === 200) {
+          const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } =
+            response.data.data;
+          return res.json({
+            respuesta_sunat_descripcion,
+            ruta_xml,
+            ruta_cdr,
+            ruta_pdf,
+          });
+        } else {
+          return res
+            .status(response.status)
+            .json({ error: "Error en la API de terceros" });
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ error: "Error en el servidor" });
+      }
 };
 
 module.exports = {
@@ -711,5 +834,6 @@ module.exports = {
     eliminarRegistroItem,
     eliminarRegistroMasivo,
     actualizarRegistro,
-    anularRegistro
+    anularRegistro,
+    generarCPE
  }; 
