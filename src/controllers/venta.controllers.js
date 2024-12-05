@@ -1,6 +1,6 @@
 const pool = require('../db');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
-const axios = require("axios");
+const fetch = require('node-fetch');
 
 const obtenerRegistroTodos = async (req,res,next)=> {
     //Solo Cabeceras
@@ -796,17 +796,21 @@ const generarCPE = async (req,res,next)=> {
             tipo_igv_codigo: "10",
           })),
         };
-    
-        // 5. Enviar JSON a la API de terceros
-        const response = await axios.post(
-          "https://facturaciondirecta.com/API_SUNAT/post.php",
-          jsonPayload
-        );
-    
-        // 6. Procesar respuesta de la API
-        if (response.status === 200) {
+
+        // 5. Enviar JSON a la API de terceros con fetch
+        const apiResponse = await fetch("https://facturaciondirecta.com/API_SUNAT/post.php", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(jsonPayload),
+        });
+        const responseData = await apiResponse.json();
+
+        if (apiResponse.ok) {
+          // 6. Extraer datos de la respuesta y retornar
           const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } =
-            response.data.data;
+            responseData.data;
           return res.json({
             respuesta_sunat_descripcion,
             ruta_xml,
@@ -815,9 +819,11 @@ const generarCPE = async (req,res,next)=> {
           });
         } else {
           return res
-            .status(response.status)
-            .json({ error: "Error en la API de terceros" });
+            .status(apiResponse.status)
+            .json({ error: responseData || "Error en la API de terceros" });
         }
+    
+    
       } catch (error) {
         console.error("Error:", error);
         res.status(500).json({ error: "Error en el servidor" });
