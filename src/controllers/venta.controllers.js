@@ -1,6 +1,6 @@
 const pool = require('../db');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
-
+const axios = require("axios");
 
 const obtenerRegistroTodos = async (req,res,next)=> {
     //Solo Cabeceras
