@@ -715,7 +715,7 @@ const generarCPE = async (req,res,next)=> {
         // 1. Lectura de datos de la tabla mad_usuario_contabilidad
         const datosQuery = await pool.query(
           `
-          SELECT * FROM mad_usuario_contabilidad
+          SELECT * FROM mad_usuariocontabilidad
           WHERE id_usuario = $1 AND documento_id = $2
           `,
           [p_id_usuario, p_documento_id]
