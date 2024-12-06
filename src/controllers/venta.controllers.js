@@ -775,8 +775,10 @@ const generarCPE = async (req,res,next)=> {
           venta: {
             serie: venta.r_serie,
             numero: venta.r_numero,
-            fecha_emision: venta.r_fecemi,
-            hora_emision: venta.ctrl_crea,
+            
+            fecha_emision: venta.r_fecemi.toISOString().split("T")[0],
+            hora_emision: venta.ctrl_crea.toISOString().split("T")[1].split(".")[0],
+            
             fecha_vencimiento: "",
             moneda_id: venta.r_moneda === "PEN" ? "1" : "2",
             forma_pago_id: "1",
