@@ -809,11 +809,21 @@ const generarCPE = async (req,res,next)=> {
           body: jsonString,
           headers: {"Content-Type":"application/json"}
         });
-        //const responseData = await apiResponse.json();
+        const responseData = await apiResponse.json();
+        console.log("respuesta generada: ",responseData); //agregamos
+
+        const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } =
+        responseData.data;
         
-        //console.log("respuesta generada: ",responseData); //agregamos
-        const responseText = await apiResponse.text(); // Captura como texto
-        console.log("Respuesta del servidor:", responseText);
+        return res.json({
+          respuesta_sunat_descripcion,
+          ruta_xml,
+          ruta_cdr,
+          ruta_pdf,
+        });
+
+        //const responseText = await apiResponse.text(); // Captura como texto
+        //console.log("Respuesta del servidor:", responseText);
         
 
         /*if (apiResponse.ok) {
