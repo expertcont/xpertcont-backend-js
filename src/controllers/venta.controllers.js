@@ -813,18 +813,16 @@ const generarCPE = async (req,res,next)=> {
         const responseData = await apiResponse.json();
         console.log("respuesta generada: ",responseData); //agregamos
 
-        /*const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } = responseData.data;
+        const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } = responseData.data;
         return res.json({
           respuesta_sunat_descripcion,
           ruta_xml,
           ruta_cdr,
           ruta_pdf,
         });
-        */
+        
 
-        //const responseText = await apiResponse.text(); // Captura como texto
-        //console.log("Respuesta del servidor:", responseText);
-        res.status(200).json({ ok: "proceso terminado" });
+        //res.status(200).json({ ok: "proceso terminado" });
 
         /*if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
