@@ -808,13 +808,14 @@ const generarCPE = async (req,res,next)=> {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(jsonString),
+          //body: JSON.stringify(jsonString),
+          body: jsonString,
         });
         const responseData = await apiResponse.json();
         
         console.log("respuesta generada: ",responseData); //agregamos
 
-        if (apiResponse.ok) {
+        /*if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
           const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } =
             responseData.data;
@@ -828,7 +829,7 @@ const generarCPE = async (req,res,next)=> {
           return res
             .status(apiResponse.status)
             .json({ error: responseData || "Error en la API de terceros" });
-        }
+        }*/
     
     
       } catch (error) {
