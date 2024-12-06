@@ -800,7 +800,7 @@ const generarCPE = async (req,res,next)=> {
           })),
         };
 
-        console.log(jsonPayload);
+        console.log(JSON.stringify(jsonPayload));
         // 5. Enviar JSON a la API de terceros con fetch
         const apiResponse = await fetch("https://facturaciondirecta.com/API_SUNAT/post.php", {
           method: "POST",
