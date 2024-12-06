@@ -832,7 +832,7 @@ const generarCPE = async (req,res,next)=> {
     
       } catch (error) {
         console.error("Error:", error);
-        res.status(500).json({ error: "Error en el servidor" });
+        res.status(500).json({ error: "Error en el servidor me lleva" });
       }
 };
 
