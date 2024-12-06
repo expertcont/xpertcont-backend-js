@@ -711,7 +711,6 @@ const generarCPE = async (req,res,next)=> {
         p_elemento,
       } = req.body;
       
-      console.log(req.body);
       try {
         // 1. Lectura de datos de la tabla mad_usuario_contabilidad
         const datosQuery = await pool.query(
@@ -801,7 +800,7 @@ const generarCPE = async (req,res,next)=> {
         };
 
         const jsonString = JSON.stringify(jsonPayload, null, 2); // Genera un JSON válido
-        console.log(jsonString);
+        //console.log(jsonString);
 
         // 5. Enviar JSON a la API de terceros con fetch
         const apiResponse = await fetch("https://facturaciondirecta.com/API_SUNAT/post.php", {
@@ -812,6 +811,8 @@ const generarCPE = async (req,res,next)=> {
           body: JSON.stringify(jsonString),
         });
         const responseData = await apiResponse.json();
+        
+        console.log("respuesta generada: ",responseData); //agregamos
 
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
