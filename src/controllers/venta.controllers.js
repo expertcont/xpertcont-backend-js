@@ -803,6 +803,7 @@ const generarCPE = async (req,res,next)=> {
         console.log(jsonString);
 
         // 5. Enviar JSON a la API de terceros con fetch
+        //Harcode necesario, API 01
         const apiResponse = await fetch("https://facturaciondirecta.com/API_SUNAT/post.php", {
           method: "POST",
           //body: JSON.stringify(jsonString),
@@ -813,21 +814,20 @@ const generarCPE = async (req,res,next)=> {
         const responseData = await apiResponse.json();
         console.log("respuesta generada: ",responseData); //agregamos
 
-        const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } = responseData.data;
+        /*const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } = responseData.data;
         return res.json({
           respuesta_sunat_descripcion,
           ruta_xml,
           ruta_cdr,
           ruta_pdf,
-        });
-        
-
+        });*/
         //res.status(200).json({ ok: "proceso terminado" });
 
-        /*if (apiResponse.ok) {
+        if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
           const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } =
             responseData.data;
+            
           return res.json({
             respuesta_sunat_descripcion,
             ruta_xml,
@@ -838,7 +838,7 @@ const generarCPE = async (req,res,next)=> {
           return res
             .status(apiResponse.status)
             .json({ error: responseData || "Error en la API de terceros" });
-        }*/
+        }
     
     
       } catch (error) {
