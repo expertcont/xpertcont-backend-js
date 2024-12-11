@@ -761,7 +761,7 @@ const generarCPE = async (req,res,next)=> {
             distrito: datos.distrito,
             provincia: datos.provincia,
             departamento: datos.departamento,
-            modo: "0",
+            modo: "0", //0: prueba  1:produccion
             usu_secundario_produccion_user: datos.secund_user,
             usu_secundario_produccion_password: datos.secund_pwd,
           },
@@ -804,11 +804,19 @@ const generarCPE = async (req,res,next)=> {
 
         // 5. Enviar JSON a la API de terceros con fetch
         //Harcode necesario, API 01
-        const apiResponse = await fetch("https://facturaciondirecta.com/API_SUNAT/post.php", {
+
+        let strUrlApi = "https://facturaciondirecta.com/API_SUNAT/post.php";
+        // Usamos replace con una expresión regular para encontrar 'API_SUNAT' y reemplazarlo
+        strUrlApi = strUrlApi.replace("API_SUNAT", `API_SUNAT_T_${datos.documento_id}`);
+        
+        const apiResponse = await fetch(strUrlApi, {
           method: "POST",
           //body: JSON.stringify(jsonString),
           body: jsonString,
-          headers: {"Content-Type":"application/json"}
+          headers: {
+                "Content-Type":"application/json",
+                'Authorization': `Bearer ${datos.token_factintegral}`
+          }
         });
         
         const responseData = await apiResponse.json();
