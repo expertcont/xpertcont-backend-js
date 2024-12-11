@@ -805,7 +805,7 @@ const generarCPE = async (req,res,next)=> {
         // 5. Enviar JSON a la API de terceros con fetch
         //Harcode necesario, API 01
 
-        let strUrlApi = "https://facturaciondirecta.com/API_SUNAT/post.php";
+        let strUrlApi = "https://facturaciondirecta.com/customers/API_SUNAT/post.php";
         // Usamos replace con una expresión regular para encontrar 'API_SUNAT' y reemplazarlo
         strUrlApi = strUrlApi.replace("API_SUNAT", `API_SUNAT_T_${datos.documento_id}`);
         
