@@ -753,11 +753,12 @@ const generarCPE = async (req,res,next)=> {
         // 4. Construir el JSON
         const jsonPayload = {
           empresa: {
+            token:datos.token_factintegral,
             ruc: datos.documento_id,
             razon_social: datos.razon_social,
             nombre_comercial: datos.razon_social,
             domicilio_fiscal: datos.direccion,
-            ubigeo: datos.direccion,
+            ubigeo: datos.ubigeo,
             distrito: datos.distrito,
             provincia: datos.provincia,
             departamento: datos.departamento,
@@ -821,15 +822,6 @@ const generarCPE = async (req,res,next)=> {
         
         const responseData = await apiResponse.json();
         console.log("respuesta generada: ",responseData); //agregamos
-
-        /*const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } = responseData.data;
-        return res.json({
-          respuesta_sunat_descripcion,
-          ruta_xml,
-          ruta_cdr,
-          ruta_pdf,
-        });*/
-        //res.status(200).json({ ok: "proceso terminado" });
 
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
