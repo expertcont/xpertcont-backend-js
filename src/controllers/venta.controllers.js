@@ -70,14 +70,20 @@ const obtenerRegistro = async (req,res,next)=> {
         strSQL += " ,cast(mve_venta.r_fecemi as varchar)::varchar(50) as fecemi";
         strSQL += " ,cast(mve_venta.r_fecvcto as varchar)::varchar(50) as fecvcto";
         strSQL += " ,cast(mve_venta.r_fecemi_ref as varchar)::varchar(50) as fecemi_ref";
-        strSQL += " FROM mve_venta";
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
+        strSQL += " ,mad_usuariocontabilidad.razon_social"; //dato para impresion
+        strSQL += " ,mad_usuariocontabilidad.direccion";    //dato para impresion
+        strSQL += " FROM";
+        strSQL += " mve_venta LEFT JOIN mad_usuariocontabilidad";
+        strSQL += " ON (mve_venta.id_usuario = mad_usuariocontabilidad.id_usuario and";
+        strSQL += "     mve_venta.documento_id = mad_usuariocontabilidad.documento_id and";
+        strSQL += "     'ADMIN' = mad_usuariocontabilidad.tipo)";
+        strSQL += " WHERE mve_venta.periodo = $1";
+        strSQL += " AND mve_venta.id_usuario = $2";
+        strSQL += " AND mve_venta.documento_id = $3";
+        strSQL += " AND mve_venta.r_cod = $4";
+        strSQL += " AND mve_venta.r_serie = $5";
+        strSQL += " AND mve_venta.r_numero = $6";
+        strSQL += " AND mve_venta.elemento = $7";
         //console.log(strSQL);
 
         const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
@@ -821,7 +827,7 @@ const generarCPE = async (req,res,next)=> {
         });
         
         const responseData = await apiResponse.json();
-        console.log("respuesta generada: ",responseData); //agregamos
+        //console.log("respuesta generada: ",responseData); //agregamos
 
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
