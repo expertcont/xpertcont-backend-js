@@ -166,11 +166,23 @@ const obtenerTodosModulos = async (req,res,next)=> {
     try {
         const {id_usuario,id_invitado} = req.params;
         var strSQL;
-        //Si es el anfitrion esta autorizado a todos sin permiso
+        //Si es el anfitrion esta autorizado, los demas necesitan permiso
         strSQL = "SELECT tipo FROM mad_seguridad_contabilidad";
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND id_invitado = $2";
+
+        strSQL += " UNION ALL";
+        strSQL += " SELECT 'CONT' as tipo";
+        strSQL += " FROM mad_usuario";
+        strSQL += " WHERE super = '1' AND id_usuario = '" + id_invitado + "'"; //auxiliar
+
+        strSQL += " UNION ALL";
+        strSQL += " SELECT 'ADMIN' as tipo";
+        strSQL += " FROM mad_usuario";
+        strSQL += " WHERE super = '1' AND id_usuario = '" + id_invitado + "'"; //auxiliar
+
         strSQL += " GROUP BY tipo";
+        //En caso se moderador, debe tener acceso sin preguntar
 
         const todosReg = await pool.query(strSQL,[id_usuario,id_invitado]);
         res.json(todosReg.rows);
