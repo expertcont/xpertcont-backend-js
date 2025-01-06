@@ -846,7 +846,7 @@ const generarCPE = async (req,res,next)=> {
                   // 2. Lectura de datos de la tabla mve_venta
           await pool.query(
             `
-            UPDATE mve_venta set v_firmado = $8
+            UPDATE mve_venta set r_vfirmado = $8
             WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
               AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
             `,
