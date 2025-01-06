@@ -840,9 +840,8 @@ const generarCPE = async (req,res,next)=> {
           } = responseData.data;
         
           // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
-          console.log('codigo_hash: ',codigo_hash);
-          console.log('Object.values(codigo_hash)[1]: ',Object.values(codigo_hash)[1]); 
-          const valorhash = codigo_hash ? Object.values(codigo_hash)[1] : null;
+          //console.log('codigo_hash: ',codigo_hash);
+          const valorhash = codigo_hash ? Object.values(codigo_hash)[0] : null;
         
           return res.json({
             respuesta_sunat_descripcion,
