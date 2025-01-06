@@ -827,7 +827,7 @@ const generarCPE = async (req,res,next)=> {
         });
         
         const responseData = await apiResponse.json();
-        console.log("respuesta generada: ",responseData); //agregamos
+        //console.log("respuesta generada: ",responseData); //agregamos
 
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
@@ -840,6 +840,7 @@ const generarCPE = async (req,res,next)=> {
           } = responseData.data;
         
           // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
+          console.log('codigo_hash: ',codigo_hash);
           const valorhash = codigo_hash ? Object.values(codigo_hash)[1] : null;
         
           return res.json({
