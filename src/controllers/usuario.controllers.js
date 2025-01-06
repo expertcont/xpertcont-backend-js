@@ -171,6 +171,8 @@ const obtenerTodosModulos = async (req,res,next)=> {
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND id_invitado = $2";
 
+        //aqui debemos mejorar el acceso en caso, exista otro usuario autorizado
+        //el moderador recien tendra acceso, por razones de supervision
         strSQL += " UNION ALL";
         strSQL += " SELECT 'CONT' as tipo";
         strSQL += " FROM mad_usuario";
@@ -182,7 +184,7 @@ const obtenerTodosModulos = async (req,res,next)=> {
         strSQL += " WHERE super = '1' AND id_usuario = '" + id_invitado + "'"; //auxiliar
 
         strSQL += " GROUP BY tipo";
-        //En caso se moderador, debe tener acceso sin preguntar
+        //EL moderador, no deberia tener acceso. sino esta activado algun usuario
 
         const todosReg = await pool.query(strSQL,[id_usuario,id_invitado]);
         res.json(todosReg.rows);

@@ -307,7 +307,7 @@ const generarRegistro = async (req,res,next)=> {
          FROM fve_crear_pedido($1, $2, $3, $4, $5)`,
         [id_anfitrion, documento_id, periodo, id_invitado, fecha]
       );
-  
+      
       // Si la función devolvió resultados, enviarlos al frontend
       if (result.rows.length > 0) {
         res.status(200).json({
@@ -831,21 +831,30 @@ const generarCPE = async (req,res,next)=> {
 
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
-          const { respuesta_sunat_descripcion, ruta_xml, ruta_cdr, ruta_pdf } =
-            responseData.data;
-            
+          const {
+            respuesta_sunat_descripcion,
+            ruta_xml,
+            ruta_cdr,
+            ruta_pdf,
+            codigo_hash,
+          } = responseData.data;
+        
+          // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
+          const valorhash = codigo_hash ? Object.values(codigo_hash)[1] : null;
+        
           return res.json({
             respuesta_sunat_descripcion,
             ruta_xml,
             ruta_cdr,
             ruta_pdf,
+            valorhash, // Incluye el nuevo campo en la respuesta
           });
         } else {
           return res
             .status(apiResponse.status)
             .json({ error: responseData || "Error en la API de terceros" });
         }
-    
+            
     
       } catch (error) {
         console.error("Error:", error);
