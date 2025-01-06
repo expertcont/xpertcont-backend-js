@@ -807,7 +807,7 @@ const generarCPE = async (req,res,next)=> {
         };
 
         const jsonString = JSON.stringify(jsonPayload, null, 2); // Genera un JSON válido
-        console.log(jsonString);
+        //console.log(jsonString);
 
         // 5. Enviar JSON a la API de terceros con fetch
         //Harcode necesario, API 01
