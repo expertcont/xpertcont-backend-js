@@ -807,7 +807,7 @@ const generarCPE = async (req,res,next)=> {
         };
 
         const jsonString = JSON.stringify(jsonPayload, null, 2); // Genera un JSON válido
-        //console.log(jsonString);
+        console.log(jsonString);
 
         // 5. Enviar JSON a la API de terceros con fetch
         //Harcode necesario, API 01
@@ -840,7 +840,7 @@ const generarCPE = async (req,res,next)=> {
           } = responseData.data;
         
           // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
-          //console.log('codigo_hash: ',codigo_hash);
+          console.log('codigo_hash: ',codigo_hash);
           const valorhash = codigo_hash ? Object.values(codigo_hash)[0] : null;
 
                   // 2. Lectura de datos de la tabla mve_venta
