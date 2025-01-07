@@ -821,9 +821,12 @@ const generarCPE = async (req,res,next)=> {
           //body: JSON.stringify(jsonString),
           body: jsonString,
           headers: {
-                "Content-Type":"application/json",
-                'Authorization': `Bearer ${datos.token_factintegral}`
+                "Content-Type":"application/json"
           }
+          /*headers: {
+            "Content-Type":"application/json",
+            'Authorization': `Bearer ${datos.token_factintegral}`
+          }*/
         });
         
         const responseData = await apiResponse.json();
