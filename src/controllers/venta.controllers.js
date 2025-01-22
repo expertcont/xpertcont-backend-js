@@ -375,6 +375,40 @@ const generarComprobante = async (req,res,next)=> {
         message: 'Error interno del servidor.',
       });
     }
+};
+
+const clonarRegistro = async (req,res,next)=> {
+  //Clonamos cualquier registro(Bol,Fact,NotaVenta) y lo convertimos a Nota en Proceso
+  //Luego se habilida Emitir en otro comprobante (Aprovechamos disponibilidad para notas credito)
+  const { id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero } = req.body;
+
+  try {
+    // Ejecutar la función fve_crear_pedido en PostgreSQL
+    const result = await pool.query(
+      `SELECT r_numero, r_fecemi, r_monto_total 
+       FROM fve_clonar_pedido($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero]
+    );
+    
+    // Si la función devolvió resultados, enviarlos al frontend
+    if (result.rows.length > 0) {
+      res.status(200).json({
+        success: true,
+        ... result.rows[0], // Devolver el primer (y único) resultado
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'No se encontraron resultados o no se pudo clonar el pedido.',
+      });
+    }
+  } catch (error) {
+    console.error('Error al ejecutar la función fve_clonar_pedido:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor.',
+    });
+  }
 
 };
 
@@ -882,6 +916,7 @@ module.exports = {
     crearRegistro,
     generarRegistro,
     generarComprobante,
+    clonarRegistro,
     eliminarRegistro,
     eliminarRegistroItem,
     eliminarRegistroMasivo,
