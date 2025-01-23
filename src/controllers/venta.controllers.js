@@ -18,7 +18,12 @@ const obtenerRegistroTodos = async (req,res,next)=> {
     strSQL += " ,r_cod";                                                //07
     strSQL += " ,r_serie";                                              //08
     strSQL += " ,r_numero";                                             //09
-    strSQL += " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante"; //(07-08-09)
+    //strSQL += " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante"; //(07-08-09)
+		//sirve para vista general
+    strSQL += ", (COALESCE(r_cod_ref, r_cod) || '-' || ";
+		strSQL += "   COALESCE(r_serie_ref, r_serie) || '-' || ";
+    strSQL += "   COALESCE(r_numero_ref, r_numero))::varchar(50) as comprobante";
+
     strSQL += " ,r_id_doc";                                             //11
     strSQL += " ,r_documento_id";                                       //12
     strSQL += " ,r_razon_social";                                       //13
@@ -39,9 +44,14 @@ const obtenerRegistroTodos = async (req,res,next)=> {
     
     strSQL += " ,glosa";
     strSQL += " ,r_vfirmado";
+    
+    //strSQL += " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref || '-' || cast(elemento as varchar))::varchar(50) as comprobante_ref"; //(07-08-09)
+		//sirve como key ;)
+    strSQL += ", (COALESCE(r_cod,r_cod_ref) || '-' || ";
+		strSQL += "   COALESCE(r_serie,r_serie_ref) || '-' || ";
+    strSQL += "   COALESCE(r_numero,r_numero_ref))::varchar(50) as comprobante_ref";
     strSQL += " ,elemento";
-    strSQL += " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref || '-' || cast(elemento as varchar))::varchar(50) as comprobante_ref"; //(07-08-09)
-
+    
     strSQL += " FROM";
     strSQL += " mve_venta ";
     strSQL += " WHERE periodo = '" + periodo + "'";
