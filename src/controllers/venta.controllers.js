@@ -354,7 +354,7 @@ const generarComprobante = async (req,res,next)=> {
     try {
       let result;
       if (r_cod_emitir !== '07' && r_cod_emitir !== '08') {
-        console.log([id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
+        console.log('fve_crear_comprobante: ',[id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
           r_id_doc, r_documento_id, r_razon_social, r_direccion]);
 
         // Ejecutar la función fve_crear_comprobante en PostgreSQL
@@ -366,7 +366,7 @@ const generarComprobante = async (req,res,next)=> {
           ]
         );
       }else{
-        console.log([id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
+        console.log('fve_crear_comprobante_ref: ',[id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
           r_id_doc, r_documento_id, r_razon_social, r_direccion, r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
           ]);
         // Ejecutar la función fve_crear_comprobante_ref en PostgreSQL (Tratamiento Nota Credito/Debito)
