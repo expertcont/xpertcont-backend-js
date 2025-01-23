@@ -49,9 +49,9 @@ const obtenerRegistroTodos = async (req,res,next)=> {
 		//sirve como key ;)
     strSQL += ", (COALESCE(r_cod,r_cod_ref) || '-' || ";
 		strSQL += "   COALESCE(r_serie,r_serie_ref) || '-' || ";
-    strSQL += "   COALESCE(r_numero,r_numero_ref))::varchar(50) as comprobante_ref";
+    strSQL += "   COALESCE(r_numero,r_numero_ref) || '-' || cast(elemento as varchar))::varchar(50) as comprobante_ref";
     strSQL += " ,elemento";
-    
+
     strSQL += " FROM";
     strSQL += " mve_venta ";
     strSQL += " WHERE periodo = '" + periodo + "'";
