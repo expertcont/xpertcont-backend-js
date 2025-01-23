@@ -343,18 +343,35 @@ const generarComprobante = async (req,res,next)=> {
             r_documento_id,     //11
             r_razon_social,     //12
             r_direccion,        //13
+
+            r_cod_ref,          //14
+            r_serie_ref,        //15
+            r_numero_ref,       //16
+            r_idmotivo_ref,     //17
     } = req.body;
     //faltan mas parametros de razon social ruc y direccion
 
     try {
-      // Ejecutar la función fve_crear_pedido en PostgreSQL
-      const result = await pool.query(
-        `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
-         FROM fve_crear_comprobante($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-        [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
-         r_id_doc, r_documento_id, r_razon_social, r_direccion
-        ]
-      );
+      let result;
+      if (r_cod_emitir !== '07' && r_cod_emitir !== '08') {
+        // Ejecutar la función fve_crear_comprobante en PostgreSQL
+        result = await pool.query(
+          `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
+          FROM fve_crear_comprobante($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
+          r_id_doc, r_documento_id, r_razon_social, r_direccion
+          ]
+        );
+      }else{
+        // Ejecutar la función fve_crear_comprobante_ref en PostgreSQL (Tratamiento Nota Credito/Debito)
+        result = await pool.query(
+          `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
+          FROM fve_crear_comprobante_ref($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+          [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
+          r_id_doc, r_documento_id, r_razon_social, r_direccion, r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
+          ]
+        );
+      }
   
       // Si la función devolvió resultados, enviarlos al frontend
       if (result.rows.length > 0) {
