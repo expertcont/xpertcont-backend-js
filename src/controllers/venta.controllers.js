@@ -853,7 +853,7 @@ const generarCPE = async (req,res,next)=> {
             hora_emision: venta.ctrl_crea.toISOString().split("T")[1].split(".")[0],
             
             fecha_vencimiento: "",
-            moneda_id: "2",     //hardcode temporal
+            moneda_id: "1",     //hardcode temporal
             forma_pago_id: "1", //hardcode temporal
             total_gravada: venta.r_base002,
             total_igv: venta.r_igv002,
