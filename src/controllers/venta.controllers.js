@@ -835,7 +835,7 @@ const generarCPE = async (req,res,next)=> {
             distrito: datos.distrito,
             provincia: datos.provincia,
             departamento: datos.departamento,
-            modo: "1", //0: prueba  1:produccion
+            modo: "0", //0: prueba  1:produccion
             usu_secundario_produccion_user: datos.secund_user,
             usu_secundario_produccion_password: datos.secund_pwd,
           },
@@ -846,21 +846,27 @@ const generarCPE = async (req,res,next)=> {
             cliente_direccion: venta.r_direccion,
           },
           venta: {
-            serie: venta.r_serie,
-            numero: venta.r_numero,
+            serie: (venta.r_serie_ref==null)? venta.r_serie:venta.r_serie_ref,      //new mod
+            numero: (venta.r_numero_ref==null)? venta.r_numero:venta.r_numero_ref,  //new mod
             
             fecha_emision: venta.r_fecemi.toISOString().split("T")[0],
             hora_emision: venta.ctrl_crea.toISOString().split("T")[1].split(".")[0],
             
             fecha_vencimiento: "",
-            moneda_id: "1",
-            forma_pago_id: "1",
+            moneda_id: "2",     //hardcode temporal
+            forma_pago_id: "1", //hardcode temporal
             total_gravada: venta.r_base002,
             total_igv: venta.r_igv002,
             total_exonerada: "",
             total_inafecta: "",
-            tipo_documento_codigo: venta.r_cod,
             nota: venta.glosa || "",
+            tipo_documento_codigo: (venta.r_cod_ref==null)? venta.r_cod:venta.r_cod_ref, //new mod
+            
+            relacionado_serie:(venta.r_serie_ref==null)? '':venta.r_serie,      //new mod
+            relacionado_numero:(venta.r_numero_ref==null)? '':venta.r_numero,   //new mod
+            relacionado_tipo_documento:(venta.r_cod_ref==null)? '':venta.r_cod, //new mod
+            relacionado_motivo_codigo:"01" //anulacion hardcodeado temporal
+                
           },
           items: ventadet.map((item) => ({
             producto: item.descripcion,
