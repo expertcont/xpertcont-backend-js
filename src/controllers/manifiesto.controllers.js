@@ -61,7 +61,7 @@ const crearManifiestoDet = async (req,res,next)=> {
         
     const strSQL = `
         SELECT f_procesa_agregar_pasajero(
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
         ) AS resultado;
         `;
 
