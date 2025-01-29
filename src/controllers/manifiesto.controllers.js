@@ -36,21 +36,50 @@ const obtenerZona = async (req,res,next)=> {
     }
 };
 
-const crearZona = async (req,res,next)=> {
-    const {id_zona,nombre,descripcion,siglas} = req.body
+const crearManifiestoDet = async (req,res,next)=> {
+    const values = [
+        req.body.id_empresa,        //01
+        req.body.ano,               //02
+        req.body.grupo_codigo,      //03
+        req.body.grupo_serie,       //04
+        req.body.grupo_numero,      //05
+        req.body.grupo_fecha,       //06
+
+        req.body.id_documento,      //07
+        req.body.documento_id,      //08
+        req.body.razon_social,      //09
+        req.body.direccion,         //10
+        req.body.id_existencia,     //11
+        
+        req.body.placa,             //12
+        req.body.licencia,          //13
+
+        req.body.id_punto_venta,    //14
+        req.body.cod_boleto,        //15
+        req.body.serie_boleto       //16
+    ];
+        
+    const strSQL = `
+        SELECT public.f_procesa_agregar_pasajero(
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+        ) AS resultado;
+        `;
+
     try {
-        const result = await pool.query("INSERT INTO mve_zona(id_zona,nombre,descripcion,siglas) VALUES ($1,$2,$3,$4) RETURNING *", 
-        [   
-            id_zona,
-            nombre,
-            descripcion,
-            siglas
-        ]
-        );
-        res.json(result.rows[0]);
-    }catch(error){
-        //res.json({error:error.message});
-        next(error)
+        // Ejecuta la consulta a la función de PostgreSQL
+        const result = await pool.query(strSQL, values);
+        const resultado = result.rows[0].resultado;
+
+        // Si la operación fue exitosa, devolver true
+        if (resultado) {
+            return res.status(200).json({ success: true });
+        } else{
+            return res.status(400).json({ success: false });
+        }
+    } catch (error) {
+        console.error('Error ejecutando la función:', error);
+        // Si hay un error en la base de datos o backend, devuelve false
+        return res.status(500).json({ success: false });
     }
 };
 
@@ -91,7 +120,7 @@ const actualizarZona = async (req,res,next)=> {
 module.exports = {
     obtenerTodosManifiestoDet,
     obtenerZona,
-    crearZona,
+    crearManifiestoDet,
     eliminarZona,
     actualizarZona
  }; 
