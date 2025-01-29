@@ -60,7 +60,7 @@ const crearManifiestoDet = async (req,res,next)=> {
     ];
         
     const strSQL = `
-        SELECT public.f_procesa_agregar_pasajero(
+        SELECT f_procesa_agregar_pasajero(
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
         ) AS resultado;
         `;
@@ -69,7 +69,7 @@ const crearManifiestoDet = async (req,res,next)=> {
         // Ejecuta la consulta a la función de PostgreSQL
         const result = await pool.query(strSQL, values);
         const resultado = result.rows[0].resultado;
-
+        console.log(result);
         // Si la operación fue exitosa, devolver true
         if (resultado) {
             return res.status(200).json({ success: true });
