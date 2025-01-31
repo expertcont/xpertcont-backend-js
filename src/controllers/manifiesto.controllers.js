@@ -26,11 +26,20 @@ const obtenerManifiestoCarga = async (req,res,next)=> {
         let result;
         let strSQL;
         const values = [
-            req.body.grupo_serie    
+            req.body.id_empresa,
+            req.body.ano,
+            req.body.grupo_cod,
+            req.body.grupo_serie,
+            req.body.grupo_fecha,
+            req.body.id_existencia,
+            req.body.placa,
+            req.body.licencia,
+            req.body.chofer,
+            req.body.id_punto_venta
         ];
         //Verifica si existe Manifiesto Abierto
         
-        strSQL = "select * from f_crear_manifiesto($1) ";
+        strSQL = "select * from f_crear_manifiesto($1,$2,$3,$4,$5,$6,$7,$8,$9)";
         result = await pool.query(strSQL,values);
         
         //Siempre devuelve 1 sola fila
