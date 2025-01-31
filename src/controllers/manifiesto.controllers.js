@@ -39,7 +39,7 @@ const obtenerManifiestoCarga = async (req,res,next)=> {
         ];
         //Verifica si existe Manifiesto Abierto
         
-        strSQL = "select * from f_crear_manifiesto($1,$2,$3,$4,$5,$6,$7,$8,$9)";
+        strSQL = "select * from f_crear_manifiesto($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)";
         result = await pool.query(strSQL,values);
         
         //Siempre devuelve 1 sola fila
