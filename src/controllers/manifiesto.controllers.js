@@ -20,16 +20,25 @@ const obtenerTodosManifiestoDet = async (req,res,next)=> {
     }
     //res.send('Listado de todas los zonas');
 };
-const obtenerZona = async (req,res,next)=> {
+const obtenerManifiestoCarga = async (req,res,next)=> {
     try {
-        const {id} = req.params;
-        const result = await pool.query("select * from mve_zona where id_zona = $1",[id]);
+        //Obtiene un numero de manifiesto abierto o cerrado, para carga de datos posterior en frontend
+        let result;
+        let strSQL;
+        const values = [
+            req.body.grupo_serie    
+        ];
+        //Verifica si existe Manifiesto Abierto
+        strSQL = "select comprobante_grupo_numero as nuevo from mtc_manifiesto where cerrado is null" + " and comprobante_grupo_serie = $1";
+        result = await pool.query(strSQL,values);
+        
+        //Calcula nuevo numero de Manifiesto
+        if (result.rows.length === 0){
+            strSQL = "select lpad((cast(max(comprobante_grupo_numero) as numeric)+1)::varchar(10),7,'0')::varchar(10) as nuevo from mtc_manifiesto" + " where comprobante_grupo_serie = $1";
+            result = await pool.query(strSQL,values);
+        }
 
-        if (result.rows.length === 0)
-            return res.status(404).json({
-                message:"Usuario no encontrado"
-            });
-
+        //Siempre devuelve 1 sola fila
         res.json(result.rows[0]);
     } catch (error) {
         console.log(error.message);
@@ -119,7 +128,7 @@ const actualizarZona = async (req,res,next)=> {
 
 module.exports = {
     obtenerTodosManifiestoDet,
-    obtenerZona,
+    obtenerManifiestoCarga,
     crearManifiestoDet,
     eliminarZona,
     actualizarZona
