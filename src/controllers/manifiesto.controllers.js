@@ -49,6 +49,41 @@ const obtenerManifiestoCarga = async (req,res,next)=> {
     }
 };
 
+const obtenerManifiestoDet = async (req,res,next)=> {
+    try {
+        //Obtiene un numero de manifiesto abierto o cerrado, para carga de datos posterior en frontend
+        let result;
+        let strSQL;
+        const values = [
+            req.body.id_empresa,
+            req.body.grupo_cod,
+            req.body.grupo_serie,
+            req.body.grupo_numero,
+            req.body.documento_id
+        ];
+        //Verifica si existe Manifiesto Abierto
+        strSQL = "SELECT id_existencia,cast(precio_neto as varchar)::varchar(10) as precio_neto";
+        strSQL += " ,comprobante_original_codigo";
+        strSQL += " ,comprobante_original_serie";
+        strSQL += " ,comprobante_original_numero";
+        strSQL += " ,item";
+        strSQL += " ,(select * from fve_convertir_numero_letra(precio_neto,'SOLES'))::varchar(200) as monto_letras";
+        strSQL += " FROM mtc_manifiesto_det";
+        strSQL += " WHERE id_empresa = $1";
+        strSQL += " AND comprobante_grupo_codigo = $2";
+        strSQL += " AND comprobante_grupo_serie = $3";
+        strSQL += " AND comprobante_grupo_numero = $4";
+        strSQL += " AND documento_id = $5"; 
+
+        result = await pool.query(strSQL,values);
+        
+        //Siempre devuelve 1 sola fila
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+
 const crearManifiestoDet = async (req,res,next)=> {
     const values = [
         req.body.id_empresa,        //01
@@ -134,6 +169,7 @@ module.exports = {
     obtenerTodosManifiestoDet,
     obtenerManifiestoCarga,
     crearManifiestoDet,
+    obtenerManifiestoDet,
     eliminarZona,
     actualizarZona
  }; 
