@@ -74,7 +74,7 @@ const obtenerManifiestoDet = async (req,res,next)=> {
         strSQL += " AND comprobante_grupo_serie = $3";
         strSQL += " AND comprobante_grupo_numero = $4";
         strSQL += " AND documento_id = $5"; 
-        console.log(strSQL,values);
+        //console.log(strSQL,values);
         result = await pool.query(strSQL,values);
         
         //Siempre devuelve 1 sola fila
