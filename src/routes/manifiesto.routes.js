@@ -1,5 +1,4 @@
 const {Router} = require('express');
-const pool = require('../db');
 const router = Router();
 const { obtenerTodosManifiestoDet, crearManifiestoDet, obtenerManifiestoCarga, obtenerManifiestoDet } = require('../controllers/manifiesto.controllers');
 

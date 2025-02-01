@@ -1,4 +1,5 @@
-const pool = require('../db');
+//Utilizamos conexion auxiliar (Servidor02)
+const pool = require('../db02');
 
 const obtenerTodosManifiestoDet = async (req,res,next)=> {
     const {id_empresa,ano,grupo_serie,grupo_numero} = req.body
