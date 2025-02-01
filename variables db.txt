@@ -1,5 +1,0 @@
-DB_USER = postgres
-DB_PASSWORD = XHSWQqk9EICJwl0aXIqN
-DB_HOST = containers-us-west-61.railway.app
-DB_PORT = 6844
-DB_DATABASE = railway
