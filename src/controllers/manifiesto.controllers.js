@@ -186,9 +186,9 @@ const obtenerManifiestoCabImpresion = async (req,res,next)=> {
         strSQL += " ON (mtc_manifiesto.id_empresa = mst_transporte_licencia.id_empresa and ";
         strSQL += "     mtc_manifiesto.licencia = mst_transporte_licencia.licencia_conducir )";
         strSQL += " WHERE mtc_manifiesto.id_empresa = $1";
-        strSQL += " AND mtc_manifiesto.comprobante_grupo_codigo = '33'";
-        strSQL += " AND mtc_manifiesto.comprobante_grupo_serie = $2";
-        strSQL += " AND mtc_manifiesto.comprobante_grupo_numero = $3";
+        strSQL += " AND mtc_manifiesto.comprobante_grupo_codigo = $2";
+        strSQL += " AND mtc_manifiesto.comprobante_grupo_serie = $3";
+        strSQL += " AND mtc_manifiesto.comprobante_grupo_numero = $4";
         result = await pool.query(strSQL,values);
         
         //Siempre devuelve 1 sola fila
