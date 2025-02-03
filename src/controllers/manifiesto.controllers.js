@@ -166,11 +166,44 @@ const actualizarZona = async (req,res,next)=> {
     }
 };
 
+const obtenerManifiestoCabImpresion = async (req,res,next)=> {
+    try {
+        //Obtiene un numero de manifiesto abierto o cerrado, para carga de datos posterior en frontend
+        let result;
+        let strSQL;
+        const values = [
+            req.body.id_empresa,
+            req.body.grupo_cod,
+            req.body.grupo_serie,
+            req.body.grupo_numero
+        ];
+        //Verifica si existe Manifiesto Abierto
+        
+        strSQL = "SELECT to_char(mtc_manifiesto.ctrl_insercion,'YYYY-MM-dd HH24:mm:ss') as fsalida";
+        strSQL += " ,mst_transporte_licencia.descripcion as dni";
+        strSQL += " FROM";
+        strSQL += " mtc_manifiesto LEFT JOIN mst_transporte_licencia";
+        strSQL += " ON (mtc_manifiesto.id_empresa = mst_transporte_licencia.id_empresa and ";
+        strSQL += "     mtc_manifiesto.licencia = mst_transporte_licencia.licencia_conducir )";
+        strSQL += " WHERE mtc_manifiesto.id_empresa = $1";
+        strSQL += " AND mtc_manifiesto.comprobante_grupo_codigo = '33'";
+        strSQL += " AND mtc_manifiesto.comprobante_grupo_serie = $2";
+        strSQL += " AND mtc_manifiesto.comprobante_grupo_numero = $3";
+        result = await pool.query(strSQL,values);
+        
+        //Siempre devuelve 1 sola fila
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+
 module.exports = {
     obtenerTodosManifiestoDet,
     obtenerManifiestoCarga,
     crearManifiestoDet,
     obtenerManifiestoDet,
+    obtenerManifiestoCabImpresion,
     eliminarZona,
     actualizarZona
  }; 
