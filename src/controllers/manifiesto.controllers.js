@@ -197,6 +197,26 @@ const obtenerManifiestoCabImpresion = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+const obtenerManifiestoDetImpresion = async (req,res,next)=> {
+    const {id_empresa,ano,grupo_serie,grupo_numero} = req.body
+    try {
+        let strSQL;
+        strSQL = "SELECT documento_id,razon_social,precio_neto,comprobante_original_serie,comprobante_original_numero FROM mtc_manifiesto_det";
+        strSQL += " WHERE id_empresa = "+ id_empresa;
+        strSQL += " AND ano = '"+ ano + "'";
+        strSQL += " AND comprobante_grupo_codigo = '33'";
+        strSQL += " AND comprobante_grupo_serie = '"+ grupo_serie + "'";
+        strSQL += " AND comprobante_grupo_numero = '"+ grupo_numero + "'";
+        strSQL += " ORDER BY item ASC";
+
+        const todosBoletos = await pool.query(strSQL);
+        res.json(todosBoletos.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+    //res.send('Listado de todas los zonas');
+};
 
 module.exports = {
     obtenerTodosManifiestoDet,
@@ -204,6 +224,7 @@ module.exports = {
     crearManifiestoDet,
     obtenerManifiestoDet,
     obtenerManifiestoCabImpresion,
+    obtenerManifiestoDetImpresion,
     eliminarZona,
     actualizarZona
  }; 
