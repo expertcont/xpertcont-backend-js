@@ -198,18 +198,23 @@ const obtenerManifiestoCabImpresion = async (req,res,next)=> {
     }
 };
 const obtenerManifiestoDetImpresion = async (req,res,next)=> {
-    const {id_empresa,ano,grupo_serie,grupo_numero} = req.body
+    const values = [
+        req.body.id_empresa,
+        req.body.grupo_cod,
+        req.body.grupo_serie,
+        req.body.grupo_numero
+    ];
+
     try {
         let strSQL;
         strSQL = "SELECT documento_id,razon_social,precio_neto,comprobante_original_serie,comprobante_original_numero FROM mtc_manifiesto_det";
-        strSQL += " WHERE id_empresa = "+ id_empresa;
-        strSQL += " AND ano = '"+ ano + "'";
-        strSQL += " AND comprobante_grupo_codigo = '33'";
-        strSQL += " AND comprobante_grupo_serie = '"+ grupo_serie + "'";
-        strSQL += " AND comprobante_grupo_numero = '"+ grupo_numero + "'";
+        strSQL += " WHERE id_empresa = $1";
+        strSQL += " AND comprobante_grupo_codigo = $2";
+        strSQL += " AND comprobante_grupo_serie = $3";
+        strSQL += " AND comprobante_grupo_numero = $4";
         strSQL += " ORDER BY item ASC";
 
-        const todosBoletos = await pool.query(strSQL);
+        const todosBoletos = await pool.query(strSQL,values);
         res.json(todosBoletos.rows);
     }
     catch(error){
