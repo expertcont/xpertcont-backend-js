@@ -223,6 +223,62 @@ const obtenerManifiestoDetImpresion = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
+const obtenerPlacasManifiesto = async (req,res,next)=> {
+    //NO usamos parametros
+    try {
+        let strSQL;
+        strSQL = "select mst_transporte_unidad.vehiculo_placa as scodigo,";
+        strSQL += " mst_transporte_unidad.vehiculo_marca as sdescripcion,";
+        strSQL += " mst_transporte_licencia.licencia_conducir as sdescripcion2,";
+        strSQL += " mst_transporte_licencia.nombre as sdescripcion3";
+        strSQL += " from mst_transporte_unidad left join mst_transporte_licencia";
+        strSQL += " on ( mst_transporte_unidad.id_empresa = mst_transporte_licencia.id_empresa and";
+        strSQL += "      mst_transporte_unidad.vehiculo_configuracion = mst_transporte_licencia.licencia_conducir )";
+        strSQL += " order by mst_transporte_unidad.vehiculo_placa asc";
+
+        const todosRegistros = await pool.query(strSQL);
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
+const obtenerLicenciasManifiesto = async (req,res,next)=> {
+    //NO usamos parametros
+    try {
+        let strSQL;
+        strSQL = "SELECT licencia_conducir as scodigo, nombre as sdescripcion,";
+        strSQL += " null as sdescripcion2, null as sdescripcion3 ";
+        strSQL += " FROM mst_transporte_licencia ";
+        strSQL += " ORDER BY nombre ASC";
+
+        const todosRegistros = await pool.query(strSQL);
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
+const obtenerDestinosManifiesto = async (req,res,next)=> {
+    const values = [
+        req.body.id_punto_venta
+    ];
+
+    try {
+        let strSQL;
+        strSQL = "SELECT id_existencia as scodigo, nombre as sdescripcion, null as sdescripcion2, null as sdescripcion3 FROM mst_existencia";
+        strSQL += " WHERE id_punto_venta_base = $1";
+
+        const todosRegistros = await pool.query(strSQL,values);
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 module.exports = {
     obtenerTodosManifiestoDet,
     obtenerManifiestoCarga,
@@ -230,6 +286,9 @@ module.exports = {
     obtenerManifiestoDet,
     obtenerManifiestoCabImpresion,
     obtenerManifiestoDetImpresion,
+    obtenerPlacasManifiesto,
+    obtenerLicenciasManifiesto,
+    obtenerDestinosManifiesto,
     eliminarZona,
     actualizarZona
  }; 
