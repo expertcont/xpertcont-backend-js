@@ -279,6 +279,25 @@ const obtenerDestinosManifiesto = async (req,res,next)=> {
     }
 };
 
+const obtenerConexionInicial = async (req,res,next)=> {
+    //obtiene Serie Manifiesto, Serie Boleteo
+    const values = [
+        req.body.id_punto_venta
+    ];
+
+    try {
+        let strSQL;
+        strSQL = "SELECT * FROM f_carga_conexion_inicial($1)";
+
+        const todosRegistros = await pool.query(strSQL,values);
+        //res.json(todosRegistros.rows);
+        res.json(result.rows[0]);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 module.exports = {
     obtenerTodosManifiestoDet,
     obtenerManifiestoCarga,
@@ -289,6 +308,7 @@ module.exports = {
     obtenerPlacasManifiesto,
     obtenerLicenciasManifiesto,
     obtenerDestinosManifiesto,
+    obtenerConexionInicial,
     eliminarZona,
     actualizarZona
  }; 
