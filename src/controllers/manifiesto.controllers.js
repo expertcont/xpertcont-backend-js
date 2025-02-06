@@ -301,7 +301,7 @@ const obtenerConexionInicial = async (req,res,next)=> {
 const obtenerCierreManifiesto = async (req,res,next)=> {
     const values = [
         req.body.id_empresa,        //01
-        req.body.grupo_codigo,      //02
+        req.body.id_punto_venta,      //02
         req.body.grupo_serie,       //03
         req.body.grupo_numero      //04
     ];
