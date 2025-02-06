@@ -288,10 +288,10 @@ const obtenerConexionInicial = async (req,res,next)=> {
     try {
         let strSQL;
         strSQL = "SELECT * FROM f_carga_conexion_inicial($1)";
-
+        console.log(strSQL,values);
         const todosRegistros = await pool.query(strSQL,values);
-        //res.json(todosRegistros.rows);
-        res.json(result.rows[0]);
+        res.json(todosRegistros.rows);
+        //res.json(result.rows[0]);
     }
     catch(error){
         console.log(error.message);
