@@ -1,6 +1,6 @@
 const {Router} = require('express');
 const router = Router();
-const { obtenerTodosManifiestoDet, crearManifiestoDet, obtenerManifiestoCarga, obtenerManifiestoDet, obtenerManifiestoCabImpresion, obtenerManifiestoDetImpresion, obtenerPlacasManifiesto, obtenerLicenciasManifiesto, obtenerDestinosManifiesto, obtenerConexionInicial } = require('../controllers/manifiesto.controllers');
+const { obtenerTodosManifiestoDet, crearManifiestoDet, obtenerManifiestoCarga, obtenerManifiestoDet, obtenerManifiestoCabImpresion, obtenerManifiestoDetImpresion, obtenerPlacasManifiesto, obtenerLicenciasManifiesto, obtenerDestinosManifiesto, obtenerConexionInicial, obtenerCierreManifiesto } = require('../controllers/manifiesto.controllers');
 
 router.post('/manifiestodet', obtenerTodosManifiestoDet); //listado de boletos
 router.post('/manifiestocarga', obtenerManifiestoCarga); //carga inicial
@@ -14,6 +14,7 @@ router.post('/manifiestolicencias', obtenerLicenciasManifiesto); //consulta
 router.post('/manifiestodestinos', obtenerDestinosManifiesto); //consulta para impresion manifiesto
 
 router.post('/manifiestoinicial', obtenerConexionInicial); //datos de conexion inicial
+router.post('/manifiestocerrar', obtenerCierreManifiesto); //true o false si cierra manifiesto
 //router.put('/zona/:id', actualizarZona);
 //router.delete('/zona/:id', eliminarZona);
 

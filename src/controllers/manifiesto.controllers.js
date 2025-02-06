@@ -298,6 +298,38 @@ const obtenerConexionInicial = async (req,res,next)=> {
     }
 };
 
+const obtenerCierreManifiesto = async (req,res,next)=> {
+    const values = [
+        req.body.id_empresa,        //01
+        req.body.grupo_codigo,      //02
+        req.body.grupo_serie,       //03
+        req.body.grupo_numero      //04
+    ];
+        
+    const strSQL = `
+        SELECT f_cerrar_manifiesto(
+            $1, $2, $3, $4
+        ) AS resultado;
+        `;
+
+    try {
+        // Ejecuta la consulta a la función de PostgreSQL
+        const result = await pool.query(strSQL, values);
+        const resultado = result.rows[0].resultado;
+        //console.log(result);
+        // Si la operación fue exitosa, devolver true
+        if (resultado) {
+            return res.status(200).json({ success: true });
+        } else{
+            return res.status(400).json({ success: false });
+        }
+    } catch (error) {
+        console.error('Error ejecutando la función:', error);
+        // Si hay un error en la base de datos o backend, devuelve false
+        return res.status(500).json({ success: false });
+    }
+};
+
 module.exports = {
     obtenerTodosManifiestoDet,
     obtenerManifiestoCarga,
@@ -309,6 +341,7 @@ module.exports = {
     obtenerLicenciasManifiesto,
     obtenerDestinosManifiesto,
     obtenerConexionInicial,
+    obtenerCierreManifiesto,
     eliminarZona,
     actualizarZona
  }; 
