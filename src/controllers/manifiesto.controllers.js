@@ -321,9 +321,11 @@ const obtenerCierreManifiesto = async (req,res,next)=> {
         if (resultado) {
             return res.status(200).json({ success: true });
         } else{
+            console.log('no encontro manifiesto');
             return res.status(400).json({ success: false });
         }
     } catch (error) {
+        console.log(error);
         console.error('Error ejecutando la función:', error);
         // Si hay un error en la base de datos o backend, devuelve false
         return res.status(500).json({ success: false });
