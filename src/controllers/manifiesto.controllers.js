@@ -314,9 +314,10 @@ const obtenerCierreManifiesto = async (req,res,next)=> {
 
     try {
         // Ejecuta la consulta a la función de PostgreSQL
+        console.log(strSQL, values);
         const result = await pool.query(strSQL, values);
         const resultado = result.rows[0].resultado;
-        //console.log(result);
+        console.log(result);
         // Si la operación fue exitosa, devolver true
         if (resultado) {
             return res.status(200).json({ success: true });
