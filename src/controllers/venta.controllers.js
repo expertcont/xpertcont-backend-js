@@ -563,165 +563,59 @@ const eliminarRegistroMasivo = async (req,res,next)=> {
 
 const actualizarRegistro = async (req,res,next)=> {
     try {
-        const { //datos cabecera
-            glosa,              //01
-            debe,               //02
-            haber,              //03
-            debe_me,            //04
-            haber_me,           //05
-            ctrl_mod_us,        //06
-            
-            r_id_doc,           //07
-            r_documento_id,     //08
-            r_razon_social,     //09
-    
-            r_cod,              //10
-            r_serie,            //11
-            r_numero,           //12
-            r_numero2,          //13
-            fecemi,             //14
-            fecvcto,            //15
-    
-            r_cod_ref,          //16
-            r_serie_ref,        //17
-            r_numero_ref,       //18
-            fecemi_ref,         //19
-            
-            r_cuenta,           //20
-            r_base001,          //21
-            r_base002,          //22
-            r_base003,          //23
-            r_base004,          //24
-            r_igv001,           //25
-            r_igv002,           //26
-            r_igv003,           //27
-    
-            r_monto_icbp,       //28
-            r_monto_otros,      //29
-            r_monto_total,      //30
-            r_moneda,           //31            
-            r_tc,               //32
+        const { 
+          periodo,        //01
+          id_anfitrion,   //02
+          documento_id,   //03    
+          r_cod,          //04
+          r_serie,        //05
+          r_numero,       //06
+          r_elemento,     //07 new
+          
+          id_invitado,        //08
+          fecha,              //09
+          r_id_doc,           //10
+          r_documento_id,     //11
+          r_razon_social,     //12
+          r_direccion,        //13
 
         } = req.body;
-        
-        const {
-            id_anfitrion,       //41
-            documento_id,       //42
-            periodo,            //43
-            id_libro,           //44
-            num_asiento,        //45
-        } = req.params;
+        //faltan mas parametros de razon social ruc y direccion
+    
+        let strSQL;
+        strSQL = "UPDATE mve_venta SET ";
+        strSQL += "  ctrl_mod = CURRENT_TIMESTAMP";
+        strSQL += " ,ctrl_mod_us = $8";
+        strSQL += " ,r_fecemi = $9";
+        strSQL += " ,r_id_doc = $10";
+        strSQL += " ,r_documento_id = $11";
+        strSQL += " ,r_razon_social = $12";
+        strSQL += " ,r_direccion = $13";
 
-        var strSQL;
-        strSQL = "UPDATE mct_asientocontable SET ";
-        strSQL = strSQL + "  glosa = $1";
-        strSQL = strSQL + " ,debe = $2";
-        strSQL = strSQL + " ,haber = $3";
-        strSQL = strSQL + " ,debe_me = $4";
-        strSQL = strSQL + " ,haber_me = $5";
-        strSQL = strSQL + " ,ctrl_mod = CURRENT_TIMESTAMP";
-        strSQL = strSQL + " ,ctrl_mod_us = $6";
-        strSQL = strSQL + " ,r_id_doc = $7";
-        strSQL = strSQL + " ,r_documento_id = $8";
-        strSQL = strSQL + " ,r_razon_social = $9";
-
-        strSQL = strSQL + " ,r_cod = $10";
-        strSQL = strSQL + " ,r_serie = $11";
-        strSQL = strSQL + " ,r_numero = $12";
-        strSQL = strSQL + " ,r_numero2 = $13";
-        strSQL = strSQL + " ,r_fecemi = $14";
-        strSQL = strSQL + " ,r_fecvcto = $15";
-        strSQL = strSQL + " ,r_cod_ref = $16";
-        strSQL = strSQL + " ,r_serie_ref = $17";
-        strSQL = strSQL + " ,r_numero_ref = $18";
-        strSQL = strSQL + " ,r_fecemi_ref = $19";
-
-        strSQL = strSQL + " ,r_cuenta = $20";
-        
-        strSQL = strSQL + " ,r_base001 = $21";
-        strSQL = strSQL + " ,r_base002 = $22";
-        strSQL = strSQL + " ,r_base003 = $23";
-        strSQL = strSQL + " ,r_base004 = $24";
-        strSQL = strSQL + " ,r_igv001 = $25";
-        strSQL = strSQL + " ,r_igv002 = $26";
-        strSQL = strSQL + " ,r_igv003 = $27";
-        strSQL = strSQL + " ,r_monto_icbp = $28";
-        strSQL = strSQL + " ,r_monto_otros = $29";
-        strSQL = strSQL + " ,r_monto_total = $30";
-        strSQL = strSQL + " ,r_moneda = $31";
-        strSQL = strSQL + " ,r_tc = $32";
-        //datos bien
-        strSQL = strSQL + " ,r_idbss = $33";
-        //datos compras exterior
-        strSQL = strSQL + " ,r_id_pais = $34";
-        strSQL = strSQL + " ,r_id_aduana = $35";
-        strSQL = strSQL + " ,r_ano_dam = $36";
-        //datos financiero
-        strSQL = strSQL + " ,r_id_mediopago = $37";
-        strSQL = strSQL + " ,r_voucher_banco = $38";
-        strSQL = strSQL + " ,r_cuenta10 = $39";
-        strSQL = strSQL + " ,retencion4ta = $40"; //new opcional
-
-        strSQL = strSQL + " WHERE id_usuario = $41";
-        strSQL = strSQL + " AND documento_id = $42";
-        strSQL = strSQL + " AND periodo = $43";
-        strSQL = strSQL + " AND id_libro = $44";
-        strSQL = strSQL + " AND num_asiento = $45";
+        strSQL += " WHERE periodo = $1";
+        strSQL += " AND id_usuario = $2";
+        strSQL += " AND documento_id = $3";
+        strSQL += " AND r_cod = $4";
+        strSQL += " AND r_serie = $5";
+        strSQL += " AND r_numero = $6";
+        strSQL += " AND r_elemento = $7";
 
         const parametros = [   
-            devuelveCadenaNull(glosa),          //01
-            devuelveNumero(debe),               //02
-            devuelveNumero(haber),              //03
-            devuelveNumero(debe_me),            //04
-            devuelveNumero(haber_me),           //05
-
-            devuelveCadenaNull(ctrl_mod_us),     //06
-            devuelveCadenaNull(r_id_doc),        //07
-            devuelveCadenaNull(r_documento_id),  //08
-            devuelveCadenaNull(r_razon_social),  //09
-
-            devuelveCadenaNull(r_cod),           //10
-            devuelveCadenaNull(r_serie),         //11
-            devuelveCadenaNull(r_numero),        //12
-            devuelveCadenaNull(r_numero2),       //13
-            devuelveCadenaNull(fecemi),          //14
-            devuelveCadenaNull(fecvcto),         //15
-
-            devuelveCadenaNull(r_cod_ref),       //16
-            devuelveCadenaNull(r_serie_ref),     //17
-            devuelveCadenaNull(r_numero_ref),    //18
-            devuelveCadenaNull(fecemi_ref),      //19
-            
-            devuelveCadenaNull(r_cuenta),        //20
-            devuelveCadenaNull(r_base001),       //21
-            devuelveCadenaNull(r_base002),       //22
-            devuelveCadenaNull(r_base003),       //23
-            devuelveCadenaNull(r_base004),       //24
-            devuelveCadenaNull(r_igv001),        //25
-            devuelveCadenaNull(r_igv002),        //26
-            devuelveCadenaNull(r_igv003),        //27
-            
-            devuelveCadenaNull(r_monto_icbp),    //28
-            devuelveCadenaNull(r_monto_otros),   //29
-            devuelveCadenaNull(r_monto_total),   //30
-            devuelveCadenaNull(r_moneda),        //31
-            devuelveCadenaNull(r_tc),            //32
-
-            devuelveCadenaNull(r_idbss),         //33
-            devuelveCadenaNull(r_id_pais),       //34
-            devuelveCadenaNull(r_id_aduana),     //35
-            devuelveCadenaNull(r_ano_dam),       //36
-            devuelveCadenaNull(r_id_mediopago),  //37
-            devuelveCadenaNull(r_voucher_banco), //38
-            devuelveCadenaNull(r_cuenta10),      //39
-            devuelveCadenaNull(retencion4ta),      //40
-
             //Seccion parametros
-            id_anfitrion,       //41
-            documento_id,       //42
-            periodo,            //43
-            id_libro,           //44
-            num_asiento,        //45
+            periodo,            //01
+            id_anfitrion,       //02
+            documento_id,       //03
+            r_cod,              //04
+            r_serie,            //05
+            r_numero,           //06
+            r_elemento,         //07 new
+
+            id_invitado,       //08
+            devuelveCadenaNull(fecha),          //09
+            devuelveCadenaNull(r_id_doc),       //10
+            devuelveCadenaNull(r_documento_id), //11
+            devuelveCadenaNull(r_razon_social), //12
+            devuelveCadenaNull(r_direccion),    //13
         ];
 
         console.log(strSQL);
@@ -731,7 +625,7 @@ const actualizarRegistro = async (req,res,next)=> {
 
         if (result.rowCount === 0)
             return res.status(404).json({
-                message:"Asiento no encontrado"
+                message:"Venta no encontrada"
             });
 
         return res.sendStatus(204);
