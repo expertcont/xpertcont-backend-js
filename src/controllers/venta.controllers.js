@@ -570,7 +570,7 @@ const actualizarRegistro = async (req,res,next)=> {
           r_cod,          //04
           r_serie,        //05
           r_numero,       //06
-          r_elemento,     //07 new
+          elemento,     //07 new
           
           id_invitado,        //08
           fecha,              //09
@@ -598,7 +598,7 @@ const actualizarRegistro = async (req,res,next)=> {
         strSQL += " AND r_cod = $4";
         strSQL += " AND r_serie = $5";
         strSQL += " AND r_numero = $6";
-        strSQL += " AND r_elemento = $7";
+        strSQL += " AND elemento = $7";
 
         const parametros = [   
             //Seccion parametros
@@ -608,7 +608,7 @@ const actualizarRegistro = async (req,res,next)=> {
             r_cod,              //04
             r_serie,            //05
             r_numero,           //06
-            r_elemento,         //07 new
+            elemento,         //07 new
 
             id_invitado,       //08
             devuelveCadenaNull(fecha),          //09
