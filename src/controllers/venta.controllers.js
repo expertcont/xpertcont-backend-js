@@ -599,7 +599,8 @@ const actualizarRegistro = async (req,res,next)=> {
         strSQL += " AND r_serie = $5";
         strSQL += " AND r_numero = $6";
         strSQL += " AND elemento = $7";
-
+        strSQL += " RETURNING *";
+        
         const parametros = [   
             //Seccion parametros
             periodo,            //01
