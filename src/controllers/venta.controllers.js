@@ -623,14 +623,29 @@ const actualizarRegistro = async (req,res,next)=> {
 
         const result = await pool.query(strSQL,parametros);
 
-        if (result.rowCount === 0)
+        /*if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Venta no encontrada"
             });
-
-        return res.sendStatus(204);
+        return res.sendStatus(204);*/
+      // Si la función devolvió resultados, enviarlos al frontend
+      if (result.rows.length > 0) {
+        res.status(200).json({
+          success: true,
+          ... result.rows[0], // Devolver el primer (y único) resultado
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'No se encontraron resultados o no se pudo crear el pedido.',
+        });
+      }
     } catch (error) {
         console.log(error.message);
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
     }
 };
 
