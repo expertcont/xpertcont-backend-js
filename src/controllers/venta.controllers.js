@@ -458,6 +458,10 @@ const eliminarRegistro = async (req,res,next)=> {
       [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
     );
 
+    //console.log('result.rowCount: ',result.rowCount);
+    console.log('result.rowCount: ',result.rows[0]);
+    console.log('result.rows[0].success: ',result.rows[0].success);
+    
     if (result.rowCount === 0) {
         return res.status(404).json({
             success:false,
