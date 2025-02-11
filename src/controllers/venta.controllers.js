@@ -458,12 +458,10 @@ const eliminarRegistro = async (req,res,next)=> {
       [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
     );
     console.log(result.rows[0]);
+    console.log(result.rows.length);
     // Si la función devolvió resultados, enviarlos al frontend
     
-    if (result.rows.length > 0) {
-      return result.rows[0].success === true; // Asegura conversión a boolean
-    }
-    return false;    
+    return result.rows[0].success;
 
   } catch (error) {
     console.error('Error ejecutando la función:', error);
