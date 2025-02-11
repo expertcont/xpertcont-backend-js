@@ -461,7 +461,19 @@ const eliminarRegistro = async (req,res,next)=> {
     console.log(result.rows.length);
     // Si la función devolvió resultados, enviarlos al frontend
     
-    return result.rows[0].success;
+    //return result.rows[0].success;
+    if (result.rowCount === 0)
+      return res.status(404).json({
+          success:false,
+          message:"Venta no encontrada"
+      });
+
+      return res.status(204).json({
+        success:true,
+        message:"Venta eliminada"
+    });
+
+
 
   } catch (error) {
     console.error('Error ejecutando la función:', error);
