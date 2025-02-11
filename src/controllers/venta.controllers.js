@@ -458,9 +458,8 @@ const eliminarRegistro = async (req,res,next)=> {
       [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
     );
 
-    //console.log('result.rowCount: ',result.rowCount);
-    console.log('result.rowCount: ',result.rows[0]);
-    console.log('result.rows[0].success: ',result.rows[0].success);
+    //console.log('result.rowCount: ',result.rows[0]);
+    //console.log('result.rows[0].success: ',result.rows[0].success);
 
     if (!result.rows[0].success) {
         return res.status(404).json({
@@ -477,7 +476,7 @@ const eliminarRegistro = async (req,res,next)=> {
   } catch (error) {
         return res.status(500).json({
           success:false,
-          message:"Error interno en servidor"
+          message:"Error interno en servidor (xpertcont revisar back-db)"
       });
   }
 
