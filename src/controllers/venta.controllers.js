@@ -446,49 +446,26 @@ const clonarRegistro = async (req,res,next)=> {
 };
 
 const eliminarRegistro = async (req,res,next)=> {
-    try {
-        const {periodo,id_anfitrion,documento_id,cod,serie,num,elem} = req.params;
-        var strSQL;
-        var result;
-        var result2;
-        
-        //primero eliminar todos detalles
-        strSQL = "DELETE FROM mve_ventadet ";
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
+  //Clonamos cualquier registro(Bol,Fact,NotaVenta) y lo convertimos a Nota en Proceso
+  //Luego se habilida Emitir en otro comprobante (Aprovechamos disponibilidad para notas credito)
+  const { periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento } = req.body;
 
-        //console.log(strSQL);
-        //console.log([periodo,id_anfitrion,documento_id]);
-        result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
+  try {
+    // Ejecutar la función fve_crear_pedido en PostgreSQL
+    const result = await pool.query(
+      `SELECT fve_eliminar_registro($1, $2, $3, $4, $5, $6, $7) AS success`,
+      [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
+    );
+    
+    // Si la función devolvió resultados, enviarlos al frontend
+    return result.rows[0].success;
+  } catch (error) {
+    console.error('Error ejecutando la función:', error);
+    return false;
+  }
 
-        //luego eliminar cabecera
-        strSQL = "DELETE FROM mve_venta ";
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
-
-        //console.log(strSQL);
-        //console.log([id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
-        result2 = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
-        if (result2.rowCount === 0)
-            return res.status(404).json({
-                message:"Venta no encontrado"
-            });
-
-        return res.sendStatus(204);
-    } catch (error) {
-        console.log(error.message);
-    }
 };
+
 const eliminarRegistroItem = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num,elem,item} = req.params;
