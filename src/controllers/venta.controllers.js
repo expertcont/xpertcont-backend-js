@@ -457,14 +457,14 @@ const eliminarRegistro = async (req,res,next)=> {
       `SELECT fve_eliminar_venta($1, $2, $3, $4, $5, $6, $7)::boolean AS success`,
       [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
     );
-    console.log(result);
+    console.log(result.rows[0]);
     // Si la función devolvió resultados, enviarlos al frontend
     
     if (result.rows.length > 0) {
       return result.rows[0].success === true; // Asegura conversión a boolean
     }
     return false;    
-    
+
   } catch (error) {
     console.error('Error ejecutando la función:', error);
     return false;
