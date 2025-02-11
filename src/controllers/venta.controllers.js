@@ -453,7 +453,7 @@ const eliminarRegistro = async (req,res,next)=> {
   try {
     // Ejecutar la función fve_crear_pedido en PostgreSQL
     const result = await pool.query(
-      `SELECT fve_eliminar_registro($1, $2, $3, $4, $5, $6, $7) AS success`,
+      `SELECT fve_eliminar_venta($1, $2, $3, $4, $5, $6, $7) AS success`,
       [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
     );
     
