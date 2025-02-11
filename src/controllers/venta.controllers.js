@@ -462,7 +462,7 @@ const eliminarRegistro = async (req,res,next)=> {
     //console.log('result.rows[0].success: ',result.rows[0].success);
 
     if (!result.rows[0].success) {
-        return res.status(404).json({
+        return res.status(200).json({
             success:false,
             message:"Venta no encontrada"
         });
