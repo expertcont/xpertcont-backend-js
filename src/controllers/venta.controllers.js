@@ -457,18 +457,14 @@ const eliminarRegistro = async (req,res,next)=> {
       `SELECT fve_eliminar_venta($1, $2, $3, $4, $5, $6, $7)::boolean AS success`,
       [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
     );
-    //console.log(result.rows[0]);
-    //console.log(result.rows.length);
-    // Si la función devolvió resultados, enviarlos al frontend
-    
-    //return result.rows[0].success;
+
     if (result.rowCount === 0) {
         return res.status(404).json({
             success:false,
             message:"Venta no encontrada"
         });
     }else{
-        return res.status(204).json({
+        return res.status(200).json({
           success:true,
           message:"Venta eliminada"
       });
