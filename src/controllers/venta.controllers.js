@@ -451,12 +451,13 @@ const eliminarRegistro = async (req,res,next)=> {
   const { periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento } = req.body;
 
   try {
+    console.log([periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]);
     // Ejecutar la función fve_crear_pedido en PostgreSQL
     const result = await pool.query(
       `SELECT fve_eliminar_venta($1, $2, $3, $4, $5, $6, $7) AS success`,
       [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
     );
-    
+    console.log(result);
     // Si la función devolvió resultados, enviarlos al frontend
     return result.rows[0].success;
   } catch (error) {
