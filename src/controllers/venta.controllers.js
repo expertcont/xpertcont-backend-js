@@ -475,8 +475,10 @@ const eliminarRegistro = async (req,res,next)=> {
     }
 
   } catch (error) {
-    console.log('Error ejecutando la función:', error);
-    return false;
+        return res.status(500).json({
+          success:false,
+          message:"Error interno en servidor"
+      });
   }
 
 };
