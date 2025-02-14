@@ -587,7 +587,7 @@ const actualizarRegistro = async (req,res,next)=> {
           r_numero,           //06
           elemento,           //07 new
 
-          devuelveCadenaNull(fecha),          //08
+          devuelveCadenaNull(fecha)  //08
       ];
 
         const parametros = [   
@@ -605,7 +605,7 @@ const actualizarRegistro = async (req,res,next)=> {
             devuelveCadenaNull(r_documento_id), //10
             devuelveCadenaNull(r_razon_social), //11
             devuelveCadenaNull(r_direccion),    //12
-            id_invitado,                        //13
+            id_invitado                        //13
         ];
         strSQL = "UPDATE mve_ventadet SET ";
         strSQL += " r_fecemi = $8";
@@ -619,7 +619,7 @@ const actualizarRegistro = async (req,res,next)=> {
         result = await pool.query(strSQL,parametrosdet);
 
         strSQL = "UPDATE mve_venta SET ";
-        strSQL += " ,r_fecemi = $8";
+        strSQL += "  r_fecemi = $8";
         strSQL += " ,r_id_doc = $9";
         strSQL += " ,r_documento_id = $10";
         strSQL += " ,r_razon_social = $11";
