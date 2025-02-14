@@ -585,17 +585,17 @@ const actualizarRegistro = async (req,res,next)=> {
             r_cod,              //04
             r_serie,            //05
             r_numero,           //06
-            elemento,         //07 new
+            elemento,           //07 new
 
-            id_invitado,       //08
-            devuelveCadenaNull(fecha),          //09
-            devuelveCadenaNull(r_id_doc),       //10
-            devuelveCadenaNull(r_documento_id), //11
-            devuelveCadenaNull(r_razon_social), //12
-            devuelveCadenaNull(r_direccion),    //13
+            devuelveCadenaNull(fecha),          //08
+            devuelveCadenaNull(r_id_doc),       //09
+            devuelveCadenaNull(r_documento_id), //10
+            devuelveCadenaNull(r_razon_social), //11
+            devuelveCadenaNull(r_direccion),    //12
+            id_invitado,                        //13
         ];
         strSQL = "UPDATE mve_ventadet SET ";
-        strSQL += " r_fecemi = $9";
+        strSQL += " r_fecemi = $8";
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
@@ -606,13 +606,14 @@ const actualizarRegistro = async (req,res,next)=> {
         result = await pool.query(strSQL,parametros);
 
         strSQL = "UPDATE mve_venta SET ";
-        strSQL += "  ctrl_mod = CURRENT_TIMESTAMP";
-        strSQL += " ,ctrl_mod_us = $8";
-        strSQL += " ,r_fecemi = $9";
-        strSQL += " ,r_id_doc = $10";
-        strSQL += " ,r_documento_id = $11";
-        strSQL += " ,r_razon_social = $12";
-        strSQL += " ,r_direccion = $13";
+        strSQL += " ,r_fecemi = $8";
+        strSQL += " ,r_id_doc = $9";
+        strSQL += " ,r_documento_id = $10";
+        strSQL += " ,r_razon_social = $11";
+        strSQL += " ,r_direccion = $12";
+        strSQL += " ,ctrl_mod_us = $13";
+        strSQL += " ,ctrl_mod = CURRENT_TIMESTAMP";
+
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
