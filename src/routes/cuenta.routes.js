@@ -6,9 +6,8 @@ const {obtenerTodasCuentas,obtenerCuenta, crearCuenta, actualizarCuenta, elimina
 router.get('/cuentas/:id_usuario/:documento_id', obtenerTodasCuentas);//id_usuario(correo anfitrion) y documento_id(ruc contab)
 
 //truco para recibir parametro en blanco, usar 2 rutas
-router.get('/cuentassimple/:id_usuario/:documento_id', obtenerTodasCuentasSimple);//id_usuario(correo anfitrion) y documento_id(ruc contab) y maestro para filtrado
-router.get('/cuentassimple/:id_usuario/:documento_id/:id_maestro', obtenerTodasCuentasSimple);//id_usuario(correo anfitrion) y documento_id(ruc contab) y maestro para filtrado
-router.get('/cuentassimplepopup/:id_usuario/:documento_id/:bpopup', obtenerTodasCuentasSimple);//bpopup = '1' cualquier caracter, indica que devuelve nombres genericos para manejo en frontend
+router.get('/cuentassimplepopup/:id_usuario/:documento_id', obtenerTodasCuentasSimple);//id_usuario(correo anfitrion) y documento_id(ruc contab) y maestro para filtrado
+router.get('/cuentassimplepopup/:id_usuario/:documento_id/:id_maestro', obtenerTodasCuentasSimple);//id_usuario(correo anfitrion) y documento_id(ruc contab) y maestro para filtrado
 //fin truco
 
 router.get('/cuentasamarre6/:id_usuario/:id_cuenta', obtenerTodosAmarres6);//id_usuario(correo anfitrion) maestro para filtrado

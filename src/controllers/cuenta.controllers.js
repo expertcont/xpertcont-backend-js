@@ -48,16 +48,12 @@ const obtenerTodasCuentas = async (req,res,next)=> {
 const obtenerTodasCuentasSimple = async (req,res,next)=> {
     try {
         let strSQL;
-        const {id_usuario,documento_id,id_maestro,bpopup} = req.params;
+        const {id_usuario,documento_id,id_maestro} = req.params;
         strSQL = "SELECT ";
-        if (bpopup != undefined && bpopup != null) {
-            strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
-            strSQL = strSQL + " ,descripcion";
-            strSQL = strSQL + " ,'' as auxiliar";
-        }else {
-            strSQL = strSQL + " id_cuenta";   
-            strSQL = strSQL + " ,descripcion";         
-        }
+
+        strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
+        strSQL = strSQL + " ,descripcion";
+        strSQL = strSQL + " ,'' as auxiliar";
         
         strSQL = strSQL + " FROM";
         strSQL = strSQL + " mct_cuentacontable";
@@ -69,14 +65,9 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
         strSQL = strSQL + " UNION ALL";
         
         strSQL = strSQL + " SELECT";
-        if (bpopup != undefined && bpopup != null) {
-            strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
-            strSQL = strSQL + " ,descripcion";
-            strSQL = strSQL + " ,'' as auxiliar";
-        }else {
-            strSQL = strSQL + " id_cuenta";
-            strSQL = strSQL + " ,descripcion";
-        }
+        strSQL = strSQL + " id_cuenta as codigo"; //opcion para busqueda
+        strSQL = strSQL + " ,descripcion";
+        strSQL = strSQL + " ,'' as auxiliar";
         strSQL = strSQL + " FROM";
         strSQL = strSQL + " mct_cuentacontable_det";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
@@ -85,13 +76,9 @@ const obtenerTodasCuentasSimple = async (req,res,next)=> {
             strSQL = strSQL + " AND id_cuenta like  '" + id_maestro + "%'";
         }
 
-        if (bpopup != undefined && bpopup != null) {
-            strSQL = strSQL + " ORDER BY codigo";
-        }else{
-            strSQL = strSQL + " ORDER BY id_cuenta";
-        }
+        strSQL = strSQL + " ORDER BY codigo";
         
-        console.log(strSQL);
+        //console.log(strSQL);
         const todasCuentas = await pool.query(strSQL);
         res.json(todasCuentas.rows);
     }
