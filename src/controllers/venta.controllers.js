@@ -576,24 +576,7 @@ const actualizarRegistro = async (req,res,next)=> {
         //faltan mas parametros de razon social ruc y direccion
     
         let strSQL;
-        strSQL = "UPDATE mve_venta SET ";
-        strSQL += "  ctrl_mod = CURRENT_TIMESTAMP";
-        strSQL += " ,ctrl_mod_us = $8";
-        strSQL += " ,r_fecemi = $9";
-        strSQL += " ,r_id_doc = $10";
-        strSQL += " ,r_documento_id = $11";
-        strSQL += " ,r_razon_social = $12";
-        strSQL += " ,r_direccion = $13";
-
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
-        strSQL += " RETURNING *";
-        
+        let result;
         const parametros = [   
             //Seccion parametros
             periodo,            //01
@@ -611,17 +594,35 @@ const actualizarRegistro = async (req,res,next)=> {
             devuelveCadenaNull(r_razon_social), //12
             devuelveCadenaNull(r_direccion),    //13
         ];
+        strSQL = "UPDATE mve_ventadet SET ";
+        strSQL += " r_fecemi = $9";
+        strSQL += " WHERE periodo = $1";
+        strSQL += " AND id_usuario = $2";
+        strSQL += " AND documento_id = $3";
+        strSQL += " AND r_cod = $4";
+        strSQL += " AND r_serie = $5";
+        strSQL += " AND r_numero = $6";
+        strSQL += " AND elemento = $7";
+        result = await pool.query(strSQL,parametros);
 
-        console.log(strSQL);
-        console.log(parametros);
+        strSQL = "UPDATE mve_venta SET ";
+        strSQL += "  ctrl_mod = CURRENT_TIMESTAMP";
+        strSQL += " ,ctrl_mod_us = $8";
+        strSQL += " ,r_fecemi = $9";
+        strSQL += " ,r_id_doc = $10";
+        strSQL += " ,r_documento_id = $11";
+        strSQL += " ,r_razon_social = $12";
+        strSQL += " ,r_direccion = $13";
+        strSQL += " WHERE periodo = $1";
+        strSQL += " AND id_usuario = $2";
+        strSQL += " AND documento_id = $3";
+        strSQL += " AND r_cod = $4";
+        strSQL += " AND r_serie = $5";
+        strSQL += " AND r_numero = $6";
+        strSQL += " AND elemento = $7";
+        strSQL += " RETURNING *";
+        result = await pool.query(strSQL,parametros);
 
-        const result = await pool.query(strSQL,parametros);
-
-        /*if (result.rowCount === 0)
-            return res.status(404).json({
-                message:"Venta no encontrada"
-            });
-        return res.sendStatus(204);*/
       // Si la función devolvió resultados, enviarlos al frontend
       if (result.rows.length > 0) {
         res.status(200).json({
