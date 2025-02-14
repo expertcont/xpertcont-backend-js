@@ -577,6 +577,19 @@ const actualizarRegistro = async (req,res,next)=> {
     
         let strSQL;
         let result;
+        const parametrosdet = [   
+          //Seccion parametros
+          periodo,            //01
+          id_anfitrion,       //02
+          documento_id,       //03
+          r_cod,              //04
+          r_serie,            //05
+          r_numero,           //06
+          elemento,           //07 new
+
+          devuelveCadenaNull(fecha),          //08
+      ];
+
         const parametros = [   
             //Seccion parametros
             periodo,            //01
@@ -603,7 +616,7 @@ const actualizarRegistro = async (req,res,next)=> {
         strSQL += " AND r_serie = $5";
         strSQL += " AND r_numero = $6";
         strSQL += " AND elemento = $7";
-        result = await pool.query(strSQL,parametros);
+        result = await pool.query(strSQL,parametrosdet);
 
         strSQL = "UPDATE mve_venta SET ";
         strSQL += " ,r_fecemi = $8";
