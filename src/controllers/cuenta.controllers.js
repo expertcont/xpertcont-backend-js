@@ -92,8 +92,28 @@ const obtenerTodosAmarres6 = async (req,res,next)=> {
         let strSQL;
         const {id_usuario,id_cuenta} = req.params;
 
-        strSQL = "select consulta2.*, mct_cuentacontable.descripcion as descripcion_haber ";
-        strSQL += " ,(consulta2.descripcion_debe || '-' || mct_cuentacontable.descripcion)::varchar(300) as descripcion from (";
+        /*strSQL = "select consulta2.*, mct_cuentacontable.descripcion as descripcion_haber ";
+        strSQL += " ,(consulta2.descripcion_debe || '-' || mct_cuentacontable.descripcion)::varchar(300) as descripcion";
+        strSQL += " from (";
+        strSQL += " select consulta.*, mct_cuentacontable.descripcion as descripcion_debe from (";
+        strSQL += " select id_cuenta,id_cuenta_haber ";
+        strSQL += " from mct_cuentacontable ";
+        strSQL += " where id_usuario = '" + id_usuario + "'";
+        strSQL += " and id_cuenta_debe = '" + id_cuenta + "'";
+        strSQL += " and not id_cuenta_debe is null";
+        strSQL += " ) as consulta left join mct_cuentacontable";
+        strSQL += " on ('" + id_usuario + "' = mct_cuentacontable.id_usuario and";
+        strSQL += "    consulta.id_cuenta = mct_cuentacontable.id_cuenta)";
+        strSQL += " ) as consulta2 left join mct_cuentacontable";
+        strSQL +=" on ('" + id_usuario + "' = mct_cuentacontable.id_usuario and";
+        strSQL +="     consulta2.id_cuenta_haber = mct_cuentacontable.id_cuenta)";*/
+
+        strSQL = "SELECT consulta3.id_cuenta as codigo ";
+        strSQL += " ,consulta3.descripcion_debe as descripcion";
+        strSQL += " ,(consulta3.id_cuenta_haber || '-' || consulta3.descripcion_haber)::varchar(200) as auxiliar";
+        strSQL += " FROM (";
+        strSQL += " select consulta2.*, mct_cuentacontable.descripcion as descripcion_haber ";
+        strSQL += " from (";
         strSQL += " select consulta.*, mct_cuentacontable.descripcion as descripcion_debe from (";
         strSQL += " select id_cuenta,id_cuenta_haber ";
         strSQL += " from mct_cuentacontable ";
@@ -106,6 +126,7 @@ const obtenerTodosAmarres6 = async (req,res,next)=> {
         strSQL += " ) as consulta2 left join mct_cuentacontable";
         strSQL +=" on ('" + id_usuario + "' = mct_cuentacontable.id_usuario and";
         strSQL +="     consulta2.id_cuenta_haber = mct_cuentacontable.id_cuenta)";
+        strSQL += " ) AS consulta3 ";
 
         const todasCuentas = await pool.query(strSQL);
         res.json(todasCuentas.rows);
