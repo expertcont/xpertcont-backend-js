@@ -67,8 +67,10 @@ const generarTicketSire = async (req, res, next) => {
 
         /////////////////////////////////////////////////////////////
         //3: API sunat 5.18 descargar propuesta (Solo numero Ticket)
+        //Cuidado con el Periodo
+        const periodoFormateado = periodo.replace(/-/g, '');
         const sUrlSunatTicket = `
-        https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvie/propuesta/web/propuesta/202502/exportapropuesta?codTipoArchivo=0
+        https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvie/propuesta/web/propuesta/${periodoFormateado}/exportapropuesta?codTipoArchivo=0
         `;
         const responseTicket = await fetch(sUrlSunatTicket, options);
         const jsonResponseTicket = await responseTicket.json();
