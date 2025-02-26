@@ -8,6 +8,7 @@ const manifiestoRoutes = require('./src/routes/manifiesto.routes');
 const ventaRoutes = require('./src/routes/venta.routes');
 const ventaDetRoutes = require('./src/routes/ventadet.routes');
 
+const sireRoutes = require('./src/routes/sire.routes');
 const reporteRoutes = require('./src/routes/reporte.routes');
 const comprobanteRoutes = require('./src/routes/comprobante.routes');
 const asientodetRoutes = require('./src/routes/asientodet.routes');
@@ -36,6 +37,7 @@ app.use(manifiestoRoutes);
 app.use(ventaDetRoutes);
 app.use(ventaRoutes);
 
+app.use(sireRoutes);
 app.use(reporteRoutes);
 app.use(comprobanteRoutes);
 app.use(asientodetRoutes);
