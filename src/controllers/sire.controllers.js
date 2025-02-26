@@ -44,7 +44,7 @@ const generarTicketSire = async (req, res, next) => {
 
         // Analizar la respuesta como JSON
         const jsonResponse = await response.json();
-        //console.log('Respuesta:', jsonResponse.access_token);
+        console.log('Respuesta:', jsonResponse.access_token);
         //res.json(jsonResponse.access_token);
 
         /////////////////////////////////////////////////////////////
@@ -62,11 +62,11 @@ const generarTicketSire = async (req, res, next) => {
         };
         const responsePeriodos = await fetch(sUrlSunatPeriodosLista, options);
         // Verificar el estado de la respuesta
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${responsePeriodos.status}`);
-        }
+        //if (!responsePeriodos.ok) {
+        //    throw new Error(`Error HTTP: ${responsePeriodos.status}`);
+        //}
         // Analizar la respuesta como JSON
-        const jsonResponsePeriodos = await response.json();
+        const jsonResponsePeriodos = await responsePeriodos.json();
         console.log('Respuesta Periodos:', jsonResponsePeriodos);        
         res.json(jsonResponsePeriodos);
 
