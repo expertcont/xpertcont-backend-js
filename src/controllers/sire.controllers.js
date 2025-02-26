@@ -20,7 +20,7 @@ const generarTicketSire = async (req, res, next) => {
     
     try {
         /////////////////////////////////////////////////////////////
-        //1: Obtener token
+        //1: Api sunat 5.1 (Obtener token)
         const rows = await generarTicketSireCredenciales(id_anfitrion,documento_id);
         const sUrlSunatToken = `
         https://api-seguridad.sunat.gob.pe/v1/clientessol/${rows[0].sire_id}/oauth2/token/
@@ -44,11 +44,11 @@ const generarTicketSire = async (req, res, next) => {
 
         // Analizar la respuesta como JSON
         const jsonResponse = await response.json();
-        console.log('Respuesta:', jsonResponse.access_token);
+        //console.log('Respuesta:', jsonResponse.access_token);
         //res.json(jsonResponse.access_token);
 
         /////////////////////////////////////////////////////////////
-        //2: Obtener Ano y Mes historial pendientes y declarados
+        //2: Api sunat 5.2  (Obtener Ano y Mes historial pendientes y declarados)
         const sUrlSunatPeriodosLista = `
         https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/padron/web/omisos/${id_libro}/periodos
         `;
@@ -61,14 +61,18 @@ const generarTicketSire = async (req, res, next) => {
           }
         };
         const responsePeriodos = await fetch(sUrlSunatPeriodosLista, options);
-        // Verificar el estado de la respuesta
-        //if (!responsePeriodos.ok) {
-        //    throw new Error(`Error HTTP: ${responsePeriodos.status}`);
-        //}
-        // Analizar la respuesta como JSON
         const jsonResponsePeriodos = await responsePeriodos.json();
-        console.log('Respuesta Periodos:', jsonResponsePeriodos);        
-        res.json(jsonResponsePeriodos);
+        //console.log('Respuesta Periodos:', jsonResponsePeriodos);        
+        //res.json(jsonResponsePeriodos);
+
+        /////////////////////////////////////////////////////////////
+        //3: API sunat 5.18 descargar propuesta (Solo numero Ticket)
+        const sUrlSunatTicket = `
+        https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvie/propuesta/web/propuesta/202502/exportapropuesta?codTipoArchivo=0
+        `;
+        const responseTicket = await fetch(sUrlSunatTicket, options);
+        const jsonResponseTicket = await responseTicket.json();
+        res.json(jsonResponseTicket);
 
     } catch (error) {
         console.error('Error:', error);
