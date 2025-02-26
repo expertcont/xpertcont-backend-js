@@ -45,7 +45,7 @@ const generarTicketSire = async (req, res, next) => {
         // Analizar la respuesta como JSON
         const jsonResponse = await response.json();
         console.log('Respuesta:', jsonResponse);
-        res.json(jsonResponse.rows);
+        res.json(jsonResponse);
 
     } catch (error) {
         console.error('Error:', error);
