@@ -345,7 +345,7 @@ const obtenerTodosAsientosVenta = async (req,res,next)=> {
     strSQL = strSQL + " AND periodo = '" + periodo + "'";
     strSQL = strSQL + " AND id_libro = '014'"; //ventas
     strSQL = strSQL + " ORDER BY num_asiento DESC";
-    console.log(strSQL);
+    //console.log(strSQL);
     try {
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
@@ -403,7 +403,7 @@ const obtenerTodosAsientosCaja = async (req,res,next)=> {
     strSQL = strSQL + " AND periodo = '" + periodo + "'";
     strSQL = strSQL + " AND id_libro = '001'"; //caja
     strSQL = strSQL + " ORDER BY num_asiento DESC";
-    console.log(strSQL);
+    //console.log(strSQL);
     try {
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
@@ -461,7 +461,7 @@ const obtenerTodosAsientosDiario = async (req,res,next)=> {
     strSQL = strSQL + " AND periodo = '" + periodo + "'";
     strSQL = strSQL + " AND id_libro = '005'"; //diario
     strSQL = strSQL + " ORDER BY num_asiento DESC";
-    console.log(strSQL);
+    //console.log(strSQL);
     try {
         const todosReg = await pool.query(strSQL);
         res.json(todosReg.rows);
@@ -950,7 +950,7 @@ const crearAsiento = async (req,res,next)=> {
     strSQL += " ) RETURNING *";
 
     try {
-        console.log(strSQL);
+        //console.log(strSQL);
         const parametros = [   
             id_anfitrion,    //01
             documento_id,    //02
@@ -2050,8 +2050,8 @@ const eliminarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " AND periodo = $3";
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND num_asiento = $5";
-        console.log(strSQL);
-        console.log([id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
+        //console.log(strSQL);
+        //console.log([id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
 
         result = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
         /*if (result.rowCount === 0)
@@ -2066,8 +2066,8 @@ const eliminarAsiento = async (req,res,next)=> {
         strSQL = strSQL + " AND periodo = $3";
         strSQL = strSQL + " AND id_libro = $4";
         strSQL = strSQL + " AND num_asiento = $5";
-        console.log(strSQL);
-        console.log([id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
+        //console.log(strSQL);
+        //console.log([id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
         result2 = await pool.query(strSQL,[id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
         if (result2.rowCount === 0)
             return res.status(404).json({
@@ -2296,8 +2296,8 @@ const actualizarAsiento = async (req,res,next)=> {
             num_asiento,        //45
         ];
 
-        console.log(strSQL);
-        console.log(parametros);
+        //console.log(strSQL);
+        //console.log(parametros);
 
         const result = await pool.query(strSQL,parametros);
 
