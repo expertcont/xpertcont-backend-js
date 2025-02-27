@@ -138,10 +138,19 @@ const generarTicketSireDescarga = async (req, res, next) => {
       https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/archivoreporte?nomArchivoReporte=${nombre_archivo_rep}&codTipoArchivoReporte=01&codLibro=${id_libro}&perTributario=${periodoFormateado}&codProceso=10&numTicket=${ticket}
       `;
       const responseTicketDescarga = await fetch(sUrlSunatTicketDescarga, options);
-      const jsonResponseTicketDescarga = await responseTicketDescarga.json();
-      res.json(jsonResponseTicketDescarga);
-
+      //const jsonResponseTicketDescarga = await responseTicketDescarga.json();
+      //res.json(jsonResponseTicketDescarga);
       
+      // Obtén el archivo como buffer
+      const zipBuffer = await responseTicketDescarga.buffer();
+
+      // Configura los encabezados para la descarga del archivo
+      res.setHeader('Content-Disposition', `attachment; filename=${nombre_archivo_rep}.zip`);
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Length', zipBuffer.length);
+
+      // Envía el archivo como respuesta
+      res.send(zipBuffer);
 
   } catch (error) {
       console.error('Error:', error);
