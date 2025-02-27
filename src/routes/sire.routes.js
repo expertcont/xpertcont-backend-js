@@ -2,9 +2,10 @@ const {Router} = require('express');
 const multer = require('multer');
 //const pool = require('../db');
 const router = Router();
-const {generarTicketSire} = require('../controllers/sire.controllers')
+const {generarTicketSire, generarTicketSireDescarga} = require('../controllers/sire.controllers')
 
 router.post('/sire/ticket', generarTicketSire);
+router.post('/sire/ticket/descarga', generarTicketSireDescarga);
 
 /*router.post('/asiento', crearAsiento);
 router.post('/asientoexcelventas', upload.single('archivoExcel'), importarExcelRegVentas);
