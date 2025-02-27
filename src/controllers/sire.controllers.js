@@ -84,7 +84,18 @@ const generarTicketSire = async (req, res, next) => {
         `;
         const responseTicketConsulta = await fetch(sUrlSunatTicketConsulta, options);
         const jsonResponseTicketConsulta = await responseTicketConsulta.json();
-        res.json(jsonResponseTicketConsulta);
+        console.log('Estado Ticket Consulta:', jsonResponseTicketConsulta);
+        //res.json(jsonResponseTicketConsulta);
+        
+        /////////////////////////////////////////////////////////////
+        //5: API sunat 5.17 Descargar Archivo (con datos anteriores, ticket y nombre de archivo)
+        const sUrlSunatTicketDescarga = `
+        https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/archivoreporte?nomArchivoReporte=${jsonResponseTicketConsulta.registros[0].archivoReporte[0].nomArchivoReporte}&codTipoArchivoReporte=01&codLibro=${id_libro}&perTributario=${periodoFormateado}&codProceso=10&numTicket=${jsonResponseTicket.numTicket}
+        `;
+        const responseTicketDescarga = await fetch(sUrlSunatTicketDescarga, options);
+        const jsonResponseTicketDescarga = await responseTicketDescarga.json();
+        res.json(jsonResponseTicketDescarga);
+
         
 
     } catch (error) {
