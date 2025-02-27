@@ -74,7 +74,18 @@ const generarTicketSire = async (req, res, next) => {
         `;
         const responseTicket = await fetch(sUrlSunatTicket, options);
         const jsonResponseTicket = await responseTicket.json();
-        res.json(jsonResponseTicket);
+        //Esto se recomienda guardar en BD, esta relacionado con el periodo que se desea descargar (creo q se queda guardado en la nube del SIRE)
+        //res.json(jsonResponseTicket);
+        
+        /////////////////////////////////////////////////////////////
+        //4: API sunat 5.16 Consultar Ticket (Parametros de tamaño datos y demas generales)
+        const sUrlSunatTicketConsulta = `
+        https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/consultaestadotickets?perIni=${periodoFormateado}&perFin=${periodoFormateado}&page=1&perPage=20&numTicket=${jsonResponseTicket.numTicket}
+        `;
+        const responseTicketConsulta = await fetch(sUrlSunatTicketConsulta, options);
+        const jsonResponseTicketConsulta = await responseTicketConsulta.json();
+        res.json(jsonResponseTicketConsulta);
+        
 
     } catch (error) {
         console.error('Error:', error);
