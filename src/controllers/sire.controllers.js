@@ -145,7 +145,7 @@ const generarTicketSireDescarga = async (req, res, next) => {
       const zipBuffer = await responseTicketDescarga.buffer();
 
       // Configura los encabezados para la descarga del archivo
-      res.setHeader('Content-Disposition', `attachment; filename=${nombre_archivo_rep}.zip`);
+      res.setHeader('Content-Disposition', `attachment; filename=${nombre_archivo_rep}`);
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Length', zipBuffer.length);
 
