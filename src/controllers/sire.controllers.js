@@ -80,7 +80,7 @@ const generarTicketSire = async (req, res, next) => {
         /////////////////////////////////////////////////////////////
         //4: API sunat 5.16 Consultar Ticket (Parametros de tamaño datos y demas generales)
         const sUrlSunatTicketConsulta = `
-        https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/consultaestadotickets?perIni=${periodoFormateado}&perFin=${periodoFormateado}&page=1&perPage=20&numTicket=${jsonResponseTicket.numTicket}
+        https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/consultaestadotickets?perIni=${periodoFormateado}&perFin=${periodoFormateado}&page=1&perPage=100&numTicket=${jsonResponseTicket.numTicket}
         `;
         const responseTicketConsulta = await fetch(sUrlSunatTicketConsulta, options);
         const jsonResponseTicketConsulta = await responseTicketConsulta.json();
