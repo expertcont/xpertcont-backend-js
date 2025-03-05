@@ -199,7 +199,7 @@ const generarTicketSireAdmin = async (req, res, next) => {
       if (rowTicket.length > 0) {
           // Acceder al primer resultado y al campo sire_ticket
           //return rows[0].sire_ticket; // Si solo te interesa el primer valor
-          return res.status(200).json({ ticket: rows[0].sire_ticket }); // Aquí se detiene la ejecución si ocurre un error
+          return res.status(200).json({ ticket: rowTicket[0].sire_ticket }); // Aquí se detiene la ejecución si ocurre un error
       } else {
           //Genera ticket desde sunat
           const ticketSunat = generarTicketSireSunat(id_anfitrion,documento_id,periodo,id_libro);
