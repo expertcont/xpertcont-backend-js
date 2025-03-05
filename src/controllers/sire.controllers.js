@@ -178,7 +178,7 @@ const generarTicketSireSunat = async (id_anfitrion,documento_id,periodo,id_libro
       const ticketSunat = jsonResponseTicket.numTicket;
       
       //Ahora insertar en tabla 
-      await generarTicketSireInsertDB(id_anfitrion,documento_id,id_libro,periodo,ticketSunat);
+      await generarTicketSireInsertDB(id_anfitrion,documento_id,periodo,id_libro,ticketSunat);
       return ticketSunat;
       //res.json(jsonResponseTicket);
   } catch (error) {
