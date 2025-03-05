@@ -5,6 +5,7 @@ const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaSt
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
 const fetch = require('node-fetch');
+const { serialize } = require('node:v8');
 
 const generarTicketSireCredenciales = async (id_anfitrion,documento_id) => {
   const strSQL = `
@@ -15,7 +16,37 @@ const generarTicketSireCredenciales = async (id_anfitrion,documento_id) => {
   const { rows } = await pool.query(strSQL, [id_anfitrion,documento_id]);
   return rows;
 };
-const generarTicketSire = async (req, res, next) => {
+const generarTicketSireInsertDB = async (id_usuario,documento_id,periodo,id_libro,sire_ticket) => {
+  try {
+      //console.log(documento_id, razon_social, id_doc);
+      const insertQuery = `
+          INSERT INTO mct_contabilidadticket (id_usuario,documento_id,periodo,id_libro,sire_ticket)
+          VALUES ($1, $2, $3, $4, $5) RETURNING *
+      `;
+      const values = [id_usuario,documento_id,periodo,id_libro,sire_ticket];
+      const insertResult = await pool.query(insertQuery, values);
+      //console.log('Dato insertado:', insertResult.rows[0]);
+  } catch (dbError) {
+      if (dbError.code === '23505') { // Código de error para duplicados en PostgreSQL
+          console.log('El dato ya existe en la base de datos, finalizamos simplemente');
+      } else {
+          throw dbError;
+      }
+  }
+};
+const generarTicketSireConsultaDB = async (id_anfitrion,documento_id,periodo,id_libro) => {
+  const strSQL = `
+      SELECT sire_ticket FROM mad_contabilidadticket
+      WHERE id_usuario = $1
+      AND documento_id = $2
+      AND periodo = $3      
+      AND id_libro = $4
+  `;
+  const { rows } = await pool.query(strSQL, [id_anfitrion,documento_id,periodo,id_libro]);
+  return rows;
+};
+
+/*const generarTicketSire = async (req, res, next) => {
     const {id_anfitrion,documento_id,id_libro,periodo} = req.body;
     
     try {
@@ -92,6 +123,91 @@ const generarTicketSire = async (req, res, next) => {
         console.error('Error:', error);
         return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
     }
+};*/
+
+const generarTicketSireSunat = async (id_anfitrion,documento_id,periodo,id_libro) => {
+  
+  try {
+      /////////////////////////////////////////////////////////////
+      //1: Api sunat 5.1 (Obtener token)
+      const rows = await generarTicketSireCredenciales(id_anfitrion,documento_id);
+      const sUrlSunatToken = `
+      https://api-seguridad.sunat.gob.pe/v1/clientessol/${rows[0].sire_id}/oauth2/token/
+      `;
+      //Datos a enviar en el cuerpo de la solicitud
+      const data = new URLSearchParams({
+        'grant_type': 'password',
+        'scope': 'https://api-sire.sunat.gob.pe',
+        'client_id': rows[0].sire_id,
+        'client_secret': rows[0].sire_secret,
+        'username': documento_id + rows[0].sire_sol,
+        'password': rows[0].sire_solpwd
+      });        
+      const response = await fetch(sUrlSunatToken, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: data
+      });
+      // Analizar la respuesta como JSON
+      const jsonResponse = await response.json();
+
+      /////////////////////////////////////////////////////////////
+      const options = {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${jsonResponse.access_token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      };
+
+      /////////////////////////////////////////////////////////////
+      //3: API sunat 5.18 descargar propuesta (Solo numero Ticket)
+      //Cuidado con el Periodo
+      const periodoFormateado = periodo.replace(/-/g, '');
+      const sAliasLibro = id_libro === '140000' ? 'rvie' : 'rce';
+      const sUrlSunatTicket = `
+      https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/${sAliasLibro}/propuesta/web/propuesta/${periodoFormateado}/exportapropuesta?codTipoArchivo=0
+      `;
+      const responseTicket = await fetch(sUrlSunatTicket, options);
+      const jsonResponseTicket = await responseTicket.json();
+      const ticketSunat = jsonResponseTicket.registros[0].numTicket;
+
+      //Ahora insertar en tabla 
+      await generarTicketSireInsertDB(id_anfitrion,documento_id,id_libro,periodo,ticketSunat);
+      return ticketSunat;
+      //res.json(jsonResponseTicket);
+  } catch (error) {
+      console.error('Error:', error);
+      return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
+  }
+};
+
+const generarTicketSireAdmin = async (req, res, next) => {
+  const {id_anfitrion,documento_id,periodo,id_libro} = req.body;
+  
+  try {
+      /////////////////////////////////////////////////////////////
+      //1: Consultar si existe ticket Generado en BD
+      const rowTicket = await generarTicketSireConsultaDB(id_anfitrion,documento_id,periodo,id_libro);
+
+      //2: Si no existe Ticket BD, generar Ticket Nuevo
+      if (rowTicket.length > 0) {
+          // Acceder al primer resultado y al campo sire_ticket
+          return rows[0].sire_ticket; // Si solo te interesa el primer valor
+      } else {
+          //Genera ticket desde sunat
+          const ticketSunat = generarTicketSireSunat(id_anfitrion,documento_id,periodo,id_libro);
+          return ticketSunat; // O cualquier otro valor que consideres adecuado
+      }
+      //El resto del proceso, se ejecuta en otro EndPoint
+     
+  } catch (error) {
+      console.error('Error:', error);
+      return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
+  }
 };
 
 const generarTicketSireDescarga = async (req, res, next) => {
@@ -159,6 +275,6 @@ const generarTicketSireDescarga = async (req, res, next) => {
 };
 
 module.exports = {
-    generarTicketSire,
+    generarTicketSireAdmin,
     generarTicketSireDescarga,
  }; 
