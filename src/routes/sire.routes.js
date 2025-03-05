@@ -2,9 +2,10 @@ const {Router} = require('express');
 const multer = require('multer');
 //const pool = require('../db');
 const router = Router();
-const {generarTicketSireDescarga, generarTicketSireAdmin} = require('../controllers/sire.controllers')
+const {generarTicketSireDescarga, generarTicketSireAdmin, generarTicketSireEstado} = require('../controllers/sire.controllers')
 
 router.post('/sire/ticket', generarTicketSireAdmin);
+router.post('/sire/ticket/estado', generarTicketSireEstado);
 router.post('/sire/ticket/descarga', generarTicketSireDescarga);
 
 /*router.post('/asiento', crearAsiento);

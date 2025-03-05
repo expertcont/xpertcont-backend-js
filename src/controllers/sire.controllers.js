@@ -277,7 +277,64 @@ const generarTicketSireDescarga = async (req, res, next) => {
   }
 };
 
+const generarTicketSireEstado = async (req, res, next) => {
+    const {id_anfitrion,documento_id,periodo,ticket} = req.body;
+    
+    try {
+        /////////////////////////////////////////////////////////////
+        //1: Api sunat 5.1 (Obtener token)
+        const rows = await generarTicketSireCredenciales(id_anfitrion,documento_id);
+        const sUrlSunatToken = `
+        https://api-seguridad.sunat.gob.pe/v1/clientessol/${rows[0].sire_id}/oauth2/token/
+        `;
+        //Datos a enviar en el cuerpo de la solicitud
+        const data = new URLSearchParams({
+          'grant_type': 'password',
+          'scope': 'https://api-sire.sunat.gob.pe',
+          'client_id': rows[0].sire_id,
+          'client_secret': rows[0].sire_secret,
+          'username': documento_id + rows[0].sire_sol,
+          'password': rows[0].sire_solpwd
+        });        
+        const response = await fetch(sUrlSunatToken, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: data
+        });
+
+        // Analizar la respuesta como JSON
+        const jsonResponse = await response.json();
+        /////////////////////////////////////////////////////////////
+        const options = {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${jsonResponse.access_token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        };
+        const periodoFormateado = periodo.replace(/-/g, '');
+        
+        /////////////////////////////////////////////////////////////
+        //4: API sunat 5.16 Consultar Ticket (Parametros de tamaño datos y demas generales)
+        const sUrlSunatTicketConsulta = `
+        https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/consultaestadotickets?perIni=${periodoFormateado}&perFin=${periodoFormateado}&page=1&perPage=100&numTicket=${ticket}
+        `;
+        const responseTicketConsulta = await fetch(sUrlSunatTicketConsulta, options);
+        const jsonResponseTicketConsulta = await responseTicketConsulta.json();
+        console.log('Estado Ticket Consulta:', jsonResponseTicketConsulta);
+        res.status(200).json(jsonResponseTicketConsulta);
+
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
+    }
+};
+
 module.exports = {
     generarTicketSireAdmin,
-    generarTicketSireDescarga,
+    generarTicketSireEstado,
+    generarTicketSireDescarga
  }; 
