@@ -36,7 +36,7 @@ const generarTicketSireInsertDB = async (id_usuario,documento_id,periodo,id_libr
 };
 const generarTicketSireConsultaDB = async (id_anfitrion,documento_id,periodo,id_libro) => {
   const strSQL = `
-      SELECT sire_ticket FROM mad_contabilidadticket
+      SELECT sire_ticket FROM mct_contabilidadticket
       WHERE id_usuario = $1
       AND documento_id = $2
       AND periodo = $3      
