@@ -324,9 +324,23 @@ const generarTicketSireEstado = async (req, res, next) => {
         `;
         const responseTicketConsulta = await fetch(sUrlSunatTicketConsulta, options);
         const jsonResponseTicketConsulta = await responseTicketConsulta.json();
-        console.log('Estado Ticket Consulta:', jsonResponseTicketConsulta);
-        res.status(200).json(jsonResponseTicketConsulta);
-
+        //console.log('Estado Ticket Consulta:', jsonResponseTicketConsulta);
+        
+        const registros = jsonResponseTicketConsulta.registros;
+        if (registros && registros.length > 0) {
+          const archivoReporte = registros[0].archivoReporte;
+          if (archivoReporte && archivoReporte.length > 0) {
+              const nomArchivoReporte = archivoReporte[0].nomArchivoReporte;
+              res.status(200).json({ nombre_archivo_rep: nomArchivoReporte });
+          }else{
+              //retornar vacio en proceso
+              res.status(200).json({ nombre_archivo_rep: "" });
+          }
+        }else{
+            //retornar vacio en proceso
+            res.status(200).json({ nombre_archivo_rep: "" });
+        }
+        //res.status(200).json(jsonResponseTicketConsulta.registros[0].archivoReporte[0].nomArchivoReporte);
     } catch (error) {
         console.error('Error:', error);
         return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
