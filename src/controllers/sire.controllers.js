@@ -198,11 +198,12 @@ const generarTicketSireAdmin = async (req, res, next) => {
       //2: Si no existe Ticket BD, generar Ticket Nuevo
       if (rowTicket.length > 0) {
           // Acceder al primer resultado y al campo sire_ticket
-          return rows[0].sire_ticket; // Si solo te interesa el primer valor
+          //return rows[0].sire_ticket; // Si solo te interesa el primer valor
+          return res.status(200).json({ ticket: rows[0].sire_ticket }); // Aquí se detiene la ejecución si ocurre un error
       } else {
           //Genera ticket desde sunat
           const ticketSunat = generarTicketSireSunat(id_anfitrion,documento_id,periodo,id_libro);
-          return ticketSunat; // O cualquier otro valor que consideres adecuado
+          return res.status(200).json({ ticket: ticketSunat }); // Aquí se detiene la ejecución si ocurre un error
       }
       //El resto del proceso, se ejecuta en otro EndPoint
      
