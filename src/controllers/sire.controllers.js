@@ -173,8 +173,10 @@ const generarTicketSireSunat = async (id_anfitrion,documento_id,periodo,id_libro
       `;
       const responseTicket = await fetch(sUrlSunatTicket, options);
       const jsonResponseTicket = await responseTicket.json();
-      const ticketSunat = jsonResponseTicket.registros[0].numTicket;
+      console.log(jsonResponseTicket);
 
+      const ticketSunat = jsonResponseTicket.registros[0].numTicket;
+      
       //Ahora insertar en tabla 
       await generarTicketSireInsertDB(id_anfitrion,documento_id,id_libro,periodo,ticketSunat);
       return ticketSunat;
