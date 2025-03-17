@@ -4,6 +4,7 @@ const { Readable } = require('stream');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
+const AdmZip = require('adm-zip');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //Solo Cabeceras
@@ -1554,12 +1555,28 @@ const importarSireRegVentas = async (req, res, next) => {
     } = datosCarga;
     
     try {
-      const fileBuffer = req.file.buffer;
-      //const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-      //const sheetName = workbook.SheetNames[0];
-      //const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
-      //  header: 1,
-      //});
+
+      //const fileBuffer = req.file.buffer;
+      let fileBuffer = req.file.buffer; // Mantener la estructura
+      
+      //Verificar si el archivo es ZIP////////////////////////////////////////////////////////////
+      const mimeType = req.file.mimetype;
+      const isZip = mimeType === 'application/zip' || fileName.endsWith('.zip');
+      if (isZip) {
+        const zip = new AdmZip(fileBuffer);
+        const zipEntries = zip.getEntries();
+        if (zipEntries.length === 1) {
+            const entry = zipEntries[0]; // Extraer el único archivo dentro del ZIP
+            if (!entry.isDirectory) {
+                fileBuffer = zip.readFile(entry); // Ahora fileBuffer contiene el archivo extraído
+            }
+        } else {
+            console.error('El ZIP contiene más de un archivo. No se procesará.');
+            return res.status(400).json({ error: 'El ZIP debe contener solo un archivo.' });
+        }
+      }
+      ////////////////////////////////////////////////////////////////////////////////////////////
+    
       const fileData = fileBuffer.toString('utf-8'); // Convertir buffer a cadena
       const lines = fileData.split('\n').filter(line => line.trim() !== '' || line === '\r'); // Excluir líneas vacías pero permitir un retorno de carro al final
     
@@ -1787,7 +1804,7 @@ const importarSireRegVentas = async (req, res, next) => {
       await pool.query('COMMIT');
       /////////////////////////////////////////////////////////////
       //console.log("final");
-      res.status(200).json({ mensaje: 'Hoja Excel insertado correctamente en base de datos' });
+      res.status(200).json({ mensaje: 'Archivo SIRE(OK) --> BD' });
     } catch (error) {
       console.log(error);
       await pool.query('ROLLBACK');

@@ -36,7 +36,7 @@ const generarTicketSireInsertDB = async (id_usuario,documento_id,periodo,id_libr
 };
 const generarTicketSireConsultaDB = async (id_anfitrion,documento_id,periodo,id_libro) => {
   const strSQL = `
-      SELECT sire_ticket FROM mct_contabilidadticket
+      SELECT sire_tpropuesta FROM mct_contabilidadticket
       WHERE id_usuario = $1
       AND documento_id = $2
       AND periodo = $3      
@@ -199,7 +199,7 @@ const generarTicketSireAdmin = async (req, res, next) => {
       if (rowTicket.length > 0) {
           // Acceder al primer resultado y al campo sire_ticket
           //return rows[0].sire_ticket; // Si solo te interesa el primer valor
-          return res.status(200).json({ ticket: rowTicket[0].sire_ticket }); // Aquí se detiene la ejecución si ocurre un error
+          return res.status(200).json({ ticket: rowTicket[0].sire_tpropuesta }); // Aquí se detiene la ejecución si ocurre un error
       } else {
           //Genera ticket desde sunat
           const ticketSunat = generarTicketSireSunat(id_anfitrion,documento_id,periodo,id_libro);
@@ -347,8 +347,34 @@ const generarTicketSireEstado = async (req, res, next) => {
     }
 };
 
+const generarTicketSireConsulta = async (req, res, next) => {
+  const {id_anfitrion,documento_id,periodo,id_libro} = req.body;
+  
+  try {
+      /////////////////////////////////////////////////////////////
+      //1: Consultar si existe ticket Generado en BD
+      const rowTicket = await generarTicketSireConsultaDB(id_anfitrion,documento_id,periodo,id_libro);
+
+      //2: Si no existe Ticket BD, generar Ticket Nuevo
+      if (rowTicket.length > 0) {
+          // Acceder al primer resultado y al campo sire_ticket
+          //return rows[0].sire_ticket; // Si solo te interesa el primer valor
+          return res.status(200).json({ ticket: rowTicket[0].sire_tpropuesta }); // Aquí se detiene la ejecución si ocurre un error
+      } else {
+          //Genera ticket desde sunat
+          return res.status(200).json({ ticket: '' }); // Aquí se detiene la ejecución si ocurre un error
+      }
+      //El resto del proceso, se ejecuta en otro EndPoint
+     
+  } catch (error) {
+      console.error('Error:', error);
+      return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
+  }
+};
+
 module.exports = {
     generarTicketSireAdmin,
+    generarTicketSireConsulta,
     generarTicketSireEstado,
-    generarTicketSireDescarga
+    generarTicketSireDescarga,
  }; 
