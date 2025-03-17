@@ -361,6 +361,7 @@ const generarTicketSireConsulta = async (req, res, next) => {
   try {
       /////////////////////////////////////////////////////////////
       //1: Consultar si existe ticket Generado en BD
+      
       const rowTicket = await generarTicketSireConsultaDB(id_anfitrion,documento_id,periodo,id_libro_parseado);
 
       //2: Si no existe Ticket BD, generar Ticket Nuevo
