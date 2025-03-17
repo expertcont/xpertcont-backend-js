@@ -351,18 +351,18 @@ const generarTicketSireConsulta = async (req, res, next) => {
   const {id_anfitrion,documento_id,periodo,id_libro} = req.body;
   
   //Cambio y Mapeo id_libro por valores sunat3b4
-  /*const libroMap = {
+  const libroMap = {
     "014": "140000",
     "008": "080000",
   };
   const parseIdLibro = (id) => libroMap[id] || id;
   const id_libro_parseado = parseIdLibro(id_libro);
-  */
+  
   try {
       /////////////////////////////////////////////////////////////
       //1: Consultar si existe ticket Generado en BD
 
-      const rowTicket = await generarTicketSireConsultaDB(id_anfitrion,documento_id,periodo,id_libro);
+      const rowTicket = await generarTicketSireConsultaDB(id_anfitrion,documento_id,periodo,id_libro_parseado);
 
       //2: Si no existe Ticket BD, generar Ticket Nuevo
       if (rowTicket.length > 0) {
