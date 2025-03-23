@@ -5,6 +5,8 @@ const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaSt
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
 const AdmZip = require('adm-zip');
+const { generarTicketSireDescarga } = require('../controllers/sire.controllers');
+const fileType = require('file-type');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
     //Solo Cabeceras
@@ -1552,29 +1554,46 @@ const importarSireRegVentas = async (req, res, next) => {
         periodo,
         id_libro,
         id_invitado,
+        ticket,             //new caso descarga adicional
+        nombre_archivo_rep  //new caso descarga adicional
     } = datosCarga;
     
     try {
+        //const fileBuffer = req.file.buffer;
+        let fileBuffer;
+        let isZip;
+        //En caso no se haya enviado archivo manual 
+        if (!req.file || !req.file.buffer) {
+            const req2 = { body: datosCarga };
+            //consumir API de descarga de archivo y continuar 
+            fileBuffer = await generarTicketSireDescarga(req2, res, next);
 
-      //const fileBuffer = req.file.buffer;
-      let fileBuffer = req.file.buffer; // Mantener la estructura
-      
-      //Verificar si el archivo es ZIP////////////////////////////////////////////////////////////
-      const mimeType = req.file.mimetype;
-      const isZip = mimeType === 'application/zip' || fileName.endsWith('.zip');
-      if (isZip) {
-        const zip = new AdmZip(fileBuffer);
-        const zipEntries = zip.getEntries();
-        if (zipEntries.length === 1) {
-            const entry = zipEntries[0]; // Extraer el único archivo dentro del ZIP
-            if (!entry.isDirectory) {
-                fileBuffer = zip.readFile(entry); // Ahora fileBuffer contiene el archivo extraído
-            }
-        } else {
-            console.error('El ZIP contiene más de un archivo. No se procesará.');
-            return res.status(400).json({ error: 'El ZIP debe contener solo un archivo.' });
+            const type = await fileType.fromBuffer(buffer);
+            isZip = type?.mime === "application/zip";
+            console.log('GENERACION API SIRE WIIII');
+        }else{
+            //En caso que se envie archivo manual
+            fileBuffer = req.file.buffer; 
+            //Verificar si el archivo es ZIP////////////////////////////////////////////////////////////
+            const mimeType = req.file.mimetype;
+            isZip = mimeType === 'application/zip' || fileName.endsWith('.zip');
+            console.log('ENVIO MANUAL DE ARCHIVO');
         }
-      }
+
+        if (isZip) {
+            const zip = new AdmZip(fileBuffer);
+            const zipEntries = zip.getEntries();
+            if (zipEntries.length === 1) {
+                const entry = zipEntries[0]; // Extraer el único archivo dentro del ZIP
+                if (!entry.isDirectory) {
+                    fileBuffer = zip.readFile(entry); // Ahora fileBuffer contiene el archivo extraído
+                }
+            } else {
+                console.error('El ZIP contiene más de un archivo. No se procesará.');
+                return res.status(400).json({ error: 'El ZIP debe contener solo un archivo.' });
+            }
+        }
+    
       ////////////////////////////////////////////////////////////////////////////////////////////
     
       const fileData = fileBuffer.toString('utf-8'); // Convertir buffer a cadena
@@ -1620,7 +1639,7 @@ const importarSireRegVentas = async (req, res, next) => {
       })
       .join('\n');
 
-        console.log(csvData);
+      //console.log(csvData);
 
       await pool.query('BEGIN');
   
