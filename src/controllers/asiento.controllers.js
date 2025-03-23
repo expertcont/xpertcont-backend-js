@@ -1565,6 +1565,7 @@ const importarSireRegVentas = async (req, res, next) => {
         //En caso no se haya enviado archivo manual 
         if (!req.file || !req.file.buffer) {
             const req2 = { body: datosCarga };
+            console.log(req2);
             //consumir API de descarga de archivo y continuar 
             fileBuffer = await generarTicketSireDescarga(req2, res, next);
 
@@ -1572,6 +1573,7 @@ const importarSireRegVentas = async (req, res, next) => {
             isZip = type?.mime === "application/zip";
             console.log('GENERACION API SIRE WIIII');
         }else{
+            console.log(datosCarga);
             //En caso que se envie archivo manual
             fileBuffer = req.file.buffer; 
             //Verificar si el archivo es ZIP////////////////////////////////////////////////////////////
