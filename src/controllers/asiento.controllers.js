@@ -6,6 +6,7 @@ const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
 const AdmZip = require('adm-zip');
 const { generarTicketSireDescarga } = require('../controllers/sire.controllers');
+
 const fileType = require('file-type');
 
 const obtenerTodosAsientosCompra = async (req,res,next)=> {
@@ -1572,6 +1573,7 @@ const importarSireRegVentas = async (req, res, next) => {
             const type = await fileType.fromBuffer(buffer);
             isZip = type?.mime === "application/zip";
             console.log('GENERACION API SIRE WIIII');
+            
         }else{
             console.log(datosCarga);
             //En caso que se envie archivo manual
