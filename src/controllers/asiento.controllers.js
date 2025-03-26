@@ -1569,6 +1569,7 @@ const importarSireRegVentas = async (req, res, next) => {
             console.log(req2);
             //consumir API de descarga de archivo y continuar 
             fileBuffer = await generarTicketSireDescarga(req2, res, next);
+            console.log(fileBuffer);
 
             const type = await fileType.fromBuffer(fileBuffer);
             isZip = type?.mime === "application/zip";
