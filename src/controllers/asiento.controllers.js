@@ -1570,7 +1570,7 @@ const importarSireRegVentas = async (req, res, next) => {
             //consumir API de descarga de archivo y continuar 
             fileBuffer = await generarTicketSireDescarga(req2, res, next);
 
-            const type = await fileType.fromBuffer(buffer);
+            const type = await fileType.fromBuffer(fileBuffer);
             isZip = type?.mime === "application/zip";
             console.log('GENERACION API SIRE WIIII');
             
