@@ -204,9 +204,11 @@ const generarTicketSireDescarga = async (req, res, next) => {
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Length', zipBuffer.length);
 
+      console.log('zipBuffer : ',zipBuffer);
+
       // Envía el archivo como respuesta
       res.send(zipBuffer);
-
+      
   } catch (error) {
       console.error('Error:', error);
       return res.status(500).json({ error: error.message }); // Aquí se detiene la ejecución si ocurre un error
