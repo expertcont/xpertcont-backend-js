@@ -20,7 +20,7 @@ const generarTicketSireInsertDB = async (id_usuario,documento_id,periodo,id_libr
   try {
       //console.log(documento_id, razon_social, id_doc);
       const insertQuery = `
-          INSERT INTO mct_contabilidadticket (id_usuario,documento_id,periodo,id_libro,sire_ticket)
+          INSERT INTO mct_contabilidadticket (id_usuario,documento_id,periodo,id_libro,sire_tpropuesta)
           VALUES ($1, $2, $3, $4, $5) RETURNING *
       `;
       const values = [id_usuario,documento_id,periodo,id_libro,sire_ticket];
