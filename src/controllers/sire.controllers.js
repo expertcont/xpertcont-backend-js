@@ -142,7 +142,7 @@ const generarTicketSireAdmin = async (req, res, next) => {
   }
 };
 
-const generarTicketSireDescarga = async (req, res, next) => {
+const generarTicketSireDescarga = async (req, res, bReturn) => {
   const {id_anfitrion,documento_id,id_libro,periodo,ticket,nombre_archivo_rep} = req.body;
   //Cambio y Mapeo id_libro por valores sunat3b4
   const libroMap = {
@@ -199,15 +199,17 @@ const generarTicketSireDescarga = async (req, res, next) => {
       // Obtén el archivo como buffer
       const zipBuffer = await responseTicketDescarga.buffer();
 
-      // Configura los encabezados para la descarga del archivo
-      res.setHeader('Content-Disposition', `attachment; filename=${nombre_archivo_rep}`);
-      res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Length', zipBuffer.length);
-
-      console.log('zipBuffer : ',zipBuffer);
-
-      // Envía el archivo como respuesta
-      res.send(zipBuffer);
+      if (bReturn) {
+          return zipBuffer; // Retorna el Buffer para usos internos
+      }else{
+          // Configura los encabezados para la descarga del archivo
+          res.setHeader('Content-Disposition', `attachment; filename=${nombre_archivo_rep}`);
+          res.setHeader('Content-Type', 'application/zip');
+          res.setHeader('Content-Length', zipBuffer.length);
+          // Envía el archivo como respuesta
+          res.send(zipBuffer);
+      }
+      //console.log('zipBuffer : ',zipBuffer);
       
   } catch (error) {
       console.error('Error:', error);
