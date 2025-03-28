@@ -198,6 +198,9 @@ const generarTicketSireDescarga = async (req, res, bReturn) => {
       
       // Obtén el archivo como buffer
       const zipBuffer = await responseTicketDescarga.buffer();
+      if (bReturn) {bReturn=true;}
+      else{bReturn=false;}
+      
       console.log('bReturn: ',bReturn);
       if (bReturn) {
           return zipBuffer; // Retorna el Buffer para usos internos
