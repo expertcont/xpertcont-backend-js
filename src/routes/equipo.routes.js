@@ -3,7 +3,7 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosEquipos,obtenerEquipo,crearEquipo, actualizarEquipo, eliminarEquipo, obtenerEquipoIgv, importarExcelEquipos, eliminarEquipoMasivo, obtenerTodosEquiposPopUp} = require('../controllers/Equipo.controllers')
+const {obtenerTodosEquipos,obtenerEquipo,crearEquipo, actualizarEquipo, eliminarEquipo, obtenerEquipoIgv, importarExcelEquipos, eliminarEquipoMasivo, obtenerTodosEquiposPopUp} = require('../controllers/equipo.controllers')
 
 router.get('/ad_equipo/:id_anfitrion/:documento_id', obtenerTodosEquipos);
 router.get('/ad_equipopopup/:id_anfitrion/:documento_id', obtenerTodosEquiposPopUp);
