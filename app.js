@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const cors = require('cors');
 
 //microservicio admin
+const equipoRoutes = require('./src/routes/equipo.routes');
 const manifiestoRoutes = require('./src/routes/manifiesto.routes');
 const ventaRoutes = require('./src/routes/venta.routes');
 const ventaDetRoutes = require('./src/routes/ventadet.routes');
@@ -33,6 +34,7 @@ app.use(morgan('dev'));
 app.use(express.json()); //para reconocer json en express, parametros POST
 app.use(express.text()); //new para text ;)
 
+app.use(equipoRoutes);
 app.use(manifiestoRoutes);
 app.use(ventaDetRoutes);
 app.use(ventaRoutes);
