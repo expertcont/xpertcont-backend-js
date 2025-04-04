@@ -132,9 +132,7 @@ const crearEquipo = async (req,res,next)=> {
 
         strSQL += " $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'BODEGA'";
         strSQL += " ) RETURNING *";
-
-        const result = await pool.query(strSQL, 
-        [   
+        const parametros =         [   
             id_anfitrion,   //01
             documento_id,   //02
             id_equipo,      //03
@@ -146,8 +144,10 @@ const crearEquipo = async (req,res,next)=> {
             serie,          //09
             precio_dia,     //10
             precio_mes,     //11
-        ]
-        );
+        ];
+
+        console.log(strSQL,parametros);
+        const result = await pool.query(strSQL,parametros);
         
         res.json(result.rows[0]);
     }catch(error){
