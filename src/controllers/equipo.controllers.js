@@ -130,7 +130,7 @@ const crearEquipo = async (req,res,next)=> {
         strSQL += ",estado";        //12
         strSQL += ") VALUES ( ";
 
-        strSQL += " $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'BODEGA'";
+        strSQL += " $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'BODEGA'";
         strSQL += " ) RETURNING *";
 
         const result = await pool.query(strSQL, 
