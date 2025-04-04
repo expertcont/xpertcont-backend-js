@@ -21,6 +21,7 @@ const obtenerTodosEquipos = async (req,res,next)=> {
         strSQL += ",precio_dia";     //10
         strSQL += ",precio_mes";     //11
         strSQL += ",estado";     //12
+        strSQL += ",origen";     //12
         strSQL += " FROM mst_equipo"; 
 
         strSQL += " WHERE id_usuario = $1";
