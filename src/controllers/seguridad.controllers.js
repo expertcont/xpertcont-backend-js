@@ -153,12 +153,14 @@ const clonarPermisoComando = async (req,res,next)=> {
         var result;
         var result2;
 
+        console.log(strSQL,[id_anfitrion,id_usuario2]);
         strSQL = "DELETE FROM mad_seguridad_comando ";
         strSQL = strSQL + " WHERE id_usuario = $1";
         strSQL = strSQL + " AND id_invitado = $2";
         result = await pool.query(strSQL,[id_anfitrion,id_usuario2]);
-        console.log(strSQL,[id_anfitrion,id_usuario2]);
+        
 
+        console.log(strSQL,[id_anfitrion,id_usuario2,id_usuario]);        
         strSQL = "INSERT INTO mad_seguridad_comando (id_usuario, id_invitado, id_menu, id_comando)";
         strSQL = strSQL + " SELECT $1, $2, id_menu, id_comando";
         strSQL = strSQL + " FROM mad_seguridad_comando";
@@ -170,7 +172,7 @@ const clonarPermisoComando = async (req,res,next)=> {
             id_usuario     //03   
         ]
         );
-        console.log(strSQL,[id_anfitrion,id_usuario2,id_usuario]);        
+        
         res.json(result2.rows[0]);
     }catch(error){
         //res.json({error:error.message});
