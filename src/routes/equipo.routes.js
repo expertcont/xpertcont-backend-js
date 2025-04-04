@@ -7,14 +7,14 @@ const {obtenerTodosEquipos,obtenerEquipo,crearEquipo, actualizarEquipo, eliminar
 
 router.get('/ad_equipo/:id_anfitrion/:documento_id', obtenerTodosEquipos);
 router.get('/ad_equipopopup/:id_anfitrion/:documento_id', obtenerTodosEquiposPopUp);
-router.get('/ad_equipo/:id_anfitrion/:documento_id/:id_Equipo', obtenerEquipo);
-router.get('/ad_equipoigv/:id_anfitrion/:documento_id/:id_Equipo', obtenerEquipoIgv);
+router.get('/ad_equipo/:id_anfitrion/:documento_id/:id_equipo', obtenerEquipo);
+router.get('/ad_equipoigv/:id_anfitrion/:documento_id/:id_equipo', obtenerEquipoIgv);
 //version multiempresa multiusario
 router.post('/ad_equipo', crearEquipo);
 router.post('/ad_equipoexcel', upload.single('archivoExcel'), importarExcelEquipos);
 
-router.put('/ad_equipo/:id_anfitrion/:documento_id/:id_Equipo', actualizarEquipo);
-router.delete('/ad_equipo/:id_anfitrion/:documento_id/:id_Equipo', eliminarEquipo);
+router.put('/ad_equipo/:id_anfitrion/:documento_id/:id_equipo', actualizarEquipo);
+router.delete('/ad_equipo/:id_anfitrion/:documento_id/:id_equipo', eliminarEquipo);
 router.delete('/ad_equipomasivo/:id_anfitrion/:documento_id/:origen', eliminarEquipoMasivo);
 
 module.exports = router;
