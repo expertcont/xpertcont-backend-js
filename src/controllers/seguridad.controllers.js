@@ -174,7 +174,9 @@ const clonarPermisoComando = async (req,res,next)=> {
         res.json(result2.rows[0]);
     }catch(error){
         //res.json({error:error.message});
+        console.log(error);        
         next(error)
+        
     }
 };
 
