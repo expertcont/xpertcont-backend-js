@@ -157,14 +157,16 @@ const clonarPermisoComando = async (req,res,next)=> {
         strSQL = "DELETE FROM mad_seguridad_comando ";
         strSQL = strSQL + " WHERE id_usuario = $1";
         strSQL = strSQL + " AND id_invitado = $2";
-        console.log(strSQL,[id_anfitrion,id_usuario2]);
+        //console.log(strSQL,[id_anfitrion,id_usuario2]);
         result = await pool.query(strSQL,[id_anfitrion,id_usuario2]);
         
         strSQL = "INSERT INTO mad_seguridad_comando (id_usuario, id_invitado, id_menu, id_comando)";
         strSQL = strSQL + " SELECT $1, $2, id_menu, id_comando";
         strSQL = strSQL + " FROM mad_seguridad_comando";
-        strSQL = strSQL + " WHERE id_invitado = $3  RETURNING *";
-        console.log(strSQL,[id_anfitrion,id_usuario2,id_usuario]);        
+        strSQL = strSQL + " WHERE id_usuario = $1 ";
+        strSQL = strSQL + " AND id_invitado = $3 ";
+        strSQL = strSQL + " RETURNING *";
+        //console.log(strSQL,[id_anfitrion,id_usuario2,id_usuario]);        
         result2 = await pool.query(strSQL, 
         [   
             id_anfitrion,     //01
