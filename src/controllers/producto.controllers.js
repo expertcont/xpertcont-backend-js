@@ -140,6 +140,7 @@ const crearProducto = async (req,res,next)=> {
         res.json(result.rows[0]);
     }catch(error){
         //res.json({error:error.message});
+        console.log(error);
         next(error)
     }
 };
