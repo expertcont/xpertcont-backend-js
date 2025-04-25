@@ -23,7 +23,7 @@ const obtenerTodosProductos = async (req,res,next)=> {
 
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND documento_id = $2";
-        strSQL += " ORDER BY nombre";
+        strSQL += " ORDER BY id_producto";
         //console.log(strSQL,[id_usuario,documento_id]);
         const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
         res.json(todosRegistros.rows);
