@@ -295,6 +295,69 @@ const eliminarProductoMasivo = async (req,res,next)=> {
 
 };
 
+const importarExcelProductosPrecios = async (req, res, next) => {
+    //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
+    const datosCarga = JSON.parse(req.body.datosCarga);
+    const {
+        id_anfitrion,
+        documento_id
+    } = datosCarga;
+    
+    try {
+      const fileBuffer = req.file.buffer;
+
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        header: 1,
+      });
+  
+        const csvData = sheetData
+        .map((row,index) => [
+            id_anfitrion,                                 // id_anfitrion
+            documento_id,                                 // documento_id            
+            'EXCEL',                                        //origen
+            (row[0] || '').toString().replace(/,/g, ''),    //A id_producto
+            (row[1] || '').toString().replace(/,/g, ''),    //B unidades
+            (row[2] || '').toString().replace(/,/g, ''),    //C precio_venta
+            (row[3] || '').toString().replace(/,/g, ''),    //D cant_min
+            (row[4] || '').toString().replace(/,/g, ''),    //E cant_max
+        ].join(','))
+        .join('\n');
+        
+        //console.log(csvData);
+
+      await pool.query('BEGIN');
+  
+      /////////////////////////////////////////////////////////////
+      //console.log(csvData);
+      // Convertimos la cadena CSV a un flujo de lectura
+      const csvReadableStream = Readable.from([csvData]);
+
+      // Insertamos los datos desde el CSV a la tabla mct_datos
+      const client = await pool.connect();
+      try {
+        //const ingestStream = client.query(copyFrom(`COPY mst_producto FROM STDIN WITH CSV HEADER DELIMITER ','`))
+        const ingestStream = client.query(copyFrom(`
+            COPY mst_producto_precio (id_usuario, documento_id, origen, id_producto, unidades, precio_venta, cant_min, cant_max)
+            FROM STDIN WITH CSV DELIMITER ',' HEADER;
+        `));
+        await pipeline(csvReadableStream, ingestStream)
+      } finally {
+        client.release();
+      }
+
+      await pool.query('COMMIT');
+      /////////////////////////////////////////////////////////////
+      //console.log("final");
+      res.status(200).json({ mensaje: 'Hoja Excel con Precios insertado correctamente en base datos' });
+    } catch (error) {
+      console.log(error);
+      await pool.query('ROLLBACK');
+      next(error);
+    }
+};
+
 module.exports = {
     obtenerTodosProductos,
     obtenerTodosProductosPopUp,
@@ -304,5 +367,6 @@ module.exports = {
     eliminarProducto,
     eliminarProductoMasivo,
     actualizarProducto,
-    importarExcelProductos    
+    importarExcelProductos,
+    importarExcelProductosPrecios
  }; 

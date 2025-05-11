@@ -3,7 +3,7 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosProductos,obtenerProducto,crearProducto, actualizarProducto, eliminarProducto, obtenerProductoIgv, importarExcelProductos, eliminarProductoMasivo, obtenerTodosProductosPopUp} = require('../controllers/producto.controllers')
+const {obtenerTodosProductos,obtenerProducto,crearProducto, actualizarProducto, eliminarProducto, obtenerProductoIgv, importarExcelProductos, eliminarProductoMasivo, obtenerTodosProductosPopUp, importarExcelProductosPrecios} = require('../controllers/producto.controllers')
 
 router.get('/ad_producto/:id_anfitrion/:documento_id', obtenerTodosProductos);
 router.get('/ad_productopopup/:id_anfitrion/:documento_id', obtenerTodosProductosPopUp);
@@ -12,6 +12,7 @@ router.get('/ad_productoigv/:id_anfitrion/:documento_id/:id_producto', obtenerPr
 //version multiempresa multiusario
 router.post('/ad_producto', crearProducto);
 router.post('/ad_productoexcel', upload.single('archivoExcel'), importarExcelProductos);
+router.post('/ad_productoprecioexcel', upload.single('archivoExcel'), importarExcelProductosPrecios);
 
 router.put('/ad_producto/:id_anfitrion/:documento_id/:id_producto', actualizarProducto);
 router.delete('/ad_producto/:id_anfitrion/:documento_id/:id_producto', eliminarProducto);
