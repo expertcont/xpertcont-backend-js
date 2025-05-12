@@ -49,13 +49,13 @@ const obtenerTodosProductosPrecios = async (req,res,next)=> {
         strSQL += ",mst_producto_precio.origen";        //07
         strSQL += " FROM ";
         strSQL += " mst_producto INNER JOIN mst_producto_precio";
-        strSQL += " ON (mst_producto.id_usuario =  mst_producto_precio.id_usuario and ";
-        strSQL += "     mst_producto.documento_id =  mst_producto_precio.documento_id and ";
-        strSQL += "     mst_producto.id_producto =  mst_producto_precio.id_producto ) ";
+        strSQL += " ON (mst_producto.id_usuario = mst_producto_precio.id_usuario and ";
+        strSQL += "     mst_producto.documento_id = mst_producto_precio.documento_id and ";
+        strSQL += "     mst_producto.id_producto = mst_producto_precio.id_producto ) ";
         strSQL += " WHERE mst_producto_precio.id_usuario = $1";
         strSQL += " AND mst_producto_precio.documento_id = $2";
         strSQL += " ORDER BY mst_producto.id_producto";
-        //console.log(strSQL,[id_usuario,documento_id]);
+        console.log(strSQL,[id_usuario,documento_id]);
         const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
         res.json(todosRegistros.rows);
     }
