@@ -33,6 +33,38 @@ const obtenerTodosProductos = async (req,res,next)=> {
     }
     //res.send('Listado de todas los zonas');
 };
+
+const obtenerTodosProductosPrecios = async (req,res,next)=> {
+    try {
+        //console.log(req.params);
+        let strSQL;
+        const {id_anfitrion,documento_id} = req.params;
+        strSQL = "SELECT "
+        strSQL += " mst_producto_precio.id_producto";   //01
+        strSQL += ",mst_producto.nombre";               //02
+        strSQL += ",mst_producto_precio.unidades";      //03
+        strSQL += ",mst_producto_precio.precio_venta";  //04
+        strSQL += ",mst_producto_precio.cant_min";      //05
+        strSQL += ",mst_producto_precio.cant_max";      //06
+        strSQL += ",mst_producto_precio.origen";        //07
+        strSQL += " FROM ";
+        strSQL += " mst_producto INNER JOIN mst_producto_precio";
+        strSQL += " ON (mst_producto.id_usuario =  mst_producto_precio.id_usuario and ";
+        strSQL += "     mst_producto.documento_id =  mst_producto_precio.documento_id and ";
+        strSQL += "     mst_producto.id_producto =  mst_producto_precio.id_producto ) ";
+        strSQL += " WHERE mst_producto_precio.id_usuario = $1";
+        strSQL += " AND mst_producto_precio.documento_id = $2";
+        strSQL += " ORDER BY mst_producto.id_producto";
+        //console.log(strSQL,[id_usuario,documento_id]);
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+    //res.send('Listado de todas los zonas');
+};
+
 const obtenerTodosProductosPopUp = async (req,res,next)=> {
     try {
         let strSQL;
@@ -360,6 +392,7 @@ const importarExcelProductosPrecios = async (req, res, next) => {
 
 module.exports = {
     obtenerTodosProductos,
+    obtenerTodosProductosPrecios,
     obtenerTodosProductosPopUp,
     obtenerProducto,
     obtenerProductoIgv,
