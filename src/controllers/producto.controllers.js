@@ -42,7 +42,7 @@ const obtenerTodosProductosPrecios = async (req,res,next)=> {
         strSQL = "SELECT "
         strSQL += " mst_producto_precio.id_producto";   //01
         strSQL += ",mst_producto.nombre";               //02
-        strSQL += ",mst_producto_precio.unidades";      //03
+        strSQL += ",mst_producto_precio.unidades as descripcion";      //03
         strSQL += ",mst_producto_precio.precio_venta";  //04
         strSQL += ",mst_producto_precio.cant_min";      //05
         strSQL += ",mst_producto_precio.cant_max";      //06
