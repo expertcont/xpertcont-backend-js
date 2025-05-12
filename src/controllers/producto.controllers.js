@@ -55,7 +55,7 @@ const obtenerTodosProductosPrecios = async (req,res,next)=> {
         strSQL += " WHERE mst_producto_precio.id_usuario = $1";
         strSQL += " AND mst_producto_precio.documento_id = $2";
         strSQL += " ORDER BY mst_producto.id_producto";
-        console.log(strSQL,[id_usuario,documento_id]);
+        console.log(strSQL,[id_anfitrion,documento_id]);
         const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
         res.json(todosRegistros.rows);
     }
