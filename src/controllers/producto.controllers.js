@@ -128,6 +128,20 @@ const obtenerProductoIgv = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+const obtenerParametrosVenta = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_anfitrion,documento_id} = req.params;
+        strSQL = "select * from mve_parametros "
+        strSQL += " where id_usuario = $1";
+        strSQL += " and documento_id = $2";
+
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
 
 const crearProducto = async (req,res,next)=> {
     const { 
@@ -396,6 +410,7 @@ module.exports = {
     obtenerTodosProductosPopUp,
     obtenerProducto,
     obtenerProductoIgv,
+    obtenerParametrosVenta,
     crearProducto,
     eliminarProducto,
     eliminarProductoMasivo,
