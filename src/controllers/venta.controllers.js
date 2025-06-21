@@ -944,15 +944,17 @@ const generarCPEexpertcont = async (req,res,next)=> {
           console.log('codigo_hash: ',codigo_hash);
 
           if (codigo_hash !== null){
-              // 2. Lectura de datos de la tabla mve_venta
-              await pool.query(
-                `
-                UPDATE mve_venta set r_vfirmado = $8
-                WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
-                  AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
-                `,
-                [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, codigo_hash]
-              );
+              // 2. Lectura de datos de la tabla mve_venta, solo en modo producccion, nada que ver con confucio ;)
+              if (jsonString.empresa.modo === "1") {
+                  await pool.query(
+                    `
+                    UPDATE mve_venta set r_vfirmado = $8
+                    WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+                      AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+                    `,
+                    [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, codigo_hash]
+                  );
+              }
           }
 
           return res.json({
