@@ -691,18 +691,13 @@ const anularRegistro = async (req,res,next)=> {
     }
 };
 
-const generarCPE = async (req,res,next)=> {
-    const {
-        p_periodo,
-        p_id_usuario,
-        p_documento_id,
-        p_r_cod,
-        p_r_serie,
-        p_r_numero,
-        p_elemento,
-      } = req.body;
-      
-      try {
+const generaJsonPrevioCPE = async( p_periodo,
+                            p_id_usuario,
+                            p_documento_id,
+                            p_r_cod,
+                            p_r_serie,
+                            p_r_numero,
+                            p_elemento) => {
         // 1. Lectura de datos de la tabla mad_usuario_contabilidad
         const datosQuery = await pool.query(
           `
@@ -713,7 +708,8 @@ const generarCPE = async (req,res,next)=> {
         );
         const datos = datosQuery.rows[0];
         if (!datos) {
-          return res.status(404).json({ error: "Datos de usuario no encontrados" });
+          return "CONTABILIDAD NO ENCONTRADA";
+          //return res.status(404).json({ error: "Datos de usuario no encontrados" });
         }
     
         // 2. Lectura de datos de la tabla mve_venta
@@ -727,7 +723,8 @@ const generarCPE = async (req,res,next)=> {
         );
         const venta = ventaQuery.rows[0];
         if (!venta) {
-          return res.status(404).json({ error: "Datos de venta no encontrados" });
+          return "VENTA NO ENCONTRADA";
+          //return res.status(404).json({ error: "Datos de venta no encontrados" });
         }
     
         // 3. Lectura de datos de la tabla mve_ventadet
@@ -798,13 +795,35 @@ const generarCPE = async (req,res,next)=> {
         };
 
         const jsonString = JSON.stringify(jsonPayload, null, 2); // Genera un JSON válido
-        console.log(jsonString);
+        return (jsonString);
+
+};
+const generarCPE = async (req,res,next)=> {
+    const {
+        p_periodo,
+        p_id_usuario,
+        p_documento_id,
+        p_r_cod,
+        p_r_serie,
+        p_r_numero,
+        p_elemento,
+      } = req.body;
+      
+      try {
+
+        const jsonString = generaJsonPrevioCPE(p_periodo,
+                                        p_id_usuario,
+                                        p_documento_id,
+                                        p_r_cod,
+                                        p_r_serie,
+                                        p_r_numero,
+                                        p_elemento);
+
 
         // 5. Enviar JSON a la API de terceros con fetch
         //Harcode necesario, API 01
-
-        let strUrlApi = "https://facturaciondirecta.com/customers/API_SUNAT/post.php";
         // Usamos replace con una expresión regular para encontrar 'API_SUNAT' y reemplazarlo
+        let strUrlApi = "https://facturaciondirecta.com/customers/API_SUNAT/post.php";
         strUrlApi = strUrlApi.replace("API_SUNAT", `API_SUNAT_T_${datos.documento_id}`);
         
         const apiResponse = await fetch(strUrlApi, {
@@ -867,6 +886,206 @@ const generarCPE = async (req,res,next)=> {
       }
 };
 
+//Section Power: Api propio/////////////////////////////////////////////////
+const generarCPEexpertcont = async (req,res,next)=> {
+    //Consumo mi propio API ;) thanks
+    const {
+        p_periodo,
+        p_id_usuario,
+        p_documento_id,
+        p_r_cod,
+        p_r_serie,
+        p_r_numero,
+        p_elemento,
+      } = req.body;
+      
+      try {
+
+        const jsonString = generaJsonPrevioCPEexpertcont(p_periodo,
+                                        p_id_usuario,
+                                        p_documento_id,
+                                        p_r_cod,
+                                        p_r_serie,
+                                        p_r_numero,
+                                        p_elemento);
+
+
+        // 5. Enviar JSON a la API 
+        const strUrlApi = "https://expertcont-api-sunat.up.railway.app/cpesunat";
+        
+        const apiResponse = await fetch(strUrlApi, {
+          method: "POST",
+          //body: JSON.stringify(jsonString),
+          body: jsonString,
+          headers: {
+                "Content-Type":"application/json"
+          }
+          /*headers: {
+            "Content-Type":"application/json",
+            'Authorization': `Bearer ${datos.token_factintegral}`
+          }*/
+        });
+        
+        const responseData = await apiResponse.json();
+        console.log("respuesta generada: ",responseData); //agregamos
+
+        if (apiResponse.ok) {
+          // 6. Extraer datos de la respuesta y retornar
+          const {
+            respuesta_sunat_descripcion,
+            ruta_xml,
+            ruta_cdr,
+            ruta_pdf,
+            codigo_hash,
+          } = responseData.data;
+        
+          // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
+          console.log('codigo_hash: ',codigo_hash);
+          const valorhash = codigo_hash ? Object.values(codigo_hash)[0] : null;
+
+          if (valorhash !== null){
+              // 2. Lectura de datos de la tabla mve_venta
+              await pool.query(
+                `
+                UPDATE mve_venta set r_vfirmado = $8
+                WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+                  AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+                `,
+                [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, valorhash]
+              );
+          }
+
+          return res.json({
+            respuesta_sunat_descripcion,
+            ruta_xml,
+            ruta_cdr,
+            ruta_pdf,
+            valorhash, // Incluye el nuevo campo en la respuesta
+          });
+        } else {
+          return res
+            .status(apiResponse.status)
+            .json({ error: responseData || "Error en la API de terceros" });
+        }
+            
+    
+      } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ error: "Error en el servidor me lleva" });
+      }
+};
+
+const generaJsonPrevioCPEexpertcont = async( p_periodo,
+                            p_id_usuario,
+                            p_documento_id,
+                            p_r_cod,
+                            p_r_serie,
+                            p_r_numero,
+                            p_elemento) => {
+        // 1. Lectura de datos de la tabla mad_usuario_contabilidad
+        const datosQuery = await pool.query(
+          `
+          SELECT * FROM mad_usuariocontabilidad
+          WHERE id_usuario = $1 AND documento_id = $2 AND tipo = 'ADMIN'
+          `,
+          [p_id_usuario, p_documento_id]
+        );
+        const datos = datosQuery.rows[0];
+        if (!datos) {
+          return "CONTABILIDAD NO ENCONTRADA";
+          //return res.status(404).json({ error: "Datos de usuario no encontrados" });
+        }
+    
+        // 2. Lectura de datos de la tabla mve_venta
+        const ventaQuery = await pool.query(
+          `
+          SELECT * FROM mve_venta
+          WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+            AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+          `,
+          [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento]
+        );
+        const venta = ventaQuery.rows[0];
+        if (!venta) {
+          return "VENTA NO ENCONTRADA";
+          //return res.status(404).json({ error: "Datos de venta no encontrados" });
+        }
+    
+        // 3. Lectura de datos de la tabla mve_ventadet
+        const ventadetQuery = await pool.query(
+          `
+          SELECT * FROM mve_ventadet
+          WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+            AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+          `,
+          [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento]
+        );
+        const ventadet = ventadetQuery.rows;
+    
+        // 4. Construir el JSON
+        const jsonPayload = {
+          empresa: {
+            token:datos.token_factintegral,
+            ruc: datos.documento_id,
+            razon_social: datos.razon_social,
+            nombre_comercial: datos.razon_social,
+            domicilio_fiscal: datos.direccion,
+            ubigeo: datos.ubigeo,
+            distrito: datos.distrito,
+            provincia: datos.provincia,
+            departamento: datos.departamento,
+            modo: "0", //0: prueba  1:produccion
+            usu_secundario_produccion_user: datos.secund_user,
+            usu_secundario_produccion_password: datos.secund_pwd,
+          },
+          cliente: {
+            razon_social_nombres: venta.r_razon_social,
+            documento_identidad: venta.r_documento_id,
+            tipo_identidad: venta.r_id_doc,
+            cliente_direccion: venta.r_direccion,
+          },
+          venta: {
+            codigo: (venta.r_cod_ref==null)? venta.r_cod:venta.r_cod_ref, //new mod
+            serie: (venta.r_serie_ref==null)? venta.r_serie:venta.r_serie_ref,      //new mod
+            numero: (venta.r_numero_ref==null)? venta.r_numero:venta.r_numero_ref,  //new mod
+            
+            fecha_emision: venta.r_fecemi.toISOString().split("T")[0],
+            hora_emision: venta.ctrl_crea.toISOString().split("T")[1].split(".")[0],
+            
+            fecha_vencimiento: "",
+            moneda_id: "1",     //hardcode temporal
+            forma_pago_id: "1", //hardcode temporal
+            
+            base_gravada: venta.r_base002,
+            base_exonerada: "",
+            base_inafecta: "",
+            total_igv: venta.r_igv002,
+            vendedor:"",            
+            nota: venta.glosa || "",
+            
+            relacionado_serie:(venta.r_serie_ref==null)? '':venta.r_serie,      //new mod
+            relacionado_numero:(venta.r_numero_ref==null)? '':venta.r_numero,   //new mod
+            relacionado_codigo:(venta.r_cod_ref==null)? '':venta.r_cod, //new mod
+            relacionado_motivo_codigo:"01" //anulacion hardcodeado temporal
+                
+          },
+          items: ventadet.map((item) => ({
+            producto: item.descripcion,
+            cantidad: item.cantidad,
+            precio_base: item.monto_base,
+            codigo_sunat: "-",
+            codigo_producto: item.id_producto,
+            codigo_unidad: item.cont_und,
+            tipo_igv_codigo: "10",
+            porc_igv: item.porc_igv,
+          })),
+        };
+
+        const jsonString = JSON.stringify(jsonPayload, null, 2); // Genera un JSON válido
+        return (jsonString);
+
+};
+
 module.exports = {
     obtenerRegistroTodos,
     obtenerRegistro,
@@ -879,5 +1098,6 @@ module.exports = {
     eliminarRegistroMasivo,
     actualizarRegistro,
     anularRegistro,
-    generarCPE
+    generarCPE,
+    generarCPEexpertcont
  }; 
