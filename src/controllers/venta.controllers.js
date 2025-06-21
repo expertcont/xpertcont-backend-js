@@ -1056,8 +1056,8 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             hora_emision: venta.ctrl_crea.toISOString().split("T")[1].split(".")[0],
             
             fecha_vencimiento: "",
-            moneda_id: "1",     //hardcode temporal
-            forma_pago_id: "1", //hardcode temporal
+            moneda_id: "PEN",     //hardcode temporal
+            forma_pago_id: "Contado", //hardcode temporal
             
             base_gravada: venta.r_base002,
             base_exonerada: "",
