@@ -1039,7 +1039,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             distrito: datos.distrito,
             provincia: datos.provincia,
             departamento: datos.departamento,
-            modo: "0", //0: prueba  1:produccion
+            modo: "1", //0: prueba  1:produccion
             usu_secundario_produccion_user: datos.secund_user,
             usu_secundario_produccion_password: datos.secund_pwd,
           },
