@@ -908,7 +908,8 @@ const generarCPEexpertcont = async (req,res,next)=> {
                                         p_r_serie,
                                         p_r_numero,
                                         p_elemento);
-
+        
+        console.log('jsonString armado: ',jsonString);
 
         // 5. Enviar JSON a la API 
         const strUrlApi = "https://expertcont-api-sunat.up.railway.app/cpesunat";
@@ -925,7 +926,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
             'Authorization': `Bearer ${datos.token_factintegral}`
           }*/
         });
-        console.log('jsonString enviado: ',jsonString);
+        
         const responseData = await apiResponse.json();
         console.log("respuesta generada: ",responseData); //agregamos
 
