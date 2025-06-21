@@ -985,7 +985,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
                             p_r_serie,
                             p_r_numero,
                             p_elemento) => {
-        // 1. Lectura de datos de la tabla mad_usuario_contabilidad
+        // 1. Lectura de datos de la tabla mad_usuario_contabilidad, incluido el modo Produccion o Beta
         const datosQuery = await pool.query(
           `
           SELECT * FROM mad_usuariocontabilidad
@@ -999,7 +999,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
           return "CONTABILIDAD NO ENCONTRADA";
           //return res.status(404).json({ error: "Datos de usuario no encontrados" });
         }
-    
+        
         // 2. Lectura de datos de la tabla mve_venta
         const ventaQuery = await pool.query(
           `
@@ -1039,7 +1039,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             distrito: datos.distrito,
             provincia: datos.provincia,
             departamento: datos.departamento,
-            modo: "1", //0: prueba  1:produccion
+            modo: datos.modo, //NEW cuidado ...  0: prueba  1:produccion
             usu_secundario_produccion_user: datos.secund_user,
             usu_secundario_produccion_password: datos.secund_pwd,
           },
