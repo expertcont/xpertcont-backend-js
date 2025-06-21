@@ -938,7 +938,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
             ruta_cdr,
             ruta_pdf,
             codigo_hash,
-          } = responseData.data;
+          } = responseData;
         
           // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
           console.log('codigo_hash: ',codigo_hash);
