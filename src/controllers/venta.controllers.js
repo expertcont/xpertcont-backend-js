@@ -925,7 +925,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
             'Authorization': `Bearer ${datos.token_factintegral}`
           }*/
         });
-        
+        console.log('jsonString enviado: ',jsonString);
         const responseData = await apiResponse.json();
         console.log("respuesta generada: ",responseData); //agregamos
 
