@@ -909,7 +909,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
                                         p_r_numero,
                                         p_elemento);
         
-        console.log('jsonString armado: ',jsonString);
+        //console.log('jsonString armado: ',jsonString);
 
         // 5. Enviar JSON a la API 
         const strUrlApi = "https://expertcont-api-sunat.up.railway.app/cpesunat";
@@ -928,7 +928,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
         });
         
         const responseData = await apiResponse.json();
-        console.log("respuesta generada: ",responseData); //agregamos
+        //console.log("respuesta generada: ",responseData); //agregamos
 
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
@@ -945,7 +945,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
 
           if (codigo_hash !== null){
               // 2. Lectura de datos de la tabla mve_venta, solo en modo producccion, nada que ver con confucio ;)
-              console.log('jsonString.empresa: ',jsonString.empresa);
+              console.log('jsonString: ',jsonString);
               if (jsonString.empresa.modo === "1") {
                   await pool.query(
                     `
