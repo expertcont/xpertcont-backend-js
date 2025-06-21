@@ -901,7 +901,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
       
       try {
 
-        const jsonString = generaJsonPrevioCPEexpertcont(p_periodo,
+        const jsonString = await generaJsonPrevioCPEexpertcont(p_periodo,
                                         p_id_usuario,
                                         p_documento_id,
                                         p_r_cod,
@@ -992,6 +992,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
         );
         const datos = datosQuery.rows[0];
         if (!datos) {
+          console.log("CONTABILIDAD NO ENCONTRADA");
           return "CONTABILIDAD NO ENCONTRADA";
           //return res.status(404).json({ error: "Datos de usuario no encontrados" });
         }
@@ -1007,6 +1008,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
         );
         const venta = ventaQuery.rows[0];
         if (!venta) {
+          console.log("VENTA NO ENCONTRADA");
           return "VENTA NO ENCONTRADA";
           //return res.status(404).json({ error: "Datos de venta no encontrados" });
         }
