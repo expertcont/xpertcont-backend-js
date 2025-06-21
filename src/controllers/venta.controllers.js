@@ -942,9 +942,8 @@ const generarCPEexpertcont = async (req,res,next)=> {
         
           // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
           console.log('codigo_hash: ',codigo_hash);
-          const valorhash = codigo_hash ? Object.values(codigo_hash)[0] : null;
 
-          if (valorhash !== null){
+          if (codigo_hash !== null){
               // 2. Lectura de datos de la tabla mve_venta
               await pool.query(
                 `
@@ -952,7 +951,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
                 WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
                   AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
                 `,
-                [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, valorhash]
+                [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, codigo_hash]
               );
           }
 
@@ -961,7 +960,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
             ruta_xml,
             ruta_cdr,
             ruta_pdf,
-            valorhash, // Incluye el nuevo campo en la respuesta
+            codigo_hash, // Incluye el nuevo campo en la respuesta
           });
         } else {
           return res
