@@ -945,8 +945,8 @@ const generarCPEexpertcont = async (req,res,next)=> {
 
           if (codigo_hash !== null){
               // 2. Lectura de datos de la tabla mve_venta, solo en modo producccion, nada que ver con confucio ;)
-              console.log('jsonString: ',jsonString);
-              if (jsonString.data.empresa.modo === "1") {
+              const data = JSON.parse(jsonString);
+              if (data.empresa.modo === "1") {
                   await pool.query(
                     `
                     UPDATE mve_venta set r_vfirmado = $8
