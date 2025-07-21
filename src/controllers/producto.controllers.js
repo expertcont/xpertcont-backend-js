@@ -74,7 +74,8 @@ const obtenerPreciosProducto = async (req,res,next)=> {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto} = req.params;
         strSQL = `SELECT 
-                     precio_venta
+                     unidades
+                    ,precio_venta
                     ,cant_min
                     ,cant_max
                   FROM mst_producto_precio
