@@ -37,6 +37,9 @@ const obtenerTodosProductos = async (req,res,next)=> {
 const obtenerTodosProductosPrecios = async (req,res,next)=> {
     try {
         //console.log(req.params);
+        //creo que auqi, debemos consultar si esta activado el precio por factor (por cantidad)
+
+        //si es positivo precio por cantidad, entonces 
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
         strSQL = "SELECT "
@@ -65,20 +68,55 @@ const obtenerTodosProductosPrecios = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
+const obtenerPreciosProducto = async (req,res,next)=> {
+    try {
+        //si es positivo precio por cantidad, entonces 
+        let strSQL;
+        const {id_anfitrion,documento_id,id_producto} = req.params;
+        strSQL = `SELECT 
+                     precio_venta
+                    ,cant_min
+                    ,cant_max
+                  FROM mst_producto_precio
+                  WHERE id_usuario = $1
+                  AND documento_id = $2
+                  AND id_producto = $3
+                  ORDER BY id_producto`;
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+    //res.send('Listado de todas los zonas');
+};
+
 const obtenerTodosProductosPopUp = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
-        strSQL = "SELECT "
-        strSQL += " id_producto as codigo";   
-        strSQL += ",nombre as descripcion";
-        strSQL += ",(precio_venta || '-' || cont_und || '-' || porc_igv )::varchar as auxiliar";
-        strSQL += " FROM mst_producto";
 
-        strSQL += " WHERE id_usuario = $1";
-        strSQL += " AND documento_id = $2";
-        strSQL += " ORDER BY nombre";
-        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        // Consultar si está activado el parámetro
+        const configRes = await pool.query(
+        `SELECT precio_factor FROM mve_parametros 
+        WHERE id_usuario = $1
+        AND documento_id = $2`,  // corregido aquí
+        [id_anfitrion, documento_id]
+        );
+
+        // Asegura que el valor null no rompa la lógica
+        const valor = configRes.rows[0]?.precio_factor;
+        const precioFactor = valor === '1' ? '1' : '0';
+
+        strSQL = `SELECT 
+                id_producto as codigo";   
+                ,nombre as descripcion";
+                ,(precio_venta || '-' || cont_und || '-' || porc_igv || '-' $3::varchar )::varchar as auxiliar";
+                FROM mst_producto";
+                WHERE id_usuario = $1";
+                AND documento_id = $2";
+                ORDER BY nombre`;
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id,precioFactor]);
         res.json(todosRegistros.rows);
     }
     catch(error){
@@ -408,6 +446,7 @@ module.exports = {
     obtenerTodosProductos,
     obtenerTodosProductosPrecios,
     obtenerTodosProductosPopUp,
+    obtenerPreciosProducto,
     obtenerProducto,
     obtenerProductoIgv,
     obtenerParametrosVenta,

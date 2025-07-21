@@ -1027,10 +1027,16 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
         );
         const ventadet = ventadetQuery.rows;
     
-        // 4. Construir el JSON
+        // 4. Construir el JSON, 
+        //Esto va para Bearer
+        //token:datos.token_factintegral,
+        
+        //Por seguridad datos sensibles en backend API
+        //usu_secundario_produccion_user: datos.secund_user,
+        //usu_secundario_produccion_password: datos.secund_pwd,
+
         const jsonPayload = {
           empresa: {
-            token:datos.token_factintegral,
             ruc: datos.documento_id,
             razon_social: datos.razon_social,
             nombre_comercial: datos.razon_social,
@@ -1040,8 +1046,6 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             provincia: datos.provincia,
             departamento: datos.departamento,
             modo: datos.modo, //NEW cuidado ...  0: prueba  1:produccion
-            usu_secundario_produccion_user: datos.secund_user,
-            usu_secundario_produccion_password: datos.secund_pwd,
           },
           cliente: {
             razon_social_nombres: venta.r_razon_social,
