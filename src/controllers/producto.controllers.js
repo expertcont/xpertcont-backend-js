@@ -109,12 +109,12 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
         const precioFactor = valor === '1' ? '1' : '0';
 
         strSQL = `SELECT 
-                id_producto as codigo";   
-                ,nombre as descripcion";
-                ,(precio_venta || '-' || cont_und || '-' || porc_igv || '-' $3::varchar )::varchar as auxiliar";
-                FROM mst_producto";
-                WHERE id_usuario = $1";
-                AND documento_id = $2";
+                id_producto as codigo
+                ,nombre as descripcion
+                ,(precio_venta || '-' || cont_und || '-' || porc_igv || '-' $3::varchar )::varchar as auxiliar
+                FROM mst_producto
+                WHERE id_usuario = $1
+                AND documento_id = $2
                 ORDER BY nombre`;
         const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id,precioFactor]);
         res.json(todosRegistros.rows);
