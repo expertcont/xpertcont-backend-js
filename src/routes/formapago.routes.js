@@ -1,9 +1,10 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerTodasFormasPago,obtenerFormaPago,crearFormaPago, actualizarFormaPago, eliminarFormaPago, obtenerTodasFormasPagoPopUp} = require('../controllers/formapago.controllers')
+const {obtenerTodasFormasPago,obtenerFormaPago,crearFormaPago, actualizarFormaPago, eliminarFormaPago, obtenerTodasFormasPagoPopUp, obtenerTodasFormasPagoAdmin} = require('../controllers/formapago.controllers')
 
 router.get('/formapago', obtenerTodasFormasPago);
+router.get('/formapagoadmin', obtenerTodasFormasPagoAdmin);
 router.get('/formapagopopup', obtenerTodasFormasPagoPopUp);
 router.get('/formapago/:id', obtenerFormaPago);
 router.post('/formapago', crearFormaPago);

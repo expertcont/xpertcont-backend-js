@@ -11,6 +11,19 @@ const obtenerTodasFormasPago = async (req,res,next)=> {
 
     //res.send('Listado de todas los zonas');
 };
+const obtenerTodasFormasPagoAdmin = async (req,res,next)=> {
+    try {
+        //Excepcion del contado clasico 
+        const todosRegistros = await pool.query("select id_forma_pago, nombre from mve_forma_pago order by id_forma_pago where deposito = '1'");
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+
+    //res.send('Listado de todas los zonas');
+};
+
 const obtenerTodasFormasPagoPopUp = async (req,res,next)=> {
     try {
         const todosRegistros = await pool.query("select id_mediopago as codigo, nombre as descripcion, '' as auxiliar from mct_tmediopago order by id_mediopago");
@@ -93,6 +106,7 @@ const actualizarFormaPago = async (req,res,next)=> {
 
 module.exports = {
     obtenerTodasFormasPago,
+    obtenerTodasFormasPagoAdmin,
     obtenerTodasFormasPagoPopUp,
     obtenerFormaPago,
     crearFormaPago,
