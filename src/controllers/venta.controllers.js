@@ -1192,7 +1192,39 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
 
         const jsonString = JSON.stringify(jsonPayload, null, 2); // Genera un JSON válido
         return (jsonString);
+};
 
+const obtenerTotalVentas = async (req, res) => {
+  const { periodo, id_anfitrion } = req.params;
+
+  if (!periodo || !id_anfitrion) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: periodo o id_anfitrion',
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT COALESCE(SUM(r_monto_total), 0) AS total 
+       FROM mve_venta 
+       WHERE periodo = $1 AND id_usuario = $2`,
+      [periodo, id_anfitrion]
+    );
+
+    const total = result.rows[0].total;
+
+    res.status(200).json({
+      success: true,
+      total,
+    });
+  } catch (error) {
+    console.error('Error al obtener total de ventas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
 };
 
 module.exports = {
@@ -1208,5 +1240,6 @@ module.exports = {
     actualizarRegistro,
     anularRegistro,
     generarCPE,
-    generarCPEexpertcont
+    generarCPEexpertcont,
+    obtenerTotalVentas
  }; 
