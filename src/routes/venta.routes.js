@@ -5,7 +5,7 @@ const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anu
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id', obtenerRegistroTodos);//
 
-router.get('/ad_ventatotal/:periodo/:id_anfitrion', obtenerTotalVentas);//
+router.get('/ad_ventatotal/:periodo/:id_anfitrion/:id_invitado', obtenerTotalVentas);//
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerRegistro);
 router.post('/ad_venta/:periodo/:id_anfitrion/:documento_id', crearRegistro);
