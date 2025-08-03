@@ -339,7 +339,105 @@ const generarRegistro = async (req,res,next)=> {
     }
 
 };
-const generarComprobante = async (req,res,next)=> {
+
+const generarComprobante = async (req, res, next) => {
+  const {
+    id_anfitrion,        //01
+    documento_id,        //02
+    periodo,             //03
+    id_invitado,         //04
+    fecha,               //05
+    r_cod,               //06
+    r_serie,             //07
+    r_numero,            //08
+    r_cod_emitir,        //09
+    r_id_doc,            //10
+    r_documento_id,      //11
+    r_razon_social,      //12
+    r_direccion,         //13
+    r_cod_ref,           //14 (solo para notas)
+    r_serie_ref,         //15
+    r_numero_ref,        //16
+    r_idmotivo_ref,      //17
+
+    // 🆕 Nuevos campos de cobranza
+    r_efectivo,          //18
+    r_vuelto,            //19
+    r_forma_pago2,       //20
+    r_efectivo2          //21
+  } = req.body;
+
+  try {
+    let result;
+
+    if (r_cod_emitir !== '07' && r_cod_emitir !== '08') {
+      // Venta regular (boleta o factura)
+      console.log('fve_crear_comprobante:', [
+        id_anfitrion, documento_id, periodo, id_invitado, fecha,
+        r_cod, r_serie, r_numero, r_cod_emitir,
+        r_id_doc, r_documento_id, r_razon_social, r_direccion,
+        r_efectivo, r_vuelto, r_forma_pago2, r_efectivo2
+      ]);
+
+      result = await pool.query(
+        `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
+         FROM fve_crear_comprobante(
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, 
+           $10, $11, $12, $13,
+           $14, $15, $16, $17
+         )`,
+        [
+          id_anfitrion, documento_id, periodo, id_invitado, fecha,
+          r_cod, r_serie, r_numero, r_cod_emitir,
+          r_id_doc, r_documento_id, r_razon_social, r_direccion,
+          r_efectivo, r_vuelto, r_forma_pago2, r_efectivo2
+        ]
+      );
+    } else {
+      // Nota de crédito o débito (sin cambios aún)
+      console.log('fve_crear_comprobante_ref:', [
+        id_anfitrion, documento_id, periodo, id_invitado, fecha,
+        r_cod, r_serie, r_numero, r_cod_emitir,
+        r_id_doc, r_documento_id, r_razon_social, r_direccion,
+        r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
+      ]);
+
+      result = await pool.query(
+        `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
+         FROM fve_crear_comprobante_ref(
+           $1, $2, $3, $4, $5, $6, $7, $8, $9,
+           $10, $11, $12, $13, $14, $15, $16, $17
+         )`,
+        [
+          id_anfitrion, documento_id, periodo, id_invitado, fecha,
+          r_cod, r_serie, r_numero, r_cod_emitir,
+          r_id_doc, r_documento_id, r_razon_social, r_direccion,
+          r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
+        ]
+      );
+    }
+
+    if (result.rows.length > 0) {
+      res.status(200).json({
+        success: true,
+        ...result.rows[0],
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'No se encontraron resultados o no se pudo crear el comprobante.',
+      });
+    }
+  } catch (error) {
+    console.error('Error al ejecutar la función fve_crear_comprobante:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor.',
+    });
+  }
+};
+
+/*const generarComprobante = async (req,res,next)=> {
     const { id_anfitrion,   //01
             documento_id,   //02    
             periodo,        //03
@@ -358,6 +456,8 @@ const generarComprobante = async (req,res,next)=> {
             r_serie_ref,        //15
             r_numero_ref,       //16
             r_idmotivo_ref,     //17
+
+
     } = req.body;
     //faltan mas parametros de razon social ruc y direccion
 
@@ -408,7 +508,7 @@ const generarComprobante = async (req,res,next)=> {
         message: 'Error interno del servidor.',
       });
     }
-};
+};*/
 
 const clonarRegistro = async (req,res,next)=> {
   //Clonamos cualquier registro(Bol,Fact,NotaVenta) y lo convertimos a Nota en Proceso
