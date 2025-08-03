@@ -1194,7 +1194,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
         return (jsonString);
 };
 
-const obtenerTotalVentas = async (req, res) => {
+/*const obtenerTotalVentas = async (req, res) => {
   const { periodo, id_anfitrion } = req.params;
 
   if (!periodo || !id_anfitrion) {
@@ -1220,6 +1220,48 @@ const obtenerTotalVentas = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener total de ventas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};*/
+const obtenerTotalVentas = async (req, res) => {
+  const { periodo, id_anfitrion } = req.params;
+
+  if (!periodo || !id_anfitrion) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: periodo o id_anfitrion',
+    });
+  }
+
+  try {
+    // Consulta del total de ventas
+    const ventaResult = await pool.query(
+      `SELECT COALESCE(SUM(r_monto_total), 0) AS total 
+       FROM mve_venta 
+       WHERE periodo = $1 AND id_usuario = $2`,
+      [periodo, id_anfitrion]
+    );
+
+    const total = ventaResult.rows[0].total;
+
+    // Consulta para verificar si el usuario es super
+    const superResult = await pool.query(
+      `SELECT super FROM mad_usuario WHERE id_usuario = $1`,
+      [id_anfitrion]
+    );
+
+    const isSuper = superResult.rows.length > 0 && superResult.rows[0].super === '1';
+
+    res.status(200).json({
+      success: true,
+      total,
+      super: isSuper,
+    });
+  } catch (error) {
+    console.error('Error al obtener total de ventas o verificar super:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
