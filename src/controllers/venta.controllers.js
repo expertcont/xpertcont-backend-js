@@ -361,10 +361,10 @@ const generarComprobante = async (req, res, next) => {
     r_idmotivo_ref,      //17
 
     // 🆕 Nuevos campos de cobranza
-    r_efectivo,          //18
-    r_vuelto,            //19
-    r_forma_pago2,       //20
-    r_efectivo2          //21
+    efectivo,          //18
+    vuelto,            //19
+    forma_pago2,       //20
+    efectivo2          //21
   } = req.body;
 
   try {
@@ -376,7 +376,7 @@ const generarComprobante = async (req, res, next) => {
         id_anfitrion, documento_id, periodo, id_invitado, fecha,
         r_cod, r_serie, r_numero, r_cod_emitir,
         r_id_doc, r_documento_id, r_razon_social, r_direccion,
-        r_efectivo, r_vuelto, r_forma_pago2, r_efectivo2
+        efectivo, vuelto, forma_pago2, efectivo2
       ]);
 
       result = await pool.query(
@@ -390,7 +390,7 @@ const generarComprobante = async (req, res, next) => {
           id_anfitrion, documento_id, periodo, id_invitado, fecha,
           r_cod, r_serie, r_numero, r_cod_emitir,
           r_id_doc, r_documento_id, r_razon_social, r_direccion,
-          r_efectivo, r_vuelto, r_forma_pago2, r_efectivo2
+          efectivo, vuelto, forma_pago2, efectivo2
         ]
       );
     } else {
