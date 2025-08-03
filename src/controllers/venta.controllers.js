@@ -1227,12 +1227,12 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
   }
 };*/
 const obtenerTotalVentas = async (req, res) => {
-  const { periodo, id_anfitrion } = req.params;
+  const { periodo, id_anfitrion, id_invitado } = req.params;
 
-  if (!periodo || !id_anfitrion) {
+  if (!periodo || !id_anfitrion || !id_invitado) {
     return res.status(400).json({
       success: false,
-      message: 'Faltan parámetros requeridos: periodo o id_anfitrion',
+      message: 'Faltan parámetros requeridos: periodo, id_anfitrion o id_invitado',
     });
   }
 
@@ -1247,13 +1247,19 @@ const obtenerTotalVentas = async (req, res) => {
 
     const total = ventaResult.rows[0].total;
 
-    // Consulta para verificar si el usuario es super
-    const superResult = await pool.query(
-      `SELECT super FROM mad_usuario WHERE id_usuario = $1`,
-      [id_anfitrion]
-    );
+    // Determinar si es super
+    let isSuper = false;
 
-    const isSuper = superResult.rows.length > 0 && superResult.rows[0].super === '1';
+    if (String(id_anfitrion) === String(id_invitado)) {
+      isSuper = true;
+    } else {
+      const superResult = await pool.query(
+        `SELECT super FROM mad_usuario WHERE id_usuario = $1`,
+        [id_anfitrion]
+      );
+
+      isSuper = superResult.rows.length > 0 && superResult.rows[0].super === '1';
+    }
 
     res.status(200).json({
       success: true,
