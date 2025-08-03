@@ -1255,7 +1255,7 @@ const obtenerTotalVentas = async (req, res) => {
     } else {
       const superResult = await pool.query(
         `SELECT super FROM mad_usuario WHERE id_usuario = $1`,
-        [id_anfitrion]
+        [id_invitado]
       );
 
       isSuper = superResult.rows.length > 0 && superResult.rows[0].super === '1';
