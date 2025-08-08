@@ -1172,11 +1172,13 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             vendedor:"",            
             nota: venta.glosa || "",
             
-            relacionado_serie:(venta.r_serie_ref==null)? '':venta.r_serie,      //new mod
-            relacionado_numero:(venta.r_numero_ref==null)? '':venta.r_numero,   //new mod
-            relacionado_codigo:(venta.r_cod_ref==null)? '':venta.r_cod, //new mod
-            relacionado_motivo_codigo:"01" //anulacion hardcodeado temporal
-                
+            ref_codigo:(venta.r_cod_ref==null)? '':venta.r_cod, //new mod
+            ref_serie:(venta.r_serie_ref==null)? '':venta.r_serie,      //new mod
+            ref_numero:(venta.r_numero_ref==null)? '':venta.r_numero,   //new mod
+            
+            motivo_id:"01", //anulacion hardcodeado temporal
+            motivo:"Anulacion de la Operacion" //anulacion hardcodeado temporal
+            
           },
           items: ventadet.map((item) => ({
             producto: item.descripcion,
