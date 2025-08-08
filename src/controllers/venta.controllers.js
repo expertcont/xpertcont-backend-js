@@ -2,73 +2,77 @@ const pool = require('../db');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
 const fetch = require('node-fetch');
 
-const obtenerRegistroTodos = async (req,res,next)=> {
-    //Solo Cabeceras
-    const {periodo,id_anfitrion,documento_id} = req.params;
-    console.log(periodo,id_anfitrion,documento_id);
-    
-    let strSQL;
-    strSQL = "SELECT ";
-        //01 ruc gen        (campos vacios)
-        //02 razon gen      (campos vacios)
-        //03 periodo gen    (campos vacios)
-        //04 car sunat      (campos vacios)
-    strSQL += "  cast(r_fecemi as varchar)::varchar(50) as r_fecemi";   //05
-    strSQL += " ,cast(r_fecvcto as varchar)::varchar(50) as r_fecvcto"; //06
-    strSQL += " ,r_cod";                                                //07
-    strSQL += " ,r_serie";                                              //08
-    strSQL += " ,r_numero";                                             //09
-    //strSQL += " ,(r_cod || '-' || r_serie || '-' || r_numero)::varchar(50) as comprobante"; //(07-08-09)
-		//sirve para vista general
-    strSQL += ", (COALESCE(r_cod_ref, r_cod) || '-' || ";
-		strSQL += "   COALESCE(r_serie_ref, r_serie) || '-' || ";
-    strSQL += "   COALESCE(r_numero_ref, r_numero))::varchar(50) as comprobante";
+const obtenerRegistroTodos = async (req, res, next) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+  console.log(periodo, id_anfitrion, documento_id, dia);
 
-    strSQL += " ,r_id_doc";                                             //11
-    strSQL += " ,r_documento_id";                                       //12
-    strSQL += " ,r_razon_social";                                       //13
-    strSQL += " ,r_base001 as export";                                  //14
-    strSQL += " ,r_base002 as base";                                    //15
-    strSQL += " ,r_igv002 as igv";                                      //16
-    strSQL += " ,r_base003 as exonera";                                 //17
-    strSQL += " ,r_base004 as inafecta";                                //18
-    strSQL += " ,r_monto_icbp";                                         //19
-    strSQL += " ,r_monto_otros";                                        //20
-    strSQL += " ,r_monto_total";                                        //21
-    strSQL += " ,r_moneda";                                             //22
-    strSQL += " ,r_tc";                                                 //23
-    strSQL += " ,cast(r_fecemi_ref as varchar)::varchar(50) as r_fecemi_ref";//24
-    strSQL += " ,r_cod_ref";                                            //25
-    strSQL += " ,r_serie_ref";                                          //26
-    strSQL += " ,r_numero_ref";                                         //27
-    
-    strSQL += " ,glosa";
-    strSQL += " ,r_vfirmado";
-    
-    //strSQL += " ,(r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref || '-' || cast(elemento as varchar))::varchar(50) as comprobante_ref"; //(07-08-09)
-		//sirve como key ;)
-    strSQL += ", (COALESCE(r_cod,r_cod_ref) || '-' || ";
-		strSQL += "   COALESCE(r_serie,r_serie_ref) || '-' || ";
-    strSQL += "   COALESCE(r_numero,r_numero_ref) || '-' || cast(elemento as varchar))::varchar(50) as comprobante_ref";
-    strSQL += " ,elemento";
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
 
-    strSQL += " FROM";
-    strSQL += " mve_venta ";
-    strSQL += " WHERE periodo = '" + periodo + "'";
-    strSQL += " AND id_usuario = '" + id_anfitrion + "'";
-    strSQL += " AND documento_id = '" + documento_id + "'";
-    strSQL += " AND r_cod <> 'NP'"; //evitar pedidos en proceso
-    strSQL += " ORDER BY r_cod,r_serie,r_numero DESC";
-    
-    console.log(strSQL);
-    try {
-        const todosReg = await pool.query(strSQL);
-        res.json(todosReg.rows);
-    }
-    catch(error){
-        console.log(error.message);
-    }
-    //res.send('Listado de todas los zonas');
+  // Definición compacta de columnas
+  const columnas = `
+    CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
+    CAST(r_fecvcto AS VARCHAR(50)) AS r_fecvcto,
+    r_cod,
+    r_serie,
+    r_numero,
+    (COALESCE(r_cod_ref, r_cod) || '-' ||
+      COALESCE(r_serie_ref, r_serie) || '-' ||
+      COALESCE(r_numero_ref, r_numero))::VARCHAR(50) AS comprobante,
+    r_id_doc,
+    r_documento_id,
+    r_razon_social,
+    r_base001 AS export,
+    r_base002 AS base,
+    r_igv002 AS igv,
+    r_base003 AS exonera,
+    r_base004 AS inafecta,
+    r_monto_icbp,
+    r_monto_otros,
+    r_monto_total,
+    r_moneda,
+    r_tc,
+    CAST(r_fecemi_ref AS VARCHAR(50)) AS r_fecemi_ref,
+    r_cod_ref,
+    r_serie_ref,
+    r_numero_ref,
+    glosa,
+    r_vfirmado,
+    (COALESCE(r_cod, r_cod_ref) || '-' ||
+      COALESCE(r_serie, r_serie_ref) || '-' ||
+      COALESCE(r_numero, r_numero_ref) || '-' ||
+      CAST(elemento AS VARCHAR))::VARCHAR(50) AS comprobante_ref,
+    forma_pago2,
+    efectivo2,
+    elemento
+  `;
+
+  let query = `
+    SELECT ${columnas}
+    FROM mve_venta
+    WHERE periodo = $1
+      AND id_usuario = $2
+      AND documento_id = $3
+      AND r_cod <> 'NP'
+  `;
+
+  const params = [periodo, id_anfitrion, documento_id];
+
+  if (fechaFiltro) {
+    query += " AND r_fecha = $4";
+    params.push(fechaFiltro);
+  }
+
+  query += " ORDER BY r_cod, r_serie, r_numero DESC";
+
+  console.log("SQL:", query, "PARAMS:", params);
+
+  try {
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error en obtenerRegistroTodos:", error.message);
+    next(error);
+  }
 };
 
 const obtenerRegistro = async (req,res,next)=> {

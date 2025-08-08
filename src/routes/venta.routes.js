@@ -3,7 +3,7 @@ const pool = require('../db');
 const router = Router();
 const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas} = require('../controllers/venta.controllers')
 
-router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id', obtenerRegistroTodos);//
+router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroTodos);//
 
 router.get('/ad_ventatotal/:periodo/:id_anfitrion/:id_invitado', obtenerTotalVentas);//
 
