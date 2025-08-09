@@ -58,7 +58,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
   const params = [periodo, id_anfitrion, documento_id];
 
   if (fechaFiltro) {
-    query += " AND r_fecha = $4";
+    query += " AND r_fecemi = $4";
     params.push(fechaFiltro);
   }
 
