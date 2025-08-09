@@ -1200,57 +1200,36 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
         return (jsonString);
 };
 
-/*const obtenerTotalVentas = async (req, res) => {
-  const { periodo, id_anfitrion } = req.params;
-
-  if (!periodo || !id_anfitrion) {
-    return res.status(400).json({
-      success: false,
-      message: 'Faltan parámetros requeridos: periodo o id_anfitrion',
-    });
-  }
-
-  try {
-    const result = await pool.query(
-      `SELECT COALESCE(SUM(r_monto_total), 0) AS total 
-       FROM mve_venta 
-       WHERE periodo = $1 AND id_usuario = $2`,
-      [periodo, id_anfitrion]
-    );
-
-    const total = result.rows[0].total;
-
-    res.status(200).json({
-      success: true,
-      total,
-    });
-  } catch (error) {
-    console.error('Error al obtener total de ventas:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-    });
-  }
-};*/
 const obtenerTotalVentas = async (req, res) => {
-  const { periodo, id_anfitrion, id_invitado } = req.params;
+  const { periodo, id_anfitrion, id_invitado, dia } = req.params;
 
-  if (!periodo || !id_anfitrion || !id_invitado) {
+  if (!periodo || !id_anfitrion || !id_invitado || dia === undefined) {
     return res.status(400).json({
       success: false,
-      message: 'Faltan parámetros requeridos: periodo, id_anfitrion o id_invitado',
+      message: 'Faltan parámetros requeridos: periodo, id_anfitrion, id_invitado o dia',
     });
   }
 
-  try {
-    // Consulta del total de ventas
-    const ventaResult = await pool.query(
-      `SELECT COALESCE(SUM(r_monto_total), 0) AS total 
-       FROM mve_venta 
-       WHERE periodo = $1 AND id_usuario = $2`,
-      [periodo, id_anfitrion]
-    );
+  // Si no es "*", formatear a YYYY-MM-DD
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
 
+  try {
+    // Construcción dinámica de consulta
+    let query = `
+      SELECT COALESCE(SUM(r_monto_total), 0) AS total
+      FROM mve_venta
+      WHERE periodo = $1
+        AND id_usuario = $2
+    `;
+    const params = [periodo, id_anfitrion];
+
+    if (fechaFiltro) {
+      query += ` AND r_fecemi = $3`;
+      params.push(fechaFiltro);
+    }
+
+    // Consulta del total de ventas
+    const ventaResult = await pool.query(query, params);
     const total = ventaResult.rows[0].total;
 
     // Determinar si es super
