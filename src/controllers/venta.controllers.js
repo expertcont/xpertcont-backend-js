@@ -1261,9 +1261,9 @@ const obtenerTotalVentas = async (req, res) => {
 };
 
 const obtenerTotalRecaudacion = async (req, res) => {
-  const { periodo, id_anfitrion, id_invitado, dia } = req.params;
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
 
-  if (!periodo || !id_anfitrion || !id_invitado || dia === undefined) {
+  if (!periodo || !id_anfitrion || !documento_id || dia === undefined) {
     return res.status(400).json({
       success: false,
       message: 'Faltan parámetros requeridos: periodo, id_anfitrion, id_invitado o dia',
@@ -1282,7 +1282,8 @@ const obtenerTotalRecaudacion = async (req, res) => {
         FROM mve_venta 
         WHERE periodo = $1
           AND id_usuario = $2
-          AND ($3::date IS NULL OR r_fecemi = $3::date)
+          AND documento_id = $3
+          AND ($4::date IS NULL OR r_fecemi = $4::date)
         
         UNION ALL
         
@@ -1292,7 +1293,8 @@ const obtenerTotalRecaudacion = async (req, res) => {
         FROM mve_venta 
         WHERE periodo = $1
           AND id_usuario = $2
-          AND ($3::date IS NULL OR r_fecemi = $3::date)
+          AND documento_id = $3
+          AND ($4::date IS NULL OR r_fecemi = $4::date)
         GROUP BY forma_pago2
       ) AS consulta
       WHERE monto IS NOT NULL
