@@ -1300,7 +1300,7 @@ const obtenerTotalRecaudacion = async (req, res) => {
       WHERE monto IS NOT NULL
     `;
 
-    const params = [periodo, id_anfitrion, fechaFiltro];
+    const params = [periodo, id_anfitrion, documento_id, fechaFiltro];
 
     const ventaResult = await pool.query(query, params);
 
