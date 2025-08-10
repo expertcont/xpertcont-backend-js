@@ -1260,6 +1260,62 @@ const obtenerTotalVentas = async (req, res) => {
   }
 };
 
+const obtenerTotalRecaudacion = async (req, res) => {
+  const { periodo, id_anfitrion, id_invitado, dia } = req.params;
+
+  if (!periodo || !id_anfitrion || !id_invitado || dia === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: periodo, id_anfitrion, id_invitado o dia',
+    });
+  }
+
+  // Si no es "*", formatear a YYYY-MM-DD, si es "*", será null
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
+
+  try {
+    const query = `
+      SELECT * FROM (
+        SELECT 
+          'EFECTIVO'::varchar(50) AS recaudacion, 
+          SUM(efectivo)::numeric(14,2) AS monto
+        FROM mve_venta 
+        WHERE periodo = $1
+          AND id_usuario = $2
+          AND ($3::date IS NULL OR r_fecemi = $3::date)
+        
+        UNION ALL
+        
+        SELECT 
+          forma_pago2 AS recaudacion, 
+          SUM(efectivo2)::numeric(14,2) AS monto
+        FROM mve_venta 
+        WHERE periodo = $1
+          AND id_usuario = $2
+          AND ($3::date IS NULL OR r_fecemi = $3::date)
+        GROUP BY forma_pago2
+      ) AS consulta
+      WHERE monto IS NOT NULL
+    `;
+
+    const params = [periodo, id_anfitrion, fechaFiltro];
+
+    const ventaResult = await pool.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      data: ventaResult.rows
+    });
+
+  } catch (error) {
+    console.error('Error al obtener total de recaudación:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
 module.exports = {
     obtenerRegistroTodos,
     obtenerRegistro,
@@ -1274,5 +1330,6 @@ module.exports = {
     anularRegistro,
     generarCPE,
     generarCPEexpertcont,
-    obtenerTotalVentas
+    obtenerTotalVentas,
+    obtenerTotalRecaudacion
  }; 
