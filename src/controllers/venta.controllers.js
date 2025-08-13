@@ -41,6 +41,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
       COALESCE(r_serie, r_serie_ref) || '-' ||
       COALESCE(r_numero, r_numero_ref) || '-' ||
       CAST(elemento AS VARCHAR))::VARCHAR(50) AS comprobante_ref,
+    efectivo,
     forma_pago2,
     efectivo2,
     elemento
