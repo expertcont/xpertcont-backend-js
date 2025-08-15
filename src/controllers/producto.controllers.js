@@ -467,8 +467,8 @@ const obtenerProductoPrecio = async (req,res,next)=> {
 
         strSQL = `select mst_producto_precio.*, mst_producto.nombre
                     from mst_producto_precio inner join mst_producto
-                    on (mst_producto_precio.id_usuario = mst_producto.id_usuario
-                        mst_producto_precio.documento_id = mst_producto.documento_id
+                    on (mst_producto_precio.id_usuario = mst_producto.id_usuario and
+                        mst_producto_precio.documento_id = mst_producto.documento_id and
                         mst_producto_precio.id_producto = mst_producto.id_producto)
                     where mst_producto_precio.id_usuario = $1
                     and mst_producto_precio.documento_id = $2
