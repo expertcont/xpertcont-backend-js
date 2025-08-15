@@ -503,7 +503,7 @@ const actualizarProductoPrecio = async (req,res,next)=> {
                 cant_max        //07
         } = req.body    
 
-        strSQL = `UPDATE mst_producto_precio SET"
+        strSQL = `UPDATE mst_producto_precio SET
                     precio_venta = $5
                     ,cant_min = $6
                     ,cant_max = $7
