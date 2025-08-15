@@ -465,14 +465,15 @@ const obtenerProductoPrecio = async (req,res,next)=> {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto,unidades} = req.params;
 
-        strSQL = "select mst_producto_precio.*, mst_producto.nombre from mst_producto_precio "
-        strSQL += " on (mst_producto_precio.id_usuario = mst_producto.id_usuario and ";
-        strSQL += "     mst_producto_precio.documento_id = mst_producto.documento_id and ";
-        strSQL += "     mst_producto_precio.id_producto = mst_producto.id_producto )";
-        strSQL += " where mst_producto_precio.id_usuario = $1";
-        strSQL += " and mst_producto_precio.documento_id = $2";
-        strSQL += " and mst_producto_precio.id_producto = $3";
-        strSQL += " and mst_producto_precio.unidades = $4";
+        strSQL = `select mst_producto_precio.*, mst_producto.nombre
+                    from mst_producto_precio inner join mst_producto
+                    on (mst_producto_precio.id_usuario = mst_producto.id_usuario
+                        mst_producto_precio.documento_id = mst_producto.documento_id
+                        mst_producto_precio.id_producto = mst_producto.id_producto)
+                    where mst_producto_precio.id_usuario = $1
+                    and mst_producto_precio.documento_id = $2
+                    and mst_producto_precio.id_producto = $3
+                    and mst_producto_precio.unidades = $4`;
 
         const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto,unidades]);
 
