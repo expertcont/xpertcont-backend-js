@@ -460,6 +460,41 @@ const importarExcelProductosPrecios = async (req, res, next) => {
     }
 };
 
+const actualizarProductoPrecio = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_anfitrion,documento_id,id_producto,unidades} = req.params; //04
+        const { 
+                precio_venta,   //05
+                cant_min,       //06
+                cant_max        //07
+        } = req.body    
+
+        strSQL = `UPDATE mst_producto_precio SET"
+                    precio_venta = $5
+                    ,cant_min = $6
+                    ,cant_max = $7
+                    WHERE id_usuario = $1
+                    AND documento_id = $2
+                    AND id_producto = $3
+                    AND unidades = $4`;
+
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto,unidades,
+                                                precio_venta,
+                                                cant_min,
+                                                cant_max]);
+
+        if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Precio de Producto no encontrado"
+            });
+
+        return res.sendStatus(204);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+
 module.exports = {
     obtenerTodosProductos,
     obtenerTodosProductosPrecios,
@@ -473,5 +508,6 @@ module.exports = {
     eliminarProductoMasivo,
     actualizarProducto,
     importarExcelProductos,
-    importarExcelProductosPrecios
+    importarExcelProductosPrecios,
+    actualizarProductoPrecio
  }; 
