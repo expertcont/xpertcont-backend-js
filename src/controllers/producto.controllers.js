@@ -465,7 +465,12 @@ const obtenerProductoPrecio = async (req,res,next)=> {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto,unidades} = req.params;
 
-        strSQL = `select mst_producto_precio.*, mst_producto.nombre
+        strSQL = `select mst_producto_precio.id_producto
+                        ,mst_producto.nombre
+                        ,mst_producto_precio.precio_venta
+                        ,mst_producto_precio.unidades
+                        ,round(mst_producto_precio.cant_min,0)::numercic(14) as cant_min
+                        ,round(mst_producto_precio.cant_max,0)::numercic(14) as cant_max
                     from mst_producto_precio inner join mst_producto
                     on (mst_producto_precio.id_usuario = mst_producto.id_usuario and
                         mst_producto_precio.documento_id = mst_producto.documento_id and
