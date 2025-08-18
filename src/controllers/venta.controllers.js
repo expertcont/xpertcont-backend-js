@@ -1298,7 +1298,7 @@ const obtenerTotalRecaudacion = async (req, res) => {
           AND ($4::date IS NULL OR r_fecemi = $4::date)
         GROUP BY forma_pago2
       ) AS consulta
-      WHERE monto IS NOT NULL
+      WHERE monto IS NOT NULL and monto <> 0
     `;
 
     const params = [periodo, id_anfitrion, documento_id, fechaFiltro];
