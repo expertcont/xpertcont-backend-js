@@ -385,7 +385,7 @@ const generarComprobante = async (req, res, next) => {
       ]);
 
       result = await pool.query(
-        `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
+        `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
          FROM fve_crear_comprobante(
            $1, $2, $3, $4, $5, $6, $7, $8, $9, 
            $10, $11, $12, $13,
@@ -408,7 +408,7 @@ const generarComprobante = async (req, res, next) => {
       ]);
 
       result = await pool.query(
-        `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
+        `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
          FROM fve_crear_comprobante_ref(
            $1, $2, $3, $4, $5, $6, $7, $8, $9,
            $10, $11, $12, $13, $14, $15, $16, $17
