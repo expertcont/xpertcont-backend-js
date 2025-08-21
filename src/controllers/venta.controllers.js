@@ -423,6 +423,7 @@ const generarComprobante = async (req, res, next) => {
     }
 
     if (result.rows.length > 0) {
+      console.log(result.rows[0]);
       res.status(200).json({
         success: true,
         ...result.rows[0],
