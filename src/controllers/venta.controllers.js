@@ -377,12 +377,12 @@ const generarComprobante = async (req, res, next) => {
 
     if (r_cod_emitir !== '07' && r_cod_emitir !== '08') {
       // Venta regular (boleta o factura)
-      console.log('fve_crear_comprobante:', [
+      /*console.log('fve_crear_comprobante:', [
         id_anfitrion, documento_id, periodo, id_invitado, fecha,
         r_cod, r_serie, r_numero, r_cod_emitir,
         r_id_doc, r_documento_id, r_razon_social, r_direccion,
         efectivo, vuelto, forma_pago2, efectivo2
-      ]);
+      ]);*/
 
       result = await pool.query(
         `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
@@ -400,12 +400,12 @@ const generarComprobante = async (req, res, next) => {
       );
     } else {
       // Nota de crédito o débito (sin cambios aún)
-      console.log('fve_crear_comprobante_ref:', [
+      /*console.log('fve_crear_comprobante_ref:', [
         id_anfitrion, documento_id, periodo, id_invitado, fecha,
         r_cod, r_serie, r_numero, r_cod_emitir,
         r_id_doc, r_documento_id, r_razon_social, r_direccion,
         r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
-      ]);
+      ]);*/
 
       result = await pool.query(
         `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
@@ -423,7 +423,7 @@ const generarComprobante = async (req, res, next) => {
     }
 
     if (result.rows.length > 0) {
-      console.log(result.rows[0]);
+      //console.log(result.rows[0]);
       res.status(200).json({
         success: true,
         ...result.rows[0],
@@ -442,79 +442,6 @@ const generarComprobante = async (req, res, next) => {
     });
   }
 };
-
-/*const generarComprobante = async (req,res,next)=> {
-    const { id_anfitrion,   //01
-            documento_id,   //02    
-            periodo,        //03
-            id_invitado,    //04
-            fecha,          //05
-            r_cod,          //06
-            r_serie,        //07
-            r_numero,       //08
-            r_cod_emitir,    //09
-            r_id_doc,           //10
-            r_documento_id,     //11
-            r_razon_social,     //12
-            r_direccion,        //13
-
-            r_cod_ref,          //14
-            r_serie_ref,        //15
-            r_numero_ref,       //16
-            r_idmotivo_ref,     //17
-
-
-    } = req.body;
-    //faltan mas parametros de razon social ruc y direccion
-
-    try {
-      let result;
-      if (r_cod_emitir !== '07' && r_cod_emitir !== '08') {
-        console.log('fve_crear_comprobante: ',[id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
-          r_id_doc, r_documento_id, r_razon_social, r_direccion]);
-
-        // Ejecutar la función fve_crear_comprobante en PostgreSQL
-        result = await pool.query(
-          `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
-          FROM fve_crear_comprobante($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-          [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
-          r_id_doc, r_documento_id, r_razon_social, r_direccion
-          ]
-        );
-      }else{
-        console.log('fve_crear_comprobante_ref: ',[id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
-          r_id_doc, r_documento_id, r_razon_social, r_direccion, r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
-          ]);
-        // Ejecutar la función fve_crear_comprobante_ref en PostgreSQL (Tratamiento Nota Credito/Debito)
-        result = await pool.query(
-          `SELECT r_cod, r_serie, r_numero, r_fecemi, r_monto_total 
-          FROM fve_crear_comprobante_ref($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-          [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero, r_cod_emitir,
-          r_id_doc, r_documento_id, r_razon_social, r_direccion, r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
-          ]
-        );
-      }
-  
-      // Si la función devolvió resultados, enviarlos al frontend
-      if (result.rows.length > 0) {
-        res.status(200).json({
-          success: true,
-          ... result.rows[0], // Devolver el primer (y único) resultado
-        });
-      } else {
-        res.status(404).json({
-          success: false,
-          message: 'No se encontraron resultados o no se pudo crear el pedido.',
-        });
-      }
-    } catch (error) {
-      console.error('Error al ejecutar la función fve_crear_pedido:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error interno del servidor.',
-      });
-    }
-};*/
 
 const clonarRegistro = async (req,res,next)=> {
   //Clonamos cualquier registro(Bol,Fact,NotaVenta) y lo convertimos a Nota en Proceso
