@@ -360,6 +360,7 @@ const generarComprobante = async (req, res, next) => {
     r_documento_id,      //11
     r_razon_social,      //12
     r_direccion,         //13
+    
     r_cod_ref,           //14 (solo para notas)
     r_serie_ref,         //15
     r_numero_ref,        //16
@@ -1099,8 +1100,9 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             forma_pago_id: "Contado", //hardcode temporal
             
             base_gravada: venta.r_base002,
-            base_exonerada: "",
+            base_exonerada: venta.r_base003, //new
             base_inafecta: "",
+            base_gratuita: venta.r_base_gratuita, //new
             total_igv: venta.r_igv002,
             vendedor:"",            
             nota: venta.glosa || "",
@@ -1120,7 +1122,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             codigo_sunat: "-",
             codigo_producto: item.id_producto,
             codigo_unidad: item.cont_und,
-            tipo_igv_codigo: "10",
+            tipo_igv_codigo: (item.tipo_igv_codigo && item.tipo_igv_codigo.toString().trim()) || "10",
             porc_igv: item.porc_igv,
           })),
         };
