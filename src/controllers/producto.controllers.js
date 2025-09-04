@@ -150,7 +150,7 @@ const obtenerTodosGruposPopUp = async (req,res,next)=> {
                     id_grupo as codigo
                     ,nombre as descripcion
                     ,null::varchar as auxiliar
-                FROM mst_producto
+                FROM mst_producto_grupo
                 WHERE id_usuario = $1
                 AND documento_id = $2
                 ORDER BY nombre`;
