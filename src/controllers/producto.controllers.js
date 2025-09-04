@@ -153,7 +153,7 @@ const obtenerTodosGruposPopUp = async (req,res,next)=> {
                 FROM mst_producto_grupo
                 WHERE id_usuario = $1
                 AND documento_id = $2
-                ORDER BY nombre`;
+                ORDER BY id_grupo`;
 
         const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
         res.json(todosRegistros.rows);
