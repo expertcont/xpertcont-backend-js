@@ -108,7 +108,7 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
         // Asegura que el valor null no rompa la lógica
         //const valor = configRes.rows[0]?.precio_factor;
         const precioFactor = configRes.rows[0]?.precio_factor === '1' ? '1' : '0';
-        const productoSKU = configRes.rows[0]?.producto_sku === '1' ? '1' : '0';
+        const productoSKU = configRes.rows[0]?.producto_sku === '1' ? 'zku' : '0';
         //console.log('precioFactor: ', precioFactor);
 
         if (precioFactor === '0') {
