@@ -109,7 +109,7 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
         //const valor = configRes.rows[0]?.precio_factor;
         const precioFactor = configRes.rows[0]?.precio_factor === '1' ? '1' : '0';
         const productoSKU = configRes.rows[0]?.producto_sku === '1' ? 'zku' : '0';
-        //console.log('precioFactor: ', precioFactor);
+        console.log('precioFactor: ', precioFactor);
 
         if (precioFactor === '0') {
             strSQL = `SELECT 
@@ -549,6 +549,186 @@ const actualizarProductoPrecio = async (req,res,next)=> {
     }
 };
 
+const crearGrupo = async (req,res,next)=> {
+    const { 
+            id_anfitrion,   //01
+            documento_id,   //02
+            id_producto,    //03    
+            nombre,         //04
+            descripcion,    //05
+            origen          //06
+        } = req.body
+    let strSQL;
+    try {
+        strSQL = "INSERT INTO mst_producto_grupo(";
+        strSQL += " id_usuario";    //01
+        strSQL += ",documento_id";  //02
+        strSQL += ",id_producto";   //03
+        strSQL += ",nombre";        //04
+        strSQL += ",descripcion";   //05
+        strSQL += ",origen";        //06
+        strSQL += ") VALUES ( ";
+
+        strSQL += " $1,$2,$3,$4,$5,$6 ";
+        strSQL += " ) RETURNING *";
+
+        const result = await pool.query(strSQL, 
+        [   
+            id_anfitrion,   //01
+            documento_id,   //02
+            id_producto,    //03    
+            nombre,         //04
+            descripcion,    //05
+            origen          //06
+        ]
+        );
+        
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        console.log(error);
+        next(error)
+    }
+};
+
+const eliminarGrupo = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_anfitrion,documento_id,id_grupo} = req.params;
+        strSQL = "DELETE FROM mst_producto_grupo "
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND documento_id = $2";
+        strSQL += " AND id_grupo = $3";
+
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_grupo]);
+
+        if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Grupo de producto no encontrado"
+            });
+
+        return res.sendStatus(204);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+
+const actualizarGrupo = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_anfitrion,documento_id,id_grupo} = req.params; //03
+        const { nombre,         //04
+                descripcion,    //05
+        } = req.body    
+        strSQL = "UPDATE mst_producto_grupo SET"
+        strSQL += "  nombre = $4";
+        strSQL += " ,descripcion = $5";
+        
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND documento_id = $2";
+        strSQL += " AND id_grupo = $3";
+
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_grupo,
+                                                nombre,
+                                                descripcion
+                                                ]);
+
+        if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Grupo de Producto no encontrado"
+            });
+
+        return res.sendStatus(204);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+const importarExcelGrupos = async (req, res, next) => {
+    //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
+    const datosCarga = JSON.parse(req.body.datosCarga);
+    const {
+        id_anfitrion,
+        documento_id
+    } = datosCarga;
+    
+    try {
+      const fileBuffer = req.file.buffer;
+
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        header: 1,
+      });
+  
+        const csvData = sheetData
+        .map((row,index) => [
+            id_anfitrion,                                 // id_anfitrion
+            documento_id,                                 // documento_id            
+            'EXCEL',                                        //origen
+            (row[0] || '').toString().replace(/,/g, ''),    //A id_producto
+            (row[1] || '').toString().replace(/,/g, ''),    //B nombre
+            (row[2] || '').toString().replace(/,/g, ''),    //C descripcion
+        ].join(','))
+        .join('\n');
+        
+        //console.log(csvData);
+
+      await pool.query('BEGIN');
+  
+      /////////////////////////////////////////////////////////////
+      //console.log(csvData);
+      // Convertimos la cadena CSV a un flujo de lectura
+      const csvReadableStream = Readable.from([csvData]);
+
+      // Insertamos los datos desde el CSV a la tabla mct_datos
+      const client = await pool.connect();
+      try {
+        //const ingestStream = client.query(copyFrom(`COPY mst_producto FROM STDIN WITH CSV HEADER DELIMITER ','`))
+        const ingestStream = client.query(copyFrom(`
+            COPY mst_producto_grupo (id_usuario, documento_id, origen, id_producto, nombre, descripcion)
+            FROM STDIN WITH CSV DELIMITER ',' HEADER;
+        `));
+        await pipeline(csvReadableStream, ingestStream)
+      } finally {
+        client.release();
+      }
+
+      await pool.query('COMMIT');
+      /////////////////////////////////////////////////////////////
+      //console.log("final");
+      res.status(200).json({ mensaje: 'Hoja Excel insertado correctamente en base de datos' });
+    } catch (error) {
+      console.log(error);
+      await pool.query('ROLLBACK');
+      next(error);
+    }
+};
+const eliminarGrupoMasivo = async (req,res,next)=> {
+    try {
+        const {id_anfitrion, documento_id,origen} = req.params;
+        let strSQL;
+        
+        //primero eliminar todos detalles
+        strSQL = "DELETE FROM mst_producto_grupo ";
+        strSQL += " WHERE id_usuario = $1";
+        strSQL += " AND documento_id = $2";
+        strSQL += " AND origen = $3";
+
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,origen]);
+        console.log(strSQL,[id_anfitrion,documento_id,origen]);
+        if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Productos no encontrados"
+            });
+
+
+        return res.sendStatus(204);
+    } catch (error) {
+        console.log(error.message);
+    }
+
+};
+
 module.exports = {
     obtenerTodosProductos,
     obtenerTodosProductosPrecios,
@@ -565,5 +745,11 @@ module.exports = {
     importarExcelProductos,
     importarExcelProductosPrecios,
     obtenerProductoPrecio,
-    actualizarProductoPrecio
+    actualizarProductoPrecio,
+    
+    crearGrupo,
+    eliminarGrupo,
+    actualizarGrupo,
+    importarExcelGrupos,
+    eliminarGrupoMasivo
  }; 

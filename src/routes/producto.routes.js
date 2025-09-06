@@ -3,7 +3,7 @@ const multer = require('multer');
 const router = Router();
 const upload = multer();
 
-const {obtenerTodosProductos,obtenerProducto,crearProducto, actualizarProducto, eliminarProducto, obtenerProductoIgv, importarExcelProductos, eliminarProductoMasivo, obtenerTodosProductosPopUp, importarExcelProductosPrecios, obtenerTodosProductosPrecios, obtenerParametrosVenta, obtenerPreciosProducto, actualizarProductoPrecio, obtenerProductoPrecio, obtenerTodosGruposPopUp} = require('../controllers/producto.controllers')
+const {obtenerTodosProductos,obtenerProducto,crearProducto, actualizarProducto, eliminarProducto, obtenerProductoIgv, importarExcelProductos, eliminarProductoMasivo, obtenerTodosProductosPopUp, importarExcelProductosPrecios, obtenerTodosProductosPrecios, obtenerParametrosVenta, obtenerPreciosProducto, actualizarProductoPrecio, obtenerProductoPrecio, obtenerTodosGruposPopUp, crearGrupo, importarExcelGrupos, actualizarGrupo, eliminarGrupoMasivo, eliminarGrupo} = require('../controllers/producto.controllers')
 
 router.get('/ad_producto/:id_anfitrion/:documento_id', obtenerTodosProductos);
 router.get('/ad_productoprecio/:id_anfitrion/:documento_id', obtenerTodosProductosPrecios);
@@ -28,5 +28,12 @@ router.delete('/ad_productomasivo/:id_anfitrion/:documento_id/:origen', eliminar
 //Seccion precios
 router.get('/ad_productoprecio/:id_anfitrion/:documento_id/:id_producto/:unidades', obtenerProductoPrecio);
 router.put('/ad_productoprecio/:id_anfitrion/:documento_id/:id_producto/:unidades', actualizarProductoPrecio);
+
+//Seccion Grupos
+router.post('/ad_grupo', crearGrupo);
+router.delete('/ad_grupo/:id_anfitrion/:documento_id/:id_grupo', eliminarGrupo);
+router.post('/ad_grupoexcel', upload.single('archivoExcel'), importarExcelGrupos);
+router.put('/ad_grupo/:id_anfitrion/:documento_id/:id_grupo', actualizarGrupo);
+router.delete('/ad_grupomasivo/:id_anfitrion/:documento_id/:origen', eliminarGrupoMasivo);
 
 module.exports = router;
