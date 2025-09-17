@@ -44,6 +44,9 @@ const obtenerRegistroTodos = async (req, res, next) => {
     efectivo,
     forma_pago2,
     efectivo2,
+    gre_vfirmado,
+    gre_serie,
+    gre_numero,
     elemento
   `;
 
