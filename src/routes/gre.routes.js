@@ -6,7 +6,7 @@ router.get('/ad_ventagre/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegi
 
 router.get('/ad_ventagre/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/', obtenerRegistroGre);
 router.post('/ad_ventagre/:periodo/:id_anfitrion/:documento_id', crearRegistro); //crea manual
-router.post('/ad_ventagreref/:periodo/:id_anfitrion/:documento_id', crearRegistroRef); //crea desde ventas
+router.post('/ad_ventagreref/:periodo/:id_anfitrion/:documento_id/:cod_emitir', crearRegistroRef); //crea desde ventas
 
 router.post('/ad_ventagresunat', generarGREexpertcont); //proveedor 02 expercont now ;)
 

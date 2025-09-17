@@ -647,7 +647,7 @@ const crearRegistroRef = async (req, res, next) => {
     //Crea registro en BB con referencia de venta individual
     //Proc almacenado: Recibe json con datos de cabecera y en tabla mve_ventadet productos
     let strSQL;
-    const { id_anfitrion, documento_id, periodo, cod_emitir } = req.params;
+    const { periodo, id_anfitrion, documento_id, cod_emitir } = req.params;
 
     const datos = req.body;
     const datosJSON = JSON.stringify(datos);
