@@ -63,7 +63,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
     params.push(fechaFiltro);
   }
 
-  query += " ORDER BY r_fecemi, r_cod, r_serie, r_numero DESC";
+  query += " ORDER BY r_fecemi DESC, r_cod, r_serie, r_numero DESC";
 
   console.log("SQL:", query, "PARAMS:", params);
 
