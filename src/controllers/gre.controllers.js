@@ -651,6 +651,7 @@ const crearRegistroRef = async (req, res, next) => {
 
     const datos = req.body;
     const datosJSON = JSON.stringify(datos);
+    console.log(datosJSON,periodo, id_anfitrion, documento_id, cod_emitir);
     strSQL = "SELECT cod, serie, numero FROM fve_generagrejson($1, $2, $3, $4, $5)";
     try {
         const parametros = [datosJSON, id_anfitrion, documento_id, periodo, cod_emitir];
