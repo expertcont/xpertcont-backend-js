@@ -45,8 +45,9 @@ const obtenerRegistroTodos = async (req, res, next) => {
     forma_pago2,
     efectivo2,
     gre_vfirmado,
-    gre_serie,
-    gre_numero,
+    (gre_cod || '-' ||
+      gre_serie || '-' ||
+      gre_numero)::VARCHAR(50) AS gre_ref,
     elemento
   `;
 
