@@ -4,7 +4,7 @@ const fetch = require('node-fetch');
 
 const obtenerRegistroTodos = async (req, res, next) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
-  console.log(periodo, id_anfitrion, documento_id, dia);
+  //console.log(periodo, id_anfitrion, documento_id, dia);
 
   const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
 
@@ -69,7 +69,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
 
   query += " ORDER BY r_fecemi DESC, r_cod, r_serie, r_numero DESC";
 
-  console.log("SQL:", query, "PARAMS:", params);
+  //console.log("SQL:", query, "PARAMS:", params);
 
   try {
     const { rows } = await pool.query(query, params);
