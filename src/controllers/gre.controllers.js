@@ -342,76 +342,115 @@ const actualizarRegistro = async (req,res,next)=> {
           periodo,        //01
           id_anfitrion,   //02
           documento_id,   //03    
-          r_cod,          //04
-          r_serie,        //05
-          r_numero,       //06
+          cod,          //04
+          serie,        //05
+          numero,       //06
           
-          id_invitado,        //07
-          fecha,              //08
-          r_id_doc,           //09
-          r_documento_id,     //10
-          r_razon_social,     //11
-          r_direccion,        //12
+          fecha_emision,            //07
+          fecha_traslado,           //08
+          
+          guia_motivo_id,           //09
+          guia_modalidad_id,        //10
+          
+          partida_ubigeo,           //11
+          partida_direccion,        //12
+          llegada_ubigeo,           //13
+          llegada_direccion,        //14
+          peso_total,               //15
+
+          transp_ruc,               //16
+          transp_razon_social,      //17
+
+          conductor_dni,            //18
+          conductor_nombres,        //19
+          conductor_apellidos,      //20
+          conductor_licencia,       //21
+          vehiculo_placa,           //22
+
+          destinatario_tipo,        //23
+          destinatario_ruc_dni,     //24
+          destinatario_razon_social,  //25
+          
+          id_invitado,        //26
 
         } = req.body;
         //faltan mas parametros de razon social ruc y direccion
     
         let strSQL;
         let result;
-        const parametrosdet = [   
-          //Seccion parametros
-          periodo,            //01
-          id_anfitrion,       //02
-          documento_id,       //03
-          r_cod,              //04
-          r_serie,            //05
-          r_numero,           //06
-          devuelveCadenaNull(fecha)  //07
-      ];
 
         const parametros = [   
             //Seccion parametros
             periodo,            //01
             id_anfitrion,       //02
             documento_id,       //03
-            r_cod,              //04
-            r_serie,            //05
-            r_numero,           //06
+            cod,              //04
+            serie,            //05
+            numero,           //06
 
-            devuelveCadenaNull(fecha),          //07
-            devuelveCadenaNull(r_id_doc),       //08
-            devuelveCadenaNull(r_documento_id), //09
-            devuelveCadenaNull(r_razon_social), //10
-            devuelveCadenaNull(r_direccion),    //11
-            id_invitado                         //12
+            devuelveCadenaNull(fecha_emision),          //07
+            devuelveCadenaNull(fecha_traslado),       //08
+            devuelveCadenaNull(guia_motivo_id),           //09
+            devuelveCadenaNull(guia_modalidad_id),        //10
+            
+            devuelveCadenaNull(partida_ubigeo),           //11
+            devuelveCadenaNull(partida_direccion),        //12
+            devuelveCadenaNull(llegada_ubigeo),           //13
+            devuelveCadenaNull(llegada_direccion),        //14
+            devuelveCadenaNull(peso_total),               //15
+
+            devuelveCadenaNull(transp_ruc),               //16
+            devuelveCadenaNull(transp_razon_social),      //17
+
+            devuelveCadenaNull(conductor_dni),            //18
+            devuelveCadenaNull(conductor_nombres),        //19
+            devuelveCadenaNull(conductor_apellidos),      //20
+            devuelveCadenaNull(conductor_licencia),       //21
+            devuelveCadenaNull(vehiculo_placa),           //22
+
+            devuelveCadenaNull(destinatario_tipo),        //23
+            devuelveCadenaNull(destinatario_ruc_dni),     //24
+            devuelveCadenaNull(destinatario_razon_social),  //25
+
+            id_invitado                 //26
         ];
-        strSQL = "UPDATE mve_gredet SET ";
-        strSQL += " r_fecemi = $7";
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        result = await pool.query(strSQL,parametrosdet);
 
-        strSQL = "UPDATE mve_gre SET ";
-        strSQL += "  r_fecemi = $7";
-        strSQL += " ,r_id_doc = $8";
-        strSQL += " ,r_documento_id = $9";
-        strSQL += " ,r_razon_social = $10";
-        strSQL += " ,r_direccion = $11";
-        strSQL += " ,ctrl_mod_us = $12";
-        strSQL += " ,ctrl_mod = CURRENT_TIMESTAMP";
+        strSQL = `UPDATE mve_gre SET 
+                         fecha_emision = $7
+                        ,fecha_traslado = $8
+                        ,guia_motivo_id = $9
+                        ,guia_modalidad_id = $10
+                        
+                        ,partida_ubigeo = $11
+                        ,partida_direccion = $12
+                        ,llegada_ubigeo = $13
+                        ,llegada_direccion = $14
+                        ,peso_total = $15
 
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " RETURNING *";
-        result = await pool.query(strSQL,parametros);
+                        ,transp_ruc = $16
+                        ,transp_razon_social = $17
+
+                        ,conductor_dni = $18
+                        ,conductor_nombres = $19
+                        ,conductor_apellidos = $20
+                        ,conductor_licencia = $21
+                        ,vehiculo_placa = $22
+
+                        ,destinatario_tipo = $23
+                        ,destinatario_ruc_dni = $24
+                        ,destinatario_razon_social = $25
+
+                        ,ctrl_mod_us = $26
+                        ,ctrl_mod = CURRENT_TIMESTAMP
+
+                  WHERE periodo = $1
+                  AND id_usuario = $2
+                  AND documento_id = $3
+                  AND cod = $4
+                  AND serie = $5
+                  AND numero = $6
+                  RETURNING *`;
+      result = await pool.query(strSQL,parametros);
 
       // Si la función devolvió resultados, enviarlos al frontend
       if (result.rows.length > 0) {
@@ -456,10 +495,10 @@ const generarGREexpertcont = async (req,res,next)=> {
                                         p_r_serie,
                                         p_r_numero);
         
-        //console.log('jsonString armado: ',jsonString);
+        console.log('jsonString armado: ',jsonString);
 
         // 5. Enviar JSON a la API 
-        const strUrlApi = "https://expertcont-api-sunat.up.railway.app/cpesunat";
+        const strUrlApi = "https://expertcont-api-sunat.up.railway.app/gresunat";
         
         const apiResponse = await fetch(strUrlApi, {
           method: "POST",
@@ -496,11 +535,11 @@ const generarGREexpertcont = async (req,res,next)=> {
               if (data.empresa.modo === "1") {
                   await pool.query(
                     `
-                    UPDATE mve_venta set r_vfirmado = $8
+                    UPDATE mve_gre set vfirmado = $7
                     WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
-                      AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
+                      AND cod = $4 AND serie = $5 AND numero = $6 
                     `,
-                    [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, codigo_hash]
+                    [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, codigo_hash]
                   );
               }
           }
@@ -547,39 +586,35 @@ const generaJsonPrevioGREexpertcont = async( p_periodo,
         }
         
         // 2. Lectura de datos de la tabla mve_venta
-        const ventaQuery = await pool.query(
+        const registroQuery = await pool.query(
           `
           SELECT * FROM mve_gre
           WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
-            AND r_cod = $4 AND r_serie = $5 AND r_numero = $6
+            AND cod = $4 AND serie = $5 AND numero = $6
           `,
           [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero]
         );
-        const venta = ventaQuery.rows[0];
-        if (!venta) {
+        const registro = registroQuery.rows[0];
+        if (!registro) {
           console.log("GRE NO ENCONTRADA");
           return "GRE NO ENCONTRADA";
           //return res.status(404).json({ error: "Datos de venta no encontrados" });
         }
     
         // 3. Lectura de datos de la tabla mve_gredet (es mejor y rapido la lectura de tabla guias, no del universo de ventasdet ;) ... )
-        const ventadetQuery = await pool.query(
+        const regdetQuery = await pool.query(
           `
           SELECT * FROM mve_gredet
           WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
-            AND r_cod = $4 AND r_serie = $5 AND r_numero = $6
+            AND cod = $4 AND serie = $5 AND numero = $6
           `,
           [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero]
         );
-        const ventadet = ventadetQuery.rows;
+        const regdet = regdetQuery.rows;
     
         // 4. Construir el JSON, 
         //Esto va para Bearer
         //token:datos.token_factintegral,
-        
-        //Por seguridad datos sensibles en backend API
-        //usu_secundario_produccion_user: datos.secund_user,
-        //usu_secundario_produccion_password: datos.secund_pwd,
 
         const jsonPayload = {
           empresa: {
@@ -591,51 +626,41 @@ const generaJsonPrevioGREexpertcont = async( p_periodo,
             distrito: datos.distrito,
             provincia: datos.provincia,
             departamento: datos.departamento,
-            modo: datos.modo, //NEW cuidado ...  0: prueba  1:produccion
+            modo: datos.modo, //NEW cuidado ...  0: prueba  1:produccion, pero en guias creo q no hay modo prueba
           },
-          cliente: {
-            razon_social_nombres: venta.r_razon_social,
-            documento_identidad: venta.r_documento_id,
-            tipo_identidad: venta.r_id_doc,
-            cliente_direccion: venta.r_direccion,
+          guia: {
+            cod: registro.cod,
+            serie: registro.serie,
+            numero: registro.numero,
+            fecha_emision: registro.fecha_emision.toISOString().split("T")[0],
+            fecha_traslado: registro.fecha_traslado.toISOString().split("T")[0],
+            guia_motivo_id: registro.guia_motivo_id,
+            guia_modalidad_id: registro.guia_modalidad_id,
+            
+            transp_ruc: registro.transp_ruc,
+            transp_razon_social: registro.transp_razon_social,
+            conductor_dni: registro.conductor_dni,
+            conductor_nombres: registro.conductor_nombres,
+            conductor_apellidos: registro.conductor_apellidos,
+            conductor_licencia: registro.conductor_licencia,
+            vehiculo_placa: registro.vehiculo_placa,
+
+            destinatario_tipo: registro.destinatario_tipo,
+            destinatario_ruc_dni: registro.destinatario_ruc_dni,
+            destinatario_razon_social: registro.destinatario_razon_social,
+            
+            partida_ubigeo: registro.partida_ubigeo,
+            partida_direccion: registro.partida_direccion,
+            llegada_ubigeo: registro.llegada_ubigeo,
+            llegada_direccion: registro.llegada_direccion,
+            
+            peso_total: registro.peso_total,
           },
-          venta: {
-            codigo: (venta.r_cod_ref==null)? venta.r_cod:venta.r_cod_ref, //new mod
-            serie: (venta.r_serie_ref==null)? venta.r_serie:venta.r_serie_ref,      //new mod
-            numero: (venta.r_numero_ref==null)? venta.r_numero:venta.r_numero_ref,  //new mod
-            
-            fecha_emision: venta.r_fecemi.toISOString().split("T")[0],
-            hora_emision: venta.ctrl_crea.toISOString().split("T")[1].split(".")[0],
-            
-            fecha_vencimiento: "",
-            moneda_id: "PEN",     //hardcode temporal
-            forma_pago_id: "Contado", //hardcode temporal
-            
-            base_gravada: venta.r_base002,
-            base_exonerada: venta.r_base003, //new
-            base_inafecta: "",
-            base_gratuita: venta.r_base_gratuita, //new
-            total_igv: venta.r_igv002,
-            vendedor:"",            
-            nota: venta.glosa || "",
-            
-            ref_codigo:(venta.r_cod_ref==null)? '':venta.r_cod, //new mod
-            ref_serie:(venta.r_serie_ref==null)? '':venta.r_serie,      //new mod
-            ref_numero:(venta.r_numero_ref==null)? '':venta.r_numero,   //new mod
-            
-            motivo_id:"01", //anulacion hardcodeado temporal
-            motivo:"Anulacion de la Operacion" //anulacion hardcodeado temporal
-            
-          },
-          items: ventadet.map((item) => ({
-            producto: item.descripcion,
+          items: regdet.map((item) => ({
             cantidad: item.cantidad,
-            precio_base: item.monto_base,
-            codigo_sunat: "-",
-            codigo_producto: item.id_producto,
+            producto: item.descripcion,
+            codigo: item.id_producto,
             codigo_unidad: item.cont_und,
-            tipo_igv_codigo: (item.tipo_igv_codigo && item.tipo_igv_codigo.toString().trim()) || "10",
-            porc_igv: item.porc_igv,
           })),
         };
 
