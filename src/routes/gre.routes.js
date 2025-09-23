@@ -1,10 +1,11 @@
 const {Router} = require('express');
 const router = Router();
-const {obtenerRegistroGreTodos,crearRegistro,actualizarRegistro,eliminarRegistro, generarGREexpertcont, obtenerRegistroGre, crearRegistroRef} = require('../controllers/gre.controllers')
+const {obtenerRegistroGreTodos,crearRegistro,actualizarRegistro,eliminarRegistro, generarGREexpertcont, obtenerRegistroGre, crearRegistroRef, obtenerUbigeos} = require('../controllers/gre.controllers')
 
 router.get('/ad_ventagre/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroGreTodos);
 
 router.get('/ad_ventagre/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/', obtenerRegistroGre);
+router.get('/ad_ventaubigeo', obtenerUbigeos);
 router.post('/ad_ventagre/:periodo/:id_anfitrion/:documento_id', crearRegistro); //crea manual
 router.post('/ad_ventagreref/:periodo/:id_anfitrion/:documento_id/:id_invitado/:cod_emitir', crearRegistroRef); //crea desde ventas
 

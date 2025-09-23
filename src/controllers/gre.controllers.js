@@ -703,6 +703,29 @@ const crearRegistroRef = async (req, res, next) => {
     }
 };
 
+const obtenerUbigeos = async (req, res, next) => {
+  // Definición compacta de columnas
+  const columnas = `
+    id_catalogo as codigo,
+    nombre as descripcion,
+    '-'::varchar(2) as auxiliar,
+  `;
+
+  let query = `
+    SELECT ${columnas}
+    FROM mct_ubigeo
+    ORDER BY nombre
+  `;
+
+  try {
+    const { rows } = await pool.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error en obtener Ubigeos:", error.message);
+    next(error);
+  }
+};
+
 module.exports = {
     obtenerRegistroGreTodos,
     obtenerRegistroGre,
@@ -711,5 +734,6 @@ module.exports = {
     eliminarRegistro,
     eliminarRegistroItem,
     actualizarRegistro,
-    generarGREexpertcont
+    generarGREexpertcont,
+    obtenerUbigeos
  }; 
