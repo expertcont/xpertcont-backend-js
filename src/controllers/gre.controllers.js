@@ -708,7 +708,7 @@ const obtenerUbigeos = async (req, res, next) => {
   const columnas = `
     id_catalogo as codigo,
     nombre as descripcion,
-    '-'::varchar(2) as auxiliar,
+    '-'::varchar(2) as auxiliar
   `;
 
   let query = `
