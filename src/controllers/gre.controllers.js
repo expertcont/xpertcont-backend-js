@@ -630,7 +630,7 @@ const generaJsonPrevioGREexpertcont = async( p_periodo,
             modo: datos.modo, //NEW cuidado ...  0: prueba  1:produccion, pero en guias creo q no hay modo prueba
           },
           guia: {
-            cod: registro.cod,
+            codigo: registro.cod,
             serie: registro.serie,
             numero: registro.numero,
             fecha_emision: registro.fecha_emision.toISOString().split("T")[0],
