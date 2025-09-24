@@ -514,7 +514,7 @@ const generarGREexpertcont = async (req,res,next)=> {
         });
         
         const responseData = await apiResponse.json();
-        //console.log("respuesta generada: ",responseData); //agregamos
+        console.log("respuesta generada: ",responseData); //agregamos
 
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
@@ -615,8 +615,8 @@ const generaJsonPrevioGREexpertcont = async( p_periodo,
         // 4. Construir el JSON, 
         //Esto va para Bearer
         //token:datos.token_factintegral,
-        console.log(regdet);
-        
+        //console.log(regdet);
+
         const jsonPayload = {
           empresa: {
             ruc: datos.documento_id,
