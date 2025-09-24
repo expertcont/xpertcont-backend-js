@@ -615,7 +615,8 @@ const generaJsonPrevioGREexpertcont = async( p_periodo,
         // 4. Construir el JSON, 
         //Esto va para Bearer
         //token:datos.token_factintegral,
-
+        console.log(regdet);
+        
         const jsonPayload = {
           empresa: {
             ruc: datos.documento_id,
