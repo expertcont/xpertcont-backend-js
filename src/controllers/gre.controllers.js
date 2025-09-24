@@ -635,6 +635,7 @@ const generaJsonPrevioGREexpertcont = async( p_periodo,
             numero: registro.numero,
             fecha_emision: registro.fecha_emision.toISOString().split("T")[0],
             fecha_traslado: registro.fecha_traslado.toISOString().split("T")[0],
+            hora_emision: registro.hora_emision,
             guia_motivo_id: registro.guia_motivo_id,
             guia_modalidad_id: registro.guia_modalidad_id,
             
