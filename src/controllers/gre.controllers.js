@@ -483,11 +483,14 @@ const generarGREexpertcont = async (req,res,next)=> {
         p_documento_id,
         p_r_cod,
         p_r_serie,
-        p_r_numero
+        p_r_numero,
+        p_comprobante
       } = req.body;
       
       try {
-
+        //const [COD, SERIE, NUMERO] = (p_comprobante || "").split("-");
+        const [COD = "", SERIE = "", NUMERO = ""] = (p_comprobante ?? "").split("-");
+        
         const jsonString = await generaJsonPrevioGREexpertcont(p_periodo,
                                         p_id_usuario,
                                         p_documento_id,
@@ -541,6 +544,18 @@ const generarGREexpertcont = async (req,res,next)=> {
                     `,
                     [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, codigo_hash]
                   );
+                  //Si existe valor er p_comprobante, ejecutamos actualizacion
+                  //se ejecuta SOLO si p_comprobante NO es null/undefined y además es truthy
+                  if (p_comprobante ?? false) { 
+                      await pool.query(
+                        `
+                        UPDATE mve_venta set gre_vfirmado = $7
+                        WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+                          AND cod = $4 AND serie = $5 AND numero = $6 
+                        `,
+                        [p_periodo, p_id_usuario, p_documento_id, COD, SERIE, NUMERO, codigo_hash]
+                      );
+                  }
               }
           }
 
