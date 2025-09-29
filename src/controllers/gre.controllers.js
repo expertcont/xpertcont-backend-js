@@ -759,7 +759,7 @@ const liberarGREexpertcont = async (req,res,next)=> {
         await pool.query('BEGIN');
         await pool.query(
           `
-          UPDATE mve_gre set vfirmado=null, ref_cod=null, ref_serie=null, ref_numero=null
+          UPDATE mve_gre set libre = '1'
           WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
             AND cod = $4 AND serie = $5 AND numero = $6 
           `,
