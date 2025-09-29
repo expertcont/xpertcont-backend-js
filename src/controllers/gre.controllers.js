@@ -551,7 +551,7 @@ const generarGREexpertcont = async (req,res,next)=> {
                         `
                         UPDATE mve_venta set gre_vfirmado = $7
                         WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
-                          AND cod = $4 AND serie = $5 AND numero = $6 
+                          AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = 1
                         `,
                         [p_periodo, p_id_usuario, p_documento_id, COD, SERIE, NUMERO, codigo_hash]
                       );
