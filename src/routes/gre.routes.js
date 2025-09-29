@@ -1,6 +1,6 @@
 const {Router} = require('express');
 const router = Router();
-const {obtenerRegistroGreTodos,crearRegistro,actualizarRegistro,eliminarRegistro, generarGREexpertcont, obtenerRegistroGre, crearRegistroRef, obtenerUbigeos} = require('../controllers/gre.controllers')
+const {obtenerRegistroGreTodos,crearRegistro,actualizarRegistro,eliminarRegistro, generarGREexpertcont, obtenerRegistroGre, crearRegistroRef, obtenerUbigeos, liberarGREexpertcont} = require('../controllers/gre.controllers')
 
 router.get('/ad_ventagre/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroGreTodos);
 
@@ -10,6 +10,7 @@ router.post('/ad_ventagre/:periodo/:id_anfitrion/:documento_id', crearRegistro);
 router.post('/ad_ventagreref/:periodo/:id_anfitrion/:documento_id/:id_invitado/:cod_emitir', crearRegistroRef); //crea desde ventas
 
 router.post('/ad_ventagresunat', generarGREexpertcont); //proveedor 02 expercont now ;)
+router.put('/ad_ventagresunat', liberarGREexpertcont); //libera la venta para generar nueva guia
 
 router.put('/ad_ventagre', actualizarRegistro); //modifica datos cabecera
 router.delete('/ad_ventagre', eliminarRegistro); //elimina ultimo registro de venta

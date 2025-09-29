@@ -743,6 +743,51 @@ const obtenerUbigeos = async (req, res, next) => {
   }
 };
 
+const liberarGREexpertcont = async (req,res,next)=> {
+    //Liberar
+    const {
+        p_periodo,
+        p_id_usuario,
+        p_documento_id,
+        p_r_cod,
+        p_r_serie,
+        p_r_numero,
+        p_comprobante
+      } = req.body;
+      
+      try {
+        await pool.query('BEGIN');
+        await pool.query(
+          `
+          UPDATE mve_gre set vfirmado=null, ref_cod=null, ref_serie=null, ref_numero=null
+          WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+            AND cod = $4 AND serie = $5 AND numero = $6 
+          `,
+          [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero]
+        );
+        //Si existe valor er p_comprobante, ejecutamos actualizacion
+        //se ejecuta SOLO si p_comprobante NO es null/undefined y además es truthy
+        if (p_comprobante ?? false) { 
+            const [R_COD = "", R_SERIE = "", R_NUMERO = ""] = (p_comprobante ?? "").split("-");
+            await pool.query(
+              `
+              UPDATE mve_venta set gre_vfirmado=null, gre_cod=null, gre_serie=null, gre_numero=null
+              WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
+                AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = 1
+              `,
+              [p_periodo, p_id_usuario, p_documento_id, R_COD, R_SERIE, R_NUMERO]
+            );
+        }
+        await pool.query('COMMIT');
+        res.status(200).json({ success: true });
+
+      } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Error:", error);
+        res.status(500).json({ error: error.message });
+      }
+};
+
 module.exports = {
     obtenerRegistroGreTodos,
     obtenerRegistroGre,
@@ -752,5 +797,6 @@ module.exports = {
     eliminarRegistroItem,
     actualizarRegistro,
     generarGREexpertcont,
+    liberarGREexpertcont,
     obtenerUbigeos
  }; 
