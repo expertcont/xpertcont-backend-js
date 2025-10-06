@@ -295,7 +295,7 @@ const generarRegistro = async (req,res,next)=> {
     try {
       // Ejecutar la función fve_crear_pedido en PostgreSQL
       const result = await pool.query(
-        `SELECT r_numero, r_fecemi, r_monto_total 
+        `SELECT numero, fecha_emision 
          FROM fst_crear_movimiento($1, $2, $3, $4, $5)`,
         [id_anfitrion, documento_id, periodo, id_invitado, fecha]
       );
