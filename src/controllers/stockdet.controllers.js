@@ -3,21 +3,20 @@ const pool = require('../db');
 const obtenerMovimientoDet = async (req,res,next)=> {
     //Detalles de un Pedido
     try {
-        const {periodo,id_anfitrion,documento_id,cod,serie,num,elem} = req.params;
+        const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
         let strSQL;
         strSQL = "SELECT * ";
         strSQL += " FROM mst_movimientodet ";
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
+        strSQL += " AND cod = $4";
+        strSQL += " AND serie = $5";
+        strSQL += " AND numero = $6";
         strSQL += " ORDER BY item";
         //console.log(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
         
-        const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
+        const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
         
         //eSTE MENSAJE DE VENTGA NO ENCONTRADA, CONFUNDE AL BUCLE PARA RENDERIZAR LOS DATOS
         //MEJOR QUE SALGA ARRAY VACIO, AL MENOS ASI ENTIENDE QUE NO HAY NADA
@@ -36,22 +35,21 @@ const obtenerMovimientoDet = async (req,res,next)=> {
 const obtenerMovimientoDetItem = async (req,res,next)=> {
     //DEtalles de un Pedido
     try {
-        const {periodo,id_anfitrion,documento_id,cod,serie,num,elem,item} = req.params;
+        const {periodo,id_anfitrion,documento_id,cod,serie,num,item} = req.params;
         let strSQL ;
         strSQL = "SELECT * ";
         strSQL += " FROM mst_movimientodet ";
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
-        strSQL += " AND item = $8";
+        strSQL += " AND cod = $4";
+        strSQL += " AND serie = $5";
+        strSQL += " AND numero = $6";
+        strSQL += " AND item = $7";
         strSQL += " ORDER BY item";
         //console.log(strSQL,[cod,serie,num,elem,item]);
         
-        const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem,item]);
+        const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,item]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -72,20 +70,19 @@ const crearMovimientoDet = async (req,res,next)=> {
         req.body.r_cod,             //04
         req.body.r_serie,           //05
         req.body.r_numero,          //06
-        req.body.elemento,          //07
-        req.body.r_fecemi,          //08
-        req.body.id_producto,       //09
-        req.body.descripcion,       //10
-        req.body.cantidad,          //11
-        req.body.precio_unitario,   //12
-        req.body.precio_neto,       //13
-        req.body.porc_igv,          //14
-        req.body.cont_und           //15
+        req.body.r_fecemi,          //07
+        req.body.id_producto,       //08
+        req.body.descripcion,       //09
+        req.body.cantidad,          //10
+        req.body.precio_unitario,   //11
+        req.body.precio_neto,       //12
+        req.body.porc_igv,          //13
+        req.body.cont_und           //14
     ];
         
     const strSQL = `
         SELECT public.fve_movimientodetinserta(
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
         ) AS resultado;
         `;
 
@@ -117,14 +114,13 @@ const eliminarMovimientoDet = async (req,res,next)=> {
         req.params.periodo,           //03
         req.params.cod,             //04
         req.params.serie,           //05
-        req.params.num,          //06
-        req.params.elem,          //07
-        req.params.item               //08
+        req.params.num,             //06
+        req.params.item             //07
     ];
         
     const strSQL = `
         SELECT public.fve_movimientodetelimina(
-            $1, $2, $3, $4, $5, $6, $7, $8
+            $1, $2, $3, $4, $5, $6, $7
         ) AS resultado;
         `;
     //console.log(strSQL);
@@ -155,18 +151,17 @@ const actualizarMovimientoDet = async (req,res,next)=> {
         req.params.cod,             //04
         req.params.serie,           //05
         req.params.num,             //06
-        req.params.elem,            //07
-        req.params.item,            //08
+        req.params.item,            //07
         
-        req.body.descripcion,       //09
-        req.body.cantidad,          //10
-        req.body.precio_unitario,   //11
-        req.body.precio_neto        //12
+        req.body.descripcion,       //08
+        req.body.cantidad,          //09
+        req.body.precio_unitario,   //10
+        req.body.precio_neto        //11
     ];
         
     const strSQL = `
         SELECT public.fve_movimientodetactualiza(
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
         ) AS resultado;
         `;
 
