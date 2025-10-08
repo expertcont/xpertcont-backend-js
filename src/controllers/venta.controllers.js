@@ -1281,6 +1281,7 @@ const generarPDFexpertcont = async (req,res,next)=> {
         const endpoint = p_formato === "A4" ? "/cpesunatpdfprevioa4" : "/cpesunatpdfprevio";
 
         const strUrlApi = `${baseUrl}${endpoint}`;
+        console.log(strUrlApi);
 
         const apiResponse = await fetch(strUrlApi, {
           method: "POST",
