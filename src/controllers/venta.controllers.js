@@ -1111,13 +1111,13 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             vendedor:"",            
             nota: venta.glosa || "",
             
-            ref_codigo:(venta.r_cod_ref==null)? '':venta.r_cod, //new mod
-            ref_serie:(venta.r_serie_ref==null)? '':venta.r_serie,      //new mod
-            ref_numero:(venta.r_numero_ref==null)? '':venta.r_numero,   //new mod
+            ref_codigo:(venta.r_cod_ref==null)? '':venta.r_cod, 
+            ref_serie:(venta.r_serie_ref==null)? '':venta.r_serie,     
+            ref_numero:(venta.r_numero_ref==null)? '':venta.r_numero,  
             
-            motivo_id:"01", //anulacion hardcodeado temporal
-            motivo:"Anulacion de la Operacion" //anulacion hardcodeado temporal
-            
+            motivo_id: "01",                     //anulacion hardcodeado temporal
+            motivo: "Anulacion de la Operacion", //anulacion hardcodeado temporal
+            r_vfirmado: venta.r_vfirmado         //New para reimpresion de PDF
           },
           items: ventadet.map((item) => ({
             producto: item.descripcion,
@@ -1253,6 +1253,76 @@ const obtenerTotalRecaudacion = async (req, res) => {
   }
 };
 
+const generarPDFexpertcont = async (req,res,next)=> {
+    //Consumo mi propio API ;) thanks
+    const {
+        p_periodo,
+        p_id_usuario,
+        p_documento_id,
+        p_r_cod,
+        p_r_serie,
+        p_r_numero,
+        p_elemento,
+        p_formato
+      } = req.body;
+      
+      try {
+
+        const jsonString = await generaJsonPrevioCPEexpertcont(p_periodo,
+                                        p_id_usuario,
+                                        p_documento_id,
+                                        p_r_cod,
+                                        p_r_serie,
+                                        p_r_numero,
+                                        p_elemento);
+        
+        //console.log('jsonString armado: ',jsonString);
+        const baseUrl = "https://expertcont-api-sunat.up.railway.app";
+        const endpoint = p_formato === "A4" ? "/cpesunatpdfprevioa4" : "/cpesunatpdfprevio";
+
+        const strUrlApi = `${baseUrl}${endpoint}`;
+
+        const apiResponse = await fetch(strUrlApi, {
+          method: "POST",
+          //body: JSON.stringify(jsonString),
+          body: jsonString,
+          headers: {
+                "Content-Type":"application/json"
+          }
+          /*headers: {
+            "Content-Type":"application/json",
+            'Authorization': `Bearer ${datos.token_factintegral}`
+          }*/
+        });
+        
+        const responseData = await apiResponse.json();
+        //console.log("respuesta generada: ",responseData); //agregamos
+
+        if (apiResponse.ok) {
+          // 6. Extraer datos de la respuesta y retornar
+          const {
+            respuesta_sunat_descripcion,
+            ruta_pdf
+          } = responseData;
+        
+          // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
+
+          return res.json({
+            respuesta_sunat_descripcion,
+            ruta_pdf
+          });
+        } else {
+          return res
+            .status(apiResponse.status)
+            .json({ error: responseData || "Error en la API de terceros" });
+        }
+    
+      } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ error: "Error en el servidor me lleva" });
+      }
+};
+
 module.exports = {
     obtenerRegistroTodos,
     obtenerRegistro,
@@ -1267,6 +1337,7 @@ module.exports = {
     anularRegistro,
     generarCPE,
     generarCPEexpertcont,
+    generarPDFexpertcont, //New
     obtenerTotalVentas,
     obtenerTotalRecaudacion
  }; 

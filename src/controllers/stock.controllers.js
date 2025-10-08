@@ -39,7 +39,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
   const params = [periodo, id_anfitrion, documento_id];
 
   if (fechaFiltro) {
-    query += " AND r_fecemi = $4";
+    query += " AND fecha_emision = $4";
     params.push(fechaFiltro);
   }
 
@@ -73,9 +73,9 @@ const obtenerRegistro = async (req,res,next)=> {
         strSQL += " WHERE mst_movimiento.periodo = $1";
         strSQL += " AND mst_movimiento.id_usuario = $2";
         strSQL += " AND mst_movimiento.documento_id = $3";
-        strSQL += " AND mst_movimiento.r_cod = $4";
-        strSQL += " AND mst_movimiento.r_serie = $5";
-        strSQL += " AND mst_movimiento.r_numero = $6";
+        strSQL += " AND mst_movimiento.cod = $4";
+        strSQL += " AND mst_movimiento.serie = $5";
+        strSQL += " AND mst_movimiento.numero = $6";
         //console.log(strSQL);
 
         const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
@@ -416,8 +416,8 @@ const clonarRegistro = async (req,res,next)=> {
   try {
     // Ejecutar la función fve_crear_pedido en PostgreSQL
     const result = await pool.query(
-      `SELECT r_numero, r_fecemi, r_monto_total 
-       FROM fve_clonar_pedido($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `SELECT numero, fecha_emision
+       FROM fve_clonar_movimiento($1, $2, $3, $4, $5, $6, $7, $8)`,
       [id_anfitrion, documento_id, periodo, id_invitado, fecha, r_cod, r_serie, r_numero]
     );
     
@@ -446,14 +446,14 @@ const clonarRegistro = async (req,res,next)=> {
 const eliminarRegistro = async (req,res,next)=> {
   //Clonamos cualquier registro(Bol,Fact,NotaVenta) y lo convertimos a Nota en Proceso
   //Luego se habilida Emitir en otro comprobante (Aprovechamos disponibilidad para notas credito)
-  const { periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento } = req.body;
+  const { periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero } = req.body;
 
   try {
-    console.log([periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]);
+    console.log([periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero]);
     // Ejecutar la función fve_crear_pedido en PostgreSQL
     const result = await pool.query(
-      `SELECT fve_eliminar_venta($1, $2, $3, $4, $5, $6, $7)::boolean AS success`,
-      [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero, elemento]
+      `SELECT fst_eliminar_movimiento($1, $2, $3, $4, $5, $6)::boolean AS success`,
+      [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero]
     );
 
     //console.log('result.rowCount: ',result.rows[0]);
@@ -482,7 +482,7 @@ const eliminarRegistro = async (req,res,next)=> {
 
 const eliminarRegistroItem = async (req,res,next)=> {
     try {
-        const {periodo,id_anfitrion,documento_id,cod,serie,num,elem,item} = req.params;
+        const {periodo,id_anfitrion,documento_id,cod,serie,num,item} = req.params;
         var strSQL;
         var result;
         
@@ -491,14 +491,13 @@ const eliminarRegistroItem = async (req,res,next)=> {
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
-        strSQL += " AND item = $8";
+        strSQL += " AND cod = $4";
+        strSQL += " AND serie = $5";
+        strSQL += " AND numero = $6";
+        strSQL += " AND item = $7";
 
         //console.log(strSQL);
-        result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem,item]);
+        result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,item]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
@@ -524,7 +523,7 @@ const eliminarRegistroMasivo = async (req,res,next)=> {
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
+        strSQL += " AND cod = $4";
 
         //console.log(strSQL);
         //console.log([periodo,id_anfitrion,documento_id]);
@@ -535,7 +534,7 @@ const eliminarRegistroMasivo = async (req,res,next)=> {
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
+        strSQL += " AND cod = $4";
 
         //console.log(strSQL);
         //console.log([id_anfitrion,documento_id,periodo,id_libro,num_asiento]);
@@ -561,7 +560,6 @@ const actualizarRegistro = async (req,res,next)=> {
           r_cod,          //04
           r_serie,        //05
           r_numero,       //06
-          elemento,     //07 new
           
           id_invitado,        //08
           fecha,              //09
@@ -583,8 +581,6 @@ const actualizarRegistro = async (req,res,next)=> {
           r_cod,              //04
           r_serie,            //05
           r_numero,           //06
-          elemento,           //07 new
-
           devuelveCadenaNull(fecha)  //08
       ];
 
@@ -596,7 +592,6 @@ const actualizarRegistro = async (req,res,next)=> {
             r_cod,              //04
             r_serie,            //05
             r_numero,           //06
-            elemento,           //07 new
 
             devuelveCadenaNull(fecha),          //08
             devuelveCadenaNull(r_id_doc),       //09
@@ -613,7 +608,6 @@ const actualizarRegistro = async (req,res,next)=> {
         strSQL += " AND r_cod = $4";
         strSQL += " AND r_serie = $5";
         strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
         result = await pool.query(strSQL,parametrosdet);
 
         strSQL = "UPDATE mst_movimiento SET ";
@@ -631,7 +625,6 @@ const actualizarRegistro = async (req,res,next)=> {
         strSQL += " AND r_cod = $4";
         strSQL += " AND r_serie = $5";
         strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
         strSQL += " RETURNING *";
         result = await pool.query(strSQL,parametros);
 
@@ -658,7 +651,7 @@ const actualizarRegistro = async (req,res,next)=> {
 
 const anularRegistro = async (req,res,next)=> {
     try {
-        const {periodo,id_anfitrion,documento_id,cod,serie,num,elem} = req.params;
+        const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
         var strSQL;
         var result;
         var result2;
@@ -667,21 +660,19 @@ const anularRegistro = async (req,res,next)=> {
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
-        result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
+        strSQL += " AND cod = $4";
+        strSQL += " AND serie = $5";
+        strSQL += " AND numero = $6";
+        result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
 
         strSQL = "UPDATE mst_movimiento SET registrado = 0";
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
         strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " AND elemento = $7";
-        result2 = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
+        strSQL += " AND cod = $4";
+        strSQL += " AND serie = $5";
+        strSQL += " AND numero = $6";
+        result2 = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
 
         return res.sendStatus(204);
     } catch (error) {

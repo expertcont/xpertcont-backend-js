@@ -1,7 +1,7 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas, obtenerTotalRecaudacion} = require('../controllers/venta.controllers')
+const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont} = require('../controllers/venta.controllers')
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroTodos);//
 
@@ -14,6 +14,7 @@ router.post('/ad_venta', generarRegistro);
 router.post('/ad_ventacomp', generarComprobante);
 //router.post('/ad_ventacpe', generarCPE); //proveedor 01
 router.post('/ad_ventacpe', generarCPEexpertcont); //proveedor 02 expercont now ;)
+router.post('/ad_ventacpepdf', generarPDFexpertcont); //proveedor 02 solo PDF, api auxiliar
 
 router.post('/ad_ventaclon', clonarRegistro);
 
