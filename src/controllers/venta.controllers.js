@@ -609,6 +609,9 @@ const actualizarRegistro = async (req,res,next)=> {
           r_documento_id,     //11
           r_razon_social,     //12
           r_direccion,        //13
+          efectivo,
+          forma_pago2,
+          efectivo2
 
         } = req.body;
         //faltan mas parametros de razon social ruc y direccion
@@ -643,7 +646,11 @@ const actualizarRegistro = async (req,res,next)=> {
             devuelveCadenaNull(r_documento_id), //10
             devuelveCadenaNull(r_razon_social), //11
             devuelveCadenaNull(r_direccion),    //12
-            id_invitado                        //13
+            id_invitado,                        //13
+            
+            efectivo,                           //14 New
+            forma_pago2,                        //15 New
+            efectivo2                           //16 New
         ];
         strSQL = "UPDATE mve_ventadet SET ";
         strSQL += " r_fecemi = $8";
@@ -664,6 +671,9 @@ const actualizarRegistro = async (req,res,next)=> {
         strSQL += " ,r_direccion = $12";
         strSQL += " ,ctrl_mod_us = $13";
         strSQL += " ,ctrl_mod = CURRENT_TIMESTAMP";
+        strSQL += " ,efectivo = $14";
+        strSQL += " ,forma_pago2 = $15";
+        strSQL += " ,efectivo2 = $16";
 
         strSQL += " WHERE periodo = $1";
         strSQL += " AND id_usuario = $2";
