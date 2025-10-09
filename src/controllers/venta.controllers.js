@@ -671,6 +671,7 @@ const actualizarRegistro = async (req,res,next)=> {
         strSQL += " ,r_direccion = $12";
         strSQL += " ,ctrl_mod_us = $13";
         strSQL += " ,ctrl_mod = CURRENT_TIMESTAMP";
+        //incrementamos campos de pago
         strSQL += " ,efectivo = $14";
         strSQL += " ,forma_pago2 = $15";
         strSQL += " ,efectivo2 = $16";
