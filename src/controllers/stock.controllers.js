@@ -56,6 +56,28 @@ const obtenerRegistroTodos = async (req, res, next) => {
   }
 };
 
+const obtenerMotivos = async (req, res, next) => {
+  const { cod } = req.params;
+  //console.log(periodo, id_anfitrion, documento_id, dia);
+
+  const sQuery = `
+    SELECT id_motivo, nombre
+    FROM mst_movimiento_motivo
+    WHERE cod = $1
+    ORDER BY id_motivo ASC
+  `;
+
+  //console.log("SQL:", query, "PARAMS:", params);
+
+  try {
+    const { rows } = await pool.query(sQuery, [cod]);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error en obtenerRegistroTodos:", error.message);
+    next(error);
+  }
+};
+
 const obtenerRegistro = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
@@ -682,6 +704,7 @@ const anularRegistro = async (req,res,next)=> {
 
 module.exports = {
     obtenerRegistroTodos,
+    obtenerMotivos, //Motivos de movimientos Almacen
     obtenerRegistro,
     crearRegistro,
     generarRegistro,
