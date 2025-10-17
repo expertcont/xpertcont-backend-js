@@ -81,7 +81,7 @@ const crearMovimientoDet = async (req,res,next)=> {
     ];
         
     const strSQL = `
-        SELECT public.fve_movimientodetinserta(
+        SELECT public.fst_movimientodetinserta(
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
         ) AS resultado;
         `;
