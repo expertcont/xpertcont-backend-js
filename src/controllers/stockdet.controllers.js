@@ -5,15 +5,15 @@ const obtenerMovimientoDet = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
         let strSQL;
-        strSQL = "SELECT * ";
+        strSQL = "SELECT mst_movimientodet.*,(mst_movimientodet.ingreso+mst_movimientodet.egreso)::numeric(14,3) as cantidad";
         strSQL += " FROM mst_movimientodet ";
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND cod = $4";
-        strSQL += " AND serie = $5";
-        strSQL += " AND numero = $6";
-        strSQL += " ORDER BY item";
+        strSQL += " WHERE mst_movimientodet.periodo = $1";
+        strSQL += " AND mst_movimientodet.id_usuario = $2";
+        strSQL += " AND mst_movimientodet.documento_id = $3";
+        strSQL += " AND mst_movimientodet.cod = $4";
+        strSQL += " AND mst_movimientodet.serie = $5";
+        strSQL += " AND mst_movimientodet.numero = $6";
+        strSQL += " ORDER BY mst_movimientodet.item";
         //console.log(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num,elem]);
         
         const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
