@@ -67,10 +67,11 @@ const crearMovimientoDet = async (req,res,next)=> {
         req.body.id_anfitrion,      //01
         req.body.documento_id,      //02
         req.body.periodo,           //03
-        req.body.r_cod,             //04
-        req.body.r_serie,           //05
-        req.body.r_numero,          //06
-        req.body.r_fecemi,          //07
+        req.body.cod,             //04
+        req.body.serie,           //05
+        req.body.numero,          //06
+        req.body.fecemi,          //07
+        
         req.body.id_producto,       //08
         req.body.descripcion,       //09
         req.body.cantidad,          //10
