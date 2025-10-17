@@ -71,7 +71,7 @@ const crearMovimientoDet = async (req,res,next)=> {
         req.body.serie,           //05
         req.body.numero,          //06
         req.body.fecemi,          //07
-        
+
         req.body.id_producto,       //08
         req.body.descripcion,       //09
         req.body.cantidad,          //10
@@ -88,7 +88,7 @@ const crearMovimientoDet = async (req,res,next)=> {
         `;
 
     try {
-        // Ejecuta la consulta a la función de PostgreSQL
+        // Ejecuta la consulta a la función de PostgreSQL, previo
         console.log(strSQL, values);
 
         const result = await pool.query(strSQL, values);
