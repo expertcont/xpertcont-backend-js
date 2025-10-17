@@ -5,7 +5,7 @@ const obtenerMovimientoDet = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
         let strSQL;
-        strSQL = "SELECT mst_movimientodet.*,(mst_movimientodet.ingreso+mst_movimientodet.egreso)::numeric(14,3) as cantidad";
+        strSQL = "SELECT mst_movimientodet.*,(coalesce(mst_movimientodet.ingreso,0)+coalesce(mst_movimientodet.egreso,0))::numeric(14,3) as cantidad";
         strSQL += " FROM mst_movimientodet ";
         strSQL += " WHERE mst_movimientodet.periodo = $1";
         strSQL += " AND mst_movimientodet.id_usuario = $2";
