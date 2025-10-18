@@ -120,7 +120,7 @@ const eliminarMovimientoDet = async (req,res,next)=> {
     ];
         
     const strSQL = `
-        SELECT public.fve_movimientodetelimina(
+        SELECT public.fst_movimientodetelimina(
             $1, $2, $3, $4, $5, $6, $7
         ) AS resultado;
         `;
