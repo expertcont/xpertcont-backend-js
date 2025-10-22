@@ -1264,6 +1264,53 @@ const obtenerTotalRecaudacion = async (req, res) => {
   }
 };
 
+const obtenerTotalUnidades = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+
+  if (!periodo || !id_anfitrion || !documento_id || dia === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: periodo, id_anfitrion, id_invitado o dia',
+    });
+  }
+
+  // Si no es "*", formatear a YYYY-MM-DD, si es "*", será null
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
+
+  try {
+    const query = `
+      SELECT * FROM (
+        SELECT 
+          cont_und, 
+          SUM(cantidad)::numeric(14,2) AS total
+        FROM mve_venta 
+        WHERE periodo = $1
+          AND id_usuario = $2
+          AND documento_id = $3
+          AND ($4::date IS NULL OR r_fecemi = $4::date)
+        GROUP BY cont_und
+      ) AS consulta
+      WHERE total IS NOT NULL and cont_und IS NOT NULL
+    `;
+
+    const params = [periodo, id_anfitrion, documento_id, fechaFiltro];
+
+    const ventaResult = await pool.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      data: ventaResult.rows
+    });
+
+  } catch (error) {
+    console.error('Error al obtener total de unidades:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
 const generarPDFexpertcont = async (req,res,next)=> {
     //Consumo mi propio API ;) thanks
     const {
@@ -1351,5 +1398,6 @@ module.exports = {
     generarCPEexpertcont,
     generarPDFexpertcont, //New
     obtenerTotalVentas,
-    obtenerTotalRecaudacion
+    obtenerTotalRecaudacion,
+    obtenerTotalUnidades
  }; 
