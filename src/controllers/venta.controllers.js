@@ -1283,7 +1283,7 @@ const obtenerTotalUnidades = async (req, res) => {
         SELECT 
           cont_und, 
           SUM(cantidad)::numeric(14,2) AS total
-        FROM mve_venta 
+        FROM mve_ventadet
         WHERE periodo = $1
           AND id_usuario = $2
           AND documento_id = $3
