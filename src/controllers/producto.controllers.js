@@ -230,6 +230,7 @@ const crearProducto = async (req,res,next)=> {
             precio_venta,   //06
             cont_und,       //07
             origen,         //08
+            porc_igv        //09
         } = req.body
     let strSQL;
     try {
@@ -242,23 +243,23 @@ const crearProducto = async (req,res,next)=> {
         strSQL += ",precio_venta";  //06
         strSQL += ",cont_und";      //07
         strSQL += ",origen";        //08
+        strSQL += ",porc_igv";        //09
         strSQL += ") VALUES ( ";
 
-        strSQL += " $1,$2,$3,$4,$5,$6,$7,$8 ";
+        strSQL += " $1,$2,$3,$4,$5,$6,$7,$8,$9 ";
         strSQL += " ) RETURNING *";
 
-        const result = await pool.query(strSQL, 
-        [   
-            id_anfitrion,     //01
-            documento_id,   //02
-            id_producto,    //03    
-            nombre,         //04
-            descripcion,    //05
-            precio_venta,   //06
-            cont_und,        //07
-            origen,        //08
-        ]
-        );
+        const result = await pool.query(strSQL, [
+        id_anfitrion,                     // 01
+        documento_id,                     // 02
+        id_producto,                      // 03
+        nombre?.toUpperCase(),            // 04
+        descripcion?.toUpperCase(),       // 05
+        precio_venta,                     // 06
+        cont_und,                         // 07
+        origen,                           // 08
+        porc_igv                          // 09
+        ]);
         
         res.json(result.rows[0]);
     }catch(error){
