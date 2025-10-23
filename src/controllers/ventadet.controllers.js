@@ -1,5 +1,70 @@
 const pool = require('../db');
 
+const obtenerVentaDetTodos = async (req, res, next) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+  //console.log(periodo, id_anfitrion, documento_id, dia);
+
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
+
+  // Definición compacta de columnas
+  const columnas = `
+    CAST(mve_ventadet.r_fecemi AS VARCHAR(50)) AS r_fecemi,
+    mve_ventadet.r_cod,
+    mve_ventadet.r_serie,
+    mve_ventadet.r_numero,
+    (COALESCE(mve_ventadet.r_cod_ref, r_cod) || '-' ||
+      COALESCE(mve_ventadet.r_serie_ref, r_serie) || '-' ||
+      COALESCE(mve_ventadet.r_numero_ref, r_numero))::VARCHAR(50) AS comprobante,
+    mve_venta.r_id_doc,
+    mve_venta.r_documento_id,
+    mve_venta.r_razon_social,
+    mve_ventadet.id_almacen,
+    mve_ventadet.id_producto,
+    mve_ventadet.descripcion,
+    mve_ventadet.cantidad,
+    mve_ventadet.cont_und,
+    mve_ventadet.precio_neto,
+    mve_ventadet.porc_igv
+  `;
+
+  let query = `
+    SELECT ${columnas}
+    FROM 
+    mve_ventadet INNER JOIN mve_venta
+    ON (mve_ventadet.periodo = mve_venta.periodo and
+        mve_ventadet.id_usuario = mve_venta.id_usuario and
+        mve_ventadet.documento_id = mve_venta.documento_id and
+        mve_ventadet.r_cod = mve_venta.r_cod and
+        mve_ventadet.r_serie = mve_venta.r_serie and
+        mve_ventadet.r_numero = mve_venta.r_numero and
+        mve_ventadet.elemento = mve_venta.elemento )
+        )
+    WHERE mve_ventadet.periodo = $1
+      AND mve_ventadet.id_usuario = $2
+      AND mve_ventadet.documento_id = $3
+      AND mve_ventadet.r_cod <> 'NP'
+  `;
+
+  const params = [periodo, id_anfitrion, documento_id];
+
+  if (fechaFiltro) {
+    query += " AND mve_ventadet.r_fecemi = $4";
+    params.push(fechaFiltro);
+  }
+
+  query += " ORDER BY mve_ventadet.r_fecemi DESC, mve_ventadet.r_cod, mve_ventadet.r_serie, mve_ventadet.r_numero DESC";
+
+  //console.log("SQL:", query, "PARAMS:", params);
+
+  try {
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error en obtenerRegistroTodos:", error.message);
+    next(error);
+  }
+};
+
 const obtenerVentaDet = async (req,res,next)=> {
     //Detalles de un Pedido
     try {
@@ -286,6 +351,7 @@ const actualizarVentaDet = async (req,res,next)=> {
 };*/
 
 module.exports = {
+    obtenerVentaDetTodos,
     obtenerVentaDet,
     obtenerVentaDetItem,
     crearVentaDet,
