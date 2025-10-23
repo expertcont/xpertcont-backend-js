@@ -1,13 +1,14 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont, obtenerTotalUnidades} = require('../controllers/venta.controllers')
+const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont, obtenerTotalUnidades, obtenerCodigosComprobante} = require('../controllers/venta.controllers')
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroTodos);//
 
 router.get('/ad_ventatotal/:periodo/:id_anfitrion/:id_invitado/:dia', obtenerTotalVentas);//
 router.get('/ad_ventarecaudacion/:periodo/:id_anfitrion/:documento_id/:dia', obtenerTotalRecaudacion);//
 router.get('/ad_ventaunidades/:periodo/:id_anfitrion/:documento_id/:dia', obtenerTotalUnidades);//
+router.get('/ad_ventasegcod/:id_anfitrion/:documento_id/:id_invitado', obtenerCodigosComprobante);// COmprobantes habilitados con serie por usuario
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerRegistro);
 router.post('/ad_venta/:periodo/:id_anfitrion/:documento_id', crearRegistro);

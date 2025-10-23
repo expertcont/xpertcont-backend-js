@@ -1311,6 +1311,44 @@ const obtenerTotalUnidades = async (req, res) => {
   }
 };
 
+const obtenerCodigosComprobante = async (req, res) => {
+  const { id_anfitrion, documento_id, id_invitado } = req.params;
+
+  if (!id_anfitrion || !documento_id || !id_invitado) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: id_anfitrion, id_invitado o id_invitado',
+    });
+  }
+
+  try {
+    const query = `
+        SELECT r_cod FROM mad_seguridad_serie
+        WHERE id_usuario = $1
+        AND documento_id = $2
+        AND id_invitado = $3
+        GROUP BY r_cod
+        ORDER BY r_cod
+    `;
+
+    const params = [id_anfitrion, documento_id, id_invitado];
+
+    const registrosResult = await pool.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      data: registrosResult.rows
+    });
+
+  } catch (error) {
+    console.error('Error al obtener comprobantes de series:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
 const generarPDFexpertcont = async (req,res,next)=> {
     //Consumo mi propio API ;) thanks
     const {
@@ -1399,5 +1437,6 @@ module.exports = {
     generarPDFexpertcont, //New
     obtenerTotalVentas,
     obtenerTotalRecaudacion,
-    obtenerTotalUnidades
+    obtenerTotalUnidades,
+    obtenerCodigosComprobante
  }; 
