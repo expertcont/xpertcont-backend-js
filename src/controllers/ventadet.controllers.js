@@ -37,7 +37,7 @@ const obtenerVentaDetTodos = async (req, res, next) => {
         mve_ventadet.r_cod = mve_venta.r_cod and
         mve_ventadet.r_serie = mve_venta.r_serie and
         mve_ventadet.r_numero = mve_venta.r_numero and
-        mve_ventadet.elemento = mve_venta.elemento )
+        mve_ventadet.elemento = mve_venta.elemento
         )
     WHERE mve_ventadet.periodo = $1
       AND mve_ventadet.id_usuario = $2
