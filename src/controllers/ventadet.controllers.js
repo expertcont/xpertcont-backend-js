@@ -12,9 +12,9 @@ const obtenerVentaDetTodos = async (req, res, next) => {
     mve_ventadet.r_cod,
     mve_ventadet.r_serie,
     mve_ventadet.r_numero,
-    (COALESCE(mve_ventadet.r_cod_ref, r_cod) || '-' ||
-      COALESCE(mve_ventadet.r_serie_ref, r_serie) || '-' ||
-      COALESCE(mve_ventadet.r_numero_ref, r_numero))::VARCHAR(50) AS comprobante,
+    (COALESCE(mve_venta.r_cod_ref, mve_ventadet.r_cod) || '-' ||
+      COALESCE(mve_venta.r_serie_ref, mve_ventadet.r_serie) || '-' ||
+      COALESCE(mve_venta.r_numero_ref, mve_ventadet.r_numero))::VARCHAR(50) AS comprobante,
     mve_venta.r_id_doc,
     mve_venta.r_documento_id,
     mve_venta.r_razon_social,
