@@ -141,6 +141,31 @@ const obtenerTodosEmail = async (req,res,next)=> {
     //res.send('Listado de todas los zonas');
 };
 
+const obtenerTodasSeriesAdmin = async (req,res,next)=> {
+    try {
+        const {id_usuario,documento_id,id_invitado,r_cod} = req.params;
+        let strSQL;
+
+        strSQL = `SELECT mad_seguridad_serie.id_almacen, (mad_seguridad_serie.r_serie || '-' || mst_almacen.nombre)::varchar(50) as descripcion
+                  FROM
+                  mad_seguridad_serie INNER JOIN mst_almacen
+                  ON (mad_seguridad_serie.id_usuario = mst_almacen.id_usuario and
+                        mad_seguridad_serie.documento_id = mst_almacen.documento_id and
+                        mad_seguridad_serie.id_almacen = mst_almacen.id_almacen )
+                  WHERE mad_seguridad_serie.id_usuario = $1
+                  AND mad_seguridad_serie.documento_id = $2
+                  AND mad_seguridad_serie.id_invitado = $3
+                  AND mad_seguridad_serie.r_cod = $4
+                  ORDER BY mad_seguridad_serie.id_almacen
+        `;
+        const todosReg = await pool.query(strSQL,[id_usuario,documento_id,id_invitado,r_cod]);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 const clonarPermisoComando = async (req,res,next)=> {
     const {
         id_anfitrion,     //01 nuevo 
@@ -326,11 +351,12 @@ module.exports = {
     obtenerTodosPermisoComandos,
     obtenerTodosMenu,
     obtenerTodosEmail,
+    obtenerTodasSeriesAdmin, //NEW
     registrarPermisoComando,
-    registrarPermisoContabilidad, //new
+    registrarPermisoContabilidad, 
     clonarPermisoComando, 
     registrarUsuario,
     eliminarPermisoComando,
-    eliminarPermisoContabilidad, //new
+    eliminarPermisoContabilidad,
     eliminarPermisoUsuario
  }; 
