@@ -345,69 +345,24 @@ const generarRegistro = async (req,res,next)=> {
 };
 
 const generarComprobante = async (req, res, next) => {
+  const datos = req.body;
+  const datosJSON = JSON.stringify(datos);  //01
+
   const {
-    id_anfitrion,        //01
-    documento_id,        //02
-    periodo,             //03
-    id_invitado,         //04
-    fecha,               //05
-    cod,               //06
-    serie,             //07
-    numero,            //08
-    id_motivo,        //09
-    id_almacen,       //10
-    r_cod_emitir,       //11
-
-    r_id_doc,         //12
-    r_documento_id,   //13
-    r_razon_social,   //14
-    
-    r_cod,            //16 
-    r_serie,          //17
-    r_numero,         //18
-    r_fecemi,         //19
-    gre_cod,          //20
-    gre_serie,        //21
-    gre_numero,       //22
-
-  } = req.body;
+    id_anfitrion,         //02
+    documento_id,         //03
+    periodo,              //04
+    id_invitado,          //05
+    cod_emitir,           //06
+  } = req.params;
 
   try {
-    let result;
-
-    if (cod_emitir === 'IA') {
-      // Datos de ingreso con referencia de compra
-      result = await pool.query(
-        `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
-         FROM fst_crear_comprobante(
-           $1, $2, $3, $4, $5, $6, $7, $8, $9, 
-           $10, $11, $12, $13,
-           $14, $15, $16, $17
-         )`,
-        [
-          id_anfitrion, documento_id, periodo, id_invitado, fecha,
-          r_cod, r_serie, r_numero, cod_emitir,
-          r_id_doc, r_documento_id, r_razon_social, r_direccion,
-          efectivo, vuelto, forma_pago2, efectivo2
-        ]
-      );
-    } else {
-      // Datos de Salida simple
-
-      result = await pool.query(
-        `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
-         FROM fve_crear_comprobante_ref(
-           $1, $2, $3, $4, $5, $6, $7, $8, $9,
-           $10, $11, $12, $13, $14, $15, $16, $17
-         )`,
-        [
-          id_anfitrion, documento_id, periodo, id_invitado, fecha,
-          r_cod, r_serie, r_numero, r_cod_emitir,
-          r_id_doc, r_documento_id, r_razon_social, r_direccion,
-          r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
-        ]
-      );
-    }
+    // Datos de ingreso con referencia de compra
+    const result = await pool.query(
+      `SELECT cod, serie, numero, fecha_emision
+        FROM fst_crear_comprobantejson($1, $2, $3, $4, $5, $6)`,
+      [datosJSON, id_anfitrion, documento_id, periodo, id_invitado, cod_emitir]
+    );
 
     if (result.rows.length > 0) {
       //console.log(result.rows[0]);
