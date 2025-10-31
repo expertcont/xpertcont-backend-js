@@ -23,7 +23,8 @@ const obtenerStockDetTodos = async (req, res, next) => {
     id_almacen,
     id_producto,
     descripcion,
-    cantidad,
+    ingreso,
+    egreso,
     cont_und,
     precio_neto,
     porc_igv
