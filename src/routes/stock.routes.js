@@ -9,7 +9,7 @@ router.get('/ad_stockmotivo/:cod', obtenerMotivos);//
 router.get('/ad_stock/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num', obtenerRegistro);
 router.post('/ad_stock/:periodo/:id_anfitrion/:documento_id', crearRegistro);
 router.post('/ad_stock', generarRegistro);
-router.post('/ad_stockcomp', generarComprobante);
+router.post('/ad_stockcomp/:periodo/:id_anfitrion/:documento_id/:id_invitado/:cod_emitir', generarComprobante);
 
 router.post('/ad_stockclon', clonarRegistro);
 

@@ -349,9 +349,9 @@ const generarComprobante = async (req, res, next) => {
   const datosJSON = JSON.stringify(datos);  //01
 
   const {
-    id_anfitrion,         //02
-    documento_id,         //03
-    periodo,              //04
+    periodo,              //02    
+    id_anfitrion,         //03
+    documento_id,         //04
     id_invitado,          //05
     cod_emitir,           //06
   } = req.params;
