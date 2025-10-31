@@ -1,5 +1,64 @@
 const pool = require('../db');
 
+const obtenerStockDetTodos = async (req, res, next) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+  //console.log(periodo, id_anfitrion, documento_id, dia);
+
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
+
+  // Definición compacta de columnas
+  const columnas = `
+    CAST(fecha_emision AS VARCHAR(50)) AS fecha_emision,
+    cod,
+    serie,
+    numero,
+    (r_cod || '-' || r_serie || '-' || r_numero)::VARCHAR(50) AS comprobante,
+    r_id_doc,
+    r_documento_id,
+    r_razon_social,
+    r_cod,
+    r_serie,
+    r_numero,
+    CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
+    id_almacen,
+    id_producto,
+    descripcion,
+    cantidad,
+    cont_und,
+    precio_neto,
+    porc_igv
+  `;
+
+  let query = `
+    SELECT ${columnas}
+    FROM 
+    mst_movimientodet
+    WHERE periodo = $1
+      AND id_usuario = $2
+      AND documento_id = $3
+      AND r_cod <> 'MP'
+  `;
+
+  const params = [periodo, id_anfitrion, documento_id];
+
+  if (fechaFiltro) {
+    query += " AND fecha_emision = $4";
+    params.push(fechaFiltro);
+  }
+
+  query += " ORDER BY fecha_emision DESC, cod, serie, numero DESC";
+
+  //console.log("SQL:", query, "PARAMS:", params);
+
+  try {
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error en obtenerRegistroTodos:", error.message);
+    next(error);
+  }
+};
+
 const obtenerMovimientoDet = async (req,res,next)=> {
     //Detalles de un Pedido
     try {
@@ -185,6 +244,7 @@ const actualizarMovimientoDet = async (req,res,next)=> {
 };
 
 module.exports = {
+    obtenerStockDetTodos,
     obtenerMovimientoDet,
     obtenerMovimientoDetItem,
     crearMovimientoDet,

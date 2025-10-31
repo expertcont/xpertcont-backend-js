@@ -1,8 +1,9 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerMovimientoDet, obtenerMovimientoDetItem, crearMovimientoDet, actualizarMovimientoDet, eliminarMovimientoDet} = require('../controllers/stockdet.controllers')
+const {obtenerMovimientoDet, obtenerMovimientoDetItem, crearMovimientoDet, actualizarMovimientoDet, eliminarMovimientoDet, obtenerStockDetTodos} = require('../controllers/stockdet.controllers')
 
+router.get('/ad_stockdettodos/:periodo/:id_anfitrion/:documento_id/:dia', obtenerStockDetTodos);
 router.get('/ad_stockdet/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num', obtenerMovimientoDet);
 router.get('/ad_stockdet/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:item', obtenerMovimientoDetItem);
 
