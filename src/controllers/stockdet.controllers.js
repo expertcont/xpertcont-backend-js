@@ -37,7 +37,7 @@ const obtenerStockDetTodos = async (req, res, next) => {
     WHERE periodo = $1
       AND id_usuario = $2
       AND documento_id = $3
-      AND r_cod <> 'MP'
+      AND cod <> 'MP'
   `;
 
   const params = [periodo, id_anfitrion, documento_id];
