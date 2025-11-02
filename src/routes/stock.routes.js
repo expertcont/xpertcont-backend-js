@@ -1,10 +1,11 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, clonarRegistro, obtenerMotivos} = require('../controllers/stock.controllers')
+const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, clonarRegistro, obtenerMotivos, obtenerInventario} = require('../controllers/stock.controllers')
 
 router.get('/ad_stock/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroTodos);//
 router.get('/ad_stockmotivo/:cod', obtenerMotivos);//
+router.get('/ad_stockinventario/:periodo/:id_anfitrion/:documento_id/:dia', obtenerInventario);//
 
 router.get('/ad_stock/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num', obtenerRegistro);
 router.post('/ad_stock/:periodo/:id_anfitrion/:documento_id', crearRegistro);

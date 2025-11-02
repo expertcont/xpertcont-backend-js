@@ -78,6 +78,39 @@ const obtenerMotivos = async (req, res, next) => {
   }
 };
 
+const obtenerInventario = async (req, res, next) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+
+  // Si el día no es '*', arma la fecha completa, ejemplo: "2025-10-15"
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
+
+  // Base de la query: 6 parámetros
+  // (p_periodo, p_id_usuario, p_documento_id, p_id_almacen, p_id_producto, fecha_fin)
+  const sQuery = `
+    SELECT f.*,
+           (f.saldo_inicial + f.ingresos - f.egresos) AS saldo
+    FROM fst_inventario_avanzado_fecha($1, $2, $3, $4, $5, $6) AS f
+  `;
+
+  // Arma los parámetros de forma ordenada
+  const params = [
+    periodo,               // $1
+    id_anfitrion,          // $2
+    documento_id,          // $3
+    '',                    // $4 => id_almacen
+    '',                    // $5 => id_producto
+    fechaFiltro            // $6 => puede ser null
+  ];
+
+  try {
+    const { rows } = await pool.query(sQuery, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error en obtenerInventario:", error.message);
+    next(error);
+  }
+};
+
 const obtenerRegistro = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
@@ -660,6 +693,7 @@ const anularRegistro = async (req,res,next)=> {
 module.exports = {
     obtenerRegistroTodos,
     obtenerMotivos, //Motivos de movimientos Almacen
+    obtenerInventario, //New Reporte ;)
     obtenerRegistro,
     crearRegistro,
     generarRegistro,
