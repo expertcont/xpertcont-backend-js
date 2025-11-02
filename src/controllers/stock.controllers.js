@@ -86,8 +86,10 @@ const obtenerInventario = async (req, res, next) => {
 
   // Base de la query: 6 parámetros
   // (p_periodo, p_id_usuario, p_documento_id, p_id_almacen, p_id_producto, fecha_fin)
+  // id_producto,nombre_producto,saldo_inicial,ingresos,egresos
   const sQuery = `
-    SELECT f.*,
+    SELECT  f.*,
+            f.nombre_producto as descripcion,
            (f.saldo_inicial + f.ingresos - f.egresos) AS saldo
     FROM fst_inventario_avanzado_fecha($1, $2, $3, $4, $5, $6) AS f
   `;
