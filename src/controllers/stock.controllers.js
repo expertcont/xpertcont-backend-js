@@ -740,10 +740,10 @@ const generarSaldosIniciales = async (req, res, next) => {
         f.id_producto,
         f.id_almacen,
         $4 AS periodo,
-        (f.saldo_inicial + f.ingresos - f.egresos) AS cantidad,
+        (coalesce(f.saldo_inicial,0) + coalesce(f.ingresos,0) - coalesce(f.egresos,0)) AS cantidad,
         0 AS peso_neto
       FROM fst_inventario_avanzado_fecha($1, $2, $3, '', '', NULL) AS f
-      WHERE (f.saldo_inicial + f.ingresos - f.egresos) <> 0
+      WHERE (coalesce(f.saldo_inicial,0) + coalesce(f.ingresos,0) - coalesce(f.egresos,0)) <> 0
     `;
 
     await pool.query(insertSQL, [
