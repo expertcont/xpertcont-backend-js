@@ -1,7 +1,7 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, clonarRegistro, obtenerMotivos, obtenerInventario} = require('../controllers/stock.controllers')
+const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, clonarRegistro, obtenerMotivos, obtenerInventario, generarSaldosIniciales} = require('../controllers/stock.controllers')
 
 router.get('/ad_stock/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroTodos);//
 router.get('/ad_stockmotivo/:cod', obtenerMotivos);//
@@ -11,6 +11,7 @@ router.get('/ad_stock/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num', ob
 router.post('/ad_stock/:periodo/:id_anfitrion/:documento_id', crearRegistro);
 router.post('/ad_stock', generarRegistro);
 router.post('/ad_stockcomp/:periodo/:id_anfitrion/:documento_id/:id_invitado/:cod_emitir', generarComprobante);
+router.post('/ad_stockinventario/:periodo/:id_anfitrion/:documento_id', generarSaldosIniciales);
 
 router.post('/ad_stockclon', clonarRegistro);
 

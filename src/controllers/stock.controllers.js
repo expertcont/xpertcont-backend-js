@@ -709,6 +709,66 @@ const anularRegistro = async (req,res,next)=> {
     }
 };
 
+const generarSaldosIniciales = async (req, res, next) => {
+  const { periodo, id_anfitrion, documento_id } = req.body;
+
+  // Calcula el siguiente periodo automáticamente
+  const [anio, mes] = periodo.split('-').map(Number);
+  const siguientePeriodo =
+    mes === 12 ? `${anio + 1}-01` : `${anio}-${String(mes + 1).padStart(2, '0')}`;
+
+  try {
+    await pool.query('BEGIN');
+
+    // 🧹 1️⃣ Eliminar saldos existentes del siguiente periodo
+    const deleteSQL = `
+      DELETE FROM mst_producto_sf
+      WHERE id_usuario = $1
+        AND documento_id = $2
+        AND periodo = $3
+    `;
+    await pool.query(deleteSQL, [id_anfitrion, documento_id, siguientePeriodo]);
+
+    // 📦 2️⃣ Insertar nuevos saldos
+    const insertSQL = `
+      INSERT INTO mst_producto_sf (
+        id_usuario, documento_id, id_producto, id_almacen, periodo, cantidad, peso_neto
+      )
+      SELECT 
+        $2 AS id_usuario,
+        $3 AS documento_id,
+        f.id_producto,
+        f.id_almacen,
+        $4 AS periodo,
+        (f.saldo_inicial + f.ingresos - f.egresos) AS cantidad,
+        0 AS peso_neto
+      FROM fst_inventario_avanzado_fecha($1, $2, $3, '', '', NULL) AS f
+      WHERE (f.saldo_inicial + f.ingresos - f.egresos) <> 0
+    `;
+
+    await pool.query(insertSQL, [
+      periodo,
+      id_anfitrion,
+      documento_id,
+      siguientePeriodo
+    ]);
+
+    await pool.query('COMMIT');
+
+    res.json({
+      ok: true,
+      mensaje: `✅ Saldos iniciales del periodo ${siguientePeriodo} generados correctamente (anteriores reemplazados).`,
+    });
+
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    console.error('Error en generarSaldosIniciales:', error);
+    next(error);
+  } finally {
+    pool.release();
+  }
+};
+
 module.exports = {
     obtenerRegistroTodos,
     obtenerMotivos, //Motivos de movimientos Almacen
@@ -722,5 +782,6 @@ module.exports = {
     eliminarRegistroItem,
     eliminarRegistroMasivo,
     actualizarRegistro,
-    anularRegistro
+    anularRegistro,
+    generarSaldosIniciales //New para generar saldos
  }; 
