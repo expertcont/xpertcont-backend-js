@@ -273,10 +273,12 @@ const eliminarProducto = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto} = req.params;
-        strSQL = "DELETE FROM mst_producto "
-        strSQL += " WHERE id_usuario = $1";
-        strSQL += " AND documento_id = $2";
-        strSQL += " AND id_producto = $3";
+        strSQL = `
+            DELETE FROM mst_producto
+            WHERE id_usuario   = $1
+            AND documento_id   = $2
+            AND id_producto    = $3
+        `;
 
         const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
 
@@ -299,25 +301,34 @@ const actualizarProducto = async (req,res,next)=> {
                 descripcion,    //05
                 precio_venta,   //06
                 porc_igv,       //07
-                cont_und        //08
+                cont_und,        //08
+                id_producto2,        //09 new
+                cantidad_und2        //10 new
         } = req.body    
-        strSQL = "UPDATE mst_producto SET"
-        strSQL += "  nombre = $4";
-        strSQL += " ,descripcion = $5";
-        strSQL += " ,precio_venta = $6";
-        strSQL += " ,porc_igv = $7";                
-        strSQL += " ,cont_und= $8";
-        
-        strSQL += " WHERE id_usuario = $1";
-        strSQL += " AND documento_id = $2";
-        strSQL += " AND id_producto = $3";
+
+        strSQL = `
+            UPDATE mst_producto SET
+                 nombre = $4
+                ,descripcion = $5
+                ,precio_venta = $6
+                ,porc_igv = $7
+                ,cont_und = $8
+                ,id_producto2 = $9
+                ,cantidad_und2 = $10
+            WHERE id_usuario = $1
+            AND documento_id = $2
+            AND id_producto = $3
+        `;
 
         const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto,
                                                 nombre,
                                                 descripcion,
                                                 precio_venta,
                                                 porc_igv,
-                                                cont_und]);
+                                                cont_und,
+                                                id_producto2,
+                                                cantidad_und2
+                                            ]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
