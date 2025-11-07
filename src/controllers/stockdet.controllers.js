@@ -12,7 +12,7 @@ const obtenerStockDetTodos = async (req, res, next) => {
     cod,
     serie,
     numero,
-    (r_cod || '-' || r_serie || '-' || r_numero)::VARCHAR(50) AS comprobante,
+    (cod || '-' || serie || '-' || numero)::VARCHAR(50) AS comprobante,
     r_id_doc,
     r_documento_id,
     r_razon_social,
