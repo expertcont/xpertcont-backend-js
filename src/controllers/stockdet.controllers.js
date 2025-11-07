@@ -8,7 +8,7 @@ const obtenerStockDetTodos = async (req, res, next) => {
 
   // Definición compacta de columnas
   const columnas = `
-    CAST(fecha_emision AS VARCHAR(50)) AS fecha_emision,
+    CAST(fecha_emision AS VARCHAR(50)) AS emision,
     cod,
     serie,
     numero,

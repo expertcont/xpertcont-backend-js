@@ -8,7 +8,7 @@ const obtenerVentaDetTodos = async (req, res, next) => {
 
   // Definición compacta de columnas
   const columnas = `
-    CAST(mve_ventadet.r_fecemi AS VARCHAR(50)) AS r_fecemi,
+    CAST(mve_ventadet.r_fecemi AS VARCHAR(50)) AS emision,
     mve_ventadet.r_cod,
     mve_ventadet.r_serie,
     mve_ventadet.r_numero,
@@ -21,7 +21,7 @@ const obtenerVentaDetTodos = async (req, res, next) => {
     mve_ventadet.id_almacen,
     mve_ventadet.id_producto,
     mve_ventadet.descripcion,
-    mve_ventadet.cantidad,
+    mve_ventadet.cantidad as egreso,
     mve_ventadet.cont_und,
     mve_ventadet.precio_neto,
     mve_ventadet.porc_igv
