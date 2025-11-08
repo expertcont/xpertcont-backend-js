@@ -479,9 +479,9 @@ const eliminarRegistro = async (req,res,next)=> {
 
   try {
     console.log([periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero]);
-    // Ejecutar la función fve_crear_pedido en PostgreSQL
+    // Eliminamos comprobante de almacen SA o IA
     const result = await pool.query(
-      `SELECT fst_eliminar_movimiento($1, $2, $3, $4, $5, $6)::boolean AS success`,
+      `SELECT fst_eliminar_comprobante($1, $2, $3, $4, $5, $6)::boolean AS success`,
       [periodo, id_anfitrion, documento_id, r_cod, r_serie, r_numero]
     );
 
@@ -491,12 +491,12 @@ const eliminarRegistro = async (req,res,next)=> {
     if (!result.rows[0].success) {
         return res.status(200).json({
             success:false,
-            message:"Venta no encontrada"
+            message:"Comprobante Almacen no encontrado"
         });
     }else{
         return res.status(200).json({
           success:true,
-          message:"Venta eliminada"
+          message:"Comprobante Almacen eliminado"
       });
     }
 
