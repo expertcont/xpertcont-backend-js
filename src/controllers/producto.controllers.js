@@ -303,7 +303,8 @@ const actualizarProducto = async (req,res,next)=> {
                 porc_igv,       //07
                 cont_und,        //08
                 id_producto2,        //09 new
-                cantidad_und2        //10 new
+                cantidad_und2,        //10 new
+                cont_und2             //11 new
         } = req.body    
 
         strSQL = `
@@ -315,6 +316,7 @@ const actualizarProducto = async (req,res,next)=> {
                 ,cont_und = $8
                 ,id_producto2 = $9
                 ,cantidad_und2 = $10
+                ,cont_und2 = $11
             WHERE id_usuario = $1
             AND documento_id = $2
             AND id_producto = $3
@@ -327,7 +329,8 @@ const actualizarProducto = async (req,res,next)=> {
                                                 porc_igv,
                                                 cont_und,
                                                 id_producto2,
-                                                cantidad_und2
+                                                cantidad_und2,
+                                                cont_und2
                                             ]);
 
         if (result.rowCount === 0)
