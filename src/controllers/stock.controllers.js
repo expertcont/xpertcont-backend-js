@@ -589,17 +589,18 @@ const actualizarRegistro = async (req,res,next)=> {
           periodo,        //01
           id_anfitrion,   //02
           documento_id,   //03    
-          r_cod,          //04
-          r_serie,        //05
-          r_numero,       //06
+          cod,            //04
+          serie,          //05
+          numero,         //06
           
-          id_invitado,        //08
-          fecha,              //09
-          r_id_doc,           //10
-          r_documento_id,     //11
-          r_razon_social,     //12
-          r_direccion,        //13
-
+          id_invitado,        //07
+          fecha_emision,      //08
+          r_id_doc,           //09
+          r_documento_id,     //10
+          r_razon_social,     //11
+          r_cod,              //12
+          r_serie,            //13
+          r_numero,           //14
         } = req.body;
         //faltan mas parametros de razon social ruc y direccion
     
@@ -610,54 +611,71 @@ const actualizarRegistro = async (req,res,next)=> {
           periodo,            //01
           id_anfitrion,       //02
           documento_id,       //03
-          r_cod,              //04
-          r_serie,            //05
-          r_numero,           //06
-          devuelveCadenaNull(fecha)  //08
-      ];
+          cod,                //04
+          serie,              //05
+          numero,             //06
+          devuelveCadenaNull(fecha_emision),      //07
+          devuelveCadenaNull(r_id_doc),           //08
+          devuelveCadenaNull(r_documento_id),     //09
+          devuelveCadenaNull(r_razon_social),     //10
+          devuelveCadenaNull(r_cod),              //11
+          devuelveCadenaNull(r_serie),            //12
+          devuelveCadenaNull(r_numero),           //13
+        ];  
 
         const parametros = [   
             //Seccion parametros
             periodo,            //01
             id_anfitrion,       //02
             documento_id,       //03
-            r_cod,              //04
-            r_serie,            //05
-            r_numero,           //06
+            cod,                //04
+            serie,              //05
+            numero,             //06
 
-            devuelveCadenaNull(fecha),          //08
-            devuelveCadenaNull(r_id_doc),       //09
-            devuelveCadenaNull(r_documento_id), //10
-            devuelveCadenaNull(r_razon_social), //11
-            devuelveCadenaNull(r_direccion),    //12
-            id_invitado                        //13
+            devuelveCadenaNull(fecha_emision),  //07
+            devuelveCadenaNull(r_id_doc),       //08
+            devuelveCadenaNull(r_documento_id), //09
+            devuelveCadenaNull(r_razon_social), //10
+            devuelveCadenaNull(r_cod),          //11
+            devuelveCadenaNull(r_serie),        //12
+            devuelveCadenaNull(r_numero),       //13
+
+            id_invitado                        //14
         ];
-        strSQL = "UPDATE mst_movimientodet SET ";
-        strSQL += " r_fecemi = $8";
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
+        
+        strSQL = `UPDATE mst_movimientodet SET
+                           fecha_emision = $7
+                          ,r_id_doc = $8
+                          ,r_documento_id = $9
+                          ,r_razon_social = $10
+                          ,r_cod = $11                               
+                          ,r_serie = $12                          
+                          ,r_numero = $13
+                  WHERE periodo = $1
+                  AND id_usuario = $2
+                  AND documento_id = $3
+                  AND cod = $4
+                  AND serie = $5
+                  AND numero = $6`;
         result = await pool.query(strSQL,parametrosdet);
 
-        strSQL = "UPDATE mst_movimiento SET ";
-        strSQL += "  r_fecemi = $8";
-        strSQL += " ,r_id_doc = $9";
-        strSQL += " ,r_documento_id = $10";
-        strSQL += " ,r_razon_social = $11";
-        strSQL += " ,r_direccion = $12";
-        strSQL += " ,ctrl_mod_us = $13";
-        strSQL += " ,ctrl_mod = CURRENT_TIMESTAMP";
-
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND r_cod = $4";
-        strSQL += " AND r_serie = $5";
-        strSQL += " AND r_numero = $6";
-        strSQL += " RETURNING *";
+        strSQL = `UPDATE mst_movimiento SET
+                           fecha_emision = $7
+                          ,r_id_doc = $8
+                          ,r_documento_id = $9
+                          ,r_razon_social = $10
+                          ,r_cod = $11                               
+                          ,r_serie = $12                          
+                          ,r_numero = $13
+                          ,ctrl_mod_us = $14
+                          ,ctrl_mod = CURRENT_TIMESTAMP
+                  WHERE periodo = $1
+                  AND id_usuario = $2
+                  AND documento_id = $3
+                  AND cod = $4
+                  AND serie = $5
+                  AND numero = $6
+                  RETURNING *`;
         result = await pool.query(strSQL,parametros);
 
       // Si la función devolvió resultados, enviarlos al frontend
