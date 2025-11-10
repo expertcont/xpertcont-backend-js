@@ -138,7 +138,8 @@ const obtenerRegistro = async (req,res,next)=> {
         let strSQL ;
         
         strSQL = "SELECT mst_movimiento.* ";
-        strSQL += " ,cast(mst_movimiento.fecha_emision as varchar)::varchar(50) as fecemi";
+        strSQL += " ,cast(mst_movimiento.fecha_emision as varchar)::varchar(50) as fecha_emision";
+        strSQL += " ,cast(mst_movimiento.r_fecemi as varchar)::varchar(50) as fecemi";
         strSQL += " ,mad_usuariocontabilidad.razon_social"; //dato para impresion
         strSQL += " ,mad_usuariocontabilidad.direccion";    //dato para impresion
         strSQL += " FROM";
