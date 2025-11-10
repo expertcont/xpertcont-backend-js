@@ -10,40 +10,43 @@ const obtenerRegistroTodos = async (req, res, next) => {
 
   // Definición compacta de columnas
   const columnas = `
-    CAST(fecha_emision AS VARCHAR(50)) AS fecha_emision,
-    (cod || '-' ||
-      serie || '-' ||
-      numero)::VARCHAR(50) AS comprobante,
-    (r_cod || '-' ||
-      r_serie || '-' ||
-      r_numero)::VARCHAR(50) AS comprobante_ref,
-    r_id_doc,
-    r_documento_id,
-    r_razon_social,
-    r_monto_total,
-    r_tc,
-    (gre_cod || '-' ||
-      gre_serie || '-' ||
-      gre_numero)::VARCHAR(50) AS gre_ref
+    CAST(mst_movimiento.fecha_emision AS VARCHAR(50)) AS fecha_emision,
+    mst_movimiento_motivo.nombre,
+    (mst_movimiento.cod || '-' ||
+      mst_movimiento.serie || '-' ||
+      mst_movimiento.numero)::VARCHAR(50) AS comprobante,
+    (mst_movimiento.r_cod || '-' ||
+      mst_movimiento.r_serie || '-' ||
+      mst_movimiento.r_numero)::VARCHAR(50) AS comprobante_ref,
+    mst_movimiento.r_id_doc,
+    mst_movimiento.r_documento_id,
+    mst_movimiento.r_razon_social,
+    mst_movimiento.r_monto_total,
+    mst_movimiento.r_tc,
+    (mst_movimiento.gre_cod || '-' ||
+      mst_movimiento.gre_serie || '-' ||
+      mst_movimiento.gre_numero)::VARCHAR(50) AS gre_ref
   `;
 
   let query = `
     SELECT ${columnas}
-    FROM mst_movimiento
-    WHERE periodo = $1
-      AND id_usuario = $2
-      AND documento_id = $3
-      AND r_cod <> 'MV'
+    FROM mst_movimiento LEFT JOIN mst_movimiento_motivo
+    ON (mst_movimiento.cod = mst_movimiento_motivo.cod and
+        mst_movimiento.id_motivo = mst_movimiento_motivo.id_motivo )
+    WHERE mst_movimiento.periodo = $1
+      AND mst_movimiento.id_usuario = $2
+      AND mst_movimiento.documento_id = $3
+      AND mst_movimiento.r_cod <> 'MV'
   `;
 
   const params = [periodo, id_anfitrion, documento_id];
 
   if (fechaFiltro) {
-    query += " AND fecha_emision = $4";
+    query += " AND mst_movimiento.fecha_emision = $4";
     params.push(fechaFiltro);
   }
 
-  query += " ORDER BY fecha_emision DESC, cod, serie, numero DESC";
+  query += " ORDER BY mst_movimiento.fecha_emision DESC, mst_movimiento.cod, mst_movimiento.serie, mst_movimiento.numero DESC";
 
   //console.log("SQL:", query, "PARAMS:", params);
 
