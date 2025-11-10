@@ -8,46 +8,49 @@ const obtenerStockDetTodos = async (req, res, next) => {
 
   // Definición compacta de columnas
   const columnas = `
-    CAST(fecha_emision AS VARCHAR(50)) AS emision,
-    cod,
-    serie,
-    numero,
-    (cod || '-' || serie || '-' || numero)::VARCHAR(50) AS comprobante,
-    r_id_doc,
-    r_documento_id,
-    r_razon_social,
-    r_cod,
-    r_serie,
-    r_numero,
-    CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
-    id_almacen,
-    id_producto,
-    descripcion,
-    ingreso,
-    egreso,
-    cont_und,
-    precio_neto,
-    porc_igv
+    CAST(mst_movimientodet.fecha_emision AS VARCHAR(50)) AS emision,
+    mst_movimiento_motivo.nombre,
+    mst_movimientodet.cod,
+    mst_movimientodet.serie,
+    mst_movimientodet.numero,
+    (mst_movimientodet.cod || '-' || mst_movimientodet.serie || '-' || mst_movimientodet.numero)::VARCHAR(50) AS comprobante,
+    mst_movimientodet.r_id_doc,
+    mst_movimientodet.r_documento_id,
+    mst_movimientodet.r_razon_social,
+    mst_movimientodet.r_cod,
+    mst_movimientodet.r_serie,
+    mst_movimientodet.r_numero,
+    CAST(mst_movimientodet.r_fecemi AS VARCHAR(50)) AS r_fecemi,
+    mst_movimientodet.id_almacen,
+    mst_movimientodet.id_producto,
+    mst_movimientodet.descripcion,
+    mst_movimientodet.ingreso,
+    mst_movimientodet.egreso,
+    mst_movimientodet.cont_und,
+    mst_movimientodet.precio_neto,
+    mst_movimientodet.porc_igv
   `;
 
   let query = `
     SELECT ${columnas}
     FROM 
-    mst_movimientodet
-    WHERE periodo = $1
-      AND id_usuario = $2
-      AND documento_id = $3
-      AND cod <> 'MV'
+    mst_movimientodet LEFT JOIN mst_movimiento_motivo
+    ON (mst_movimientodet.cod = mst_movimiento_motivo.cod and
+        mst_movimientodet.id_motivo = mst_movimiento_motivo.id_motivo )
+    WHERE mst_movimientodet.periodo = $1
+      AND mst_movimientodet.id_usuario = $2
+      AND mst_movimientodet.documento_id = $3
+      AND mst_movimientodet.cod <> 'MV'
   `;
 
   const params = [periodo, id_anfitrion, documento_id];
 
   if (fechaFiltro) {
-    query += " AND fecha_emision = $4";
+    query += " AND mst_movimientodet.fecha_emision = $4";
     params.push(fechaFiltro);
   }
 
-  query += " ORDER BY fecha_emision DESC, cod, serie, numero DESC";
+  query += " ORDER BY mst_movimientodet.fecha_emision DESC, mst_movimientodet.cod, mst_movimientodet.serie, mst_movimientodet.numero DESC";
 
   //console.log("SQL:", query, "PARAMS:", params);
 
