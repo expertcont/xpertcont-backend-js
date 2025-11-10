@@ -96,7 +96,6 @@ const obtenerInventario = async (req, res, next) => {
   const sQuery = `
     SELECT 
       f.*,
-      f.nombre_producto as descripcion,
       (f.saldo_inicial + f.ingresos - f.egresos) AS saldo,
       p.cont_und
     FROM fst_inventario_avanzado_fecha($1, $2, $3, $4, $5, $6) AS f
