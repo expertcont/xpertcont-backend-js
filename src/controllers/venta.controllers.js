@@ -1290,7 +1290,7 @@ const obtenerTotalUnidades = async (req, res) => {
           AND ($4::date IS NULL OR r_fecemi = $4::date)
         GROUP BY descripcion
       ) AS descripcion
-      WHERE total IS NOT NULL and cont_und IS NOT NULL
+      WHERE total IS NOT NULL and descripcion IS NOT NULL
     `;
 
     const params = [periodo, id_anfitrion, documento_id, fechaFiltro];
