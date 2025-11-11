@@ -1288,7 +1288,7 @@ const obtenerTotalUnidades = async (req, res) => {
           AND id_usuario = $2
           AND documento_id = $3
           AND ($4::date IS NULL OR r_fecemi = $4::date)
-        GROUP BY cont_und
+        GROUP BY descripcion
       ) AS descripcion
       WHERE total IS NOT NULL and cont_und IS NOT NULL
     `;
