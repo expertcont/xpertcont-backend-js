@@ -1281,7 +1281,7 @@ const obtenerTotalUnidades = async (req, res) => {
     const query = `
       SELECT * FROM (
         SELECT 
-          cont_und, 
+          descripcion, 
           SUM(cantidad)::numeric(14,2) AS total
         FROM mve_ventadet
         WHERE periodo = $1
@@ -1289,7 +1289,7 @@ const obtenerTotalUnidades = async (req, res) => {
           AND documento_id = $3
           AND ($4::date IS NULL OR r_fecemi = $4::date)
         GROUP BY cont_und
-      ) AS consulta
+      ) AS descripcion
       WHERE total IS NOT NULL and cont_und IS NOT NULL
     `;
 
