@@ -1279,7 +1279,9 @@ const obtenerTotalUnidades = async (req, res) => {
 
   try {
     const query = `
-      SELECT consulta.*, ('DIA: ' || ${dia} )::varchar as emision FROM (
+      SELECT consulta.*, 
+            ('DIA: ' || CASE WHEN $5 = '*' THEN 'TODOS' ELSE $5 END)::varchar as emision
+      FROM (
         SELECT 
           descripcion, 
           id_producto,
@@ -1298,7 +1300,7 @@ const obtenerTotalUnidades = async (req, res) => {
       ORDER BY descripcion
     `;
 
-    const params = [periodo, id_anfitrion, documento_id, fechaFiltro];
+    const params = [periodo, id_anfitrion, documento_id, fechaFiltro, dia];
 
     const ventaResult = await pool.query(query, params);
 
