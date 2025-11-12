@@ -1279,18 +1279,23 @@ const obtenerTotalUnidades = async (req, res) => {
 
   try {
     const query = `
-      SELECT * FROM (
+      SELECT consulta.* FROM (
         SELECT 
           descripcion, 
-          SUM(cantidad)::numeric(14,2) AS total
+          id_producto,
+          cont_und,
+          sum(cantidad)::numeric(14,2) AS egreso
         FROM mve_ventadet
         WHERE periodo = $1
           AND id_usuario = $2
           AND documento_id = $3
           AND ($4::date IS NULL OR r_fecemi = $4::date)
-        GROUP BY descripcion
-      ) AS descripcion
-      WHERE total IS NOT NULL and descripcion IS NOT NULL
+          AND registrado = 1
+        GROUP BY descripcion, 
+              id_producto,
+              cont_und
+      ) AS consulta
+      ORDER BY descripcion
     `;
 
     const params = [periodo, id_anfitrion, documento_id, fechaFiltro];
