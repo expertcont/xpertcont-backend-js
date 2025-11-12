@@ -1279,7 +1279,7 @@ const obtenerTotalUnidades = async (req, res) => {
 
   try {
     const query = `
-      SELECT consulta.*, ('dia: ' || ${dia} )::vachar as emision FROM (
+      SELECT consulta.*, ('Dia: ' || ${dia} )::varchar as emision FROM (
         SELECT 
           descripcion, 
           id_producto,
