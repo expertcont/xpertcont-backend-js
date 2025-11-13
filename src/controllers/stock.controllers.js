@@ -790,6 +790,65 @@ const generarSaldosIniciales = async (req, res, next) => {
   }
 };
 
+const obtenerTotalUnidadesStocks = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+
+  if (!periodo || !id_anfitrion || !documento_id || dia === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: periodo, id_anfitrion, id_invitado o dia',
+    });
+  }
+
+  // Si no es "*", formatear a YYYY-MM-DD, si es "*", será null
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
+
+  try {
+    const query = `
+      SELECT consulta.*, 
+            (CASE 
+              WHEN $5 = '*' THEN $1
+              ELSE 'DIA: ' || $5 
+            END)::varchar AS emision
+      FROM (
+        SELECT 
+          descripcion, 
+          id_producto,
+          cont_und,
+          sum(precio_neto)::numeric(14,2) AS precio_neto,
+          sum(ingreso)::numeric(14,2) AS ingreso,
+          sum(egreso)::numeric(14,2) AS egreso
+        FROM mst_movimientodet
+        WHERE periodo = $1
+          AND id_usuario = $2
+          AND documento_id = $3
+          AND ($4::date IS NULL OR r_fecemi = $4::date)
+          AND registrado = 1
+        GROUP BY descripcion, 
+              id_producto,
+              cont_und
+      ) AS consulta
+      ORDER BY descripcion
+    `;
+
+    const params = [periodo, id_anfitrion, documento_id, fechaFiltro, dia];
+
+    const ventaResult = await pool.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      data: ventaResult.rows
+    });
+
+  } catch (error) {
+    console.error('Error al obtener total de unidades:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
 module.exports = {
     obtenerRegistroTodos,
     obtenerMotivos, //Motivos de movimientos Almacen
@@ -804,5 +863,6 @@ module.exports = {
     eliminarRegistroMasivo,
     actualizarRegistro,
     anularRegistro,
+    obtenerTotalUnidadesStocks,
     generarSaldosIniciales //New para generar saldos
  }; 
