@@ -1289,7 +1289,7 @@ const obtenerTotalUnidades = async (req, res) => {
           descripcion, 
           id_producto,
           cont_und,
-          sum(precio_neto)::numeric(14,2) AS precio_neto
+          sum(precio_neto)::numeric(14,2) AS precio_neto,
           sum(cantidad)::numeric(14,2) AS egreso
         FROM mve_ventadet
         WHERE periodo = $1
