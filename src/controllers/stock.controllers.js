@@ -753,7 +753,7 @@ const generarSaldosIniciales = async (req, res, next) => {
     // 📦 2️⃣ Insertar nuevos saldos
     const insertSQL = `
       INSERT INTO mst_producto_sf (
-        id_usuario, documento_id, id_producto, id_almacen, periodo, cantidad, peso_neto
+        id_usuario, documento_id, id_producto, id_almacen, periodo, cantidad, descripcion ,peso_neto
       )
       SELECT 
         $2 AS id_usuario,
@@ -762,6 +762,7 @@ const generarSaldosIniciales = async (req, res, next) => {
         f.id_almacen,
         $4 AS periodo,
         (coalesce(f.saldo_inicial,0) + coalesce(f.ingresos,0) - coalesce(f.egresos,0)) AS cantidad,
+        f.nombre_producto,
         0 AS peso_neto
       FROM fst_inventario_avanzado_fecha($1, $2, $3, '', '', NULL) AS f
       WHERE (coalesce(f.saldo_inicial,0) + coalesce(f.ingresos,0) - coalesce(f.egresos,0)) <> 0
