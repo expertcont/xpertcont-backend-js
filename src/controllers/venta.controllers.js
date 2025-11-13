@@ -1281,7 +1281,7 @@ const obtenerTotalUnidades = async (req, res) => {
     const query = `
       SELECT consulta.*, 
             (CASE 
-              WHEN $5 = '*' THEN 'MENSUAL' 
+              WHEN $5 = '*' THEN $1
               ELSE 'DIA: ' || $5 
             END)::varchar AS emision
       FROM (
