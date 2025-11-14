@@ -42,7 +42,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
         WHEN r_cod_ref IS NULL THEN 
           null::varchar
         ELSE 
-          (r_cod_ref || '-' || r_serie_ref || '-' || r_numero_ref)::varchar
+          (r_cod || '-' || r_serie || '-' || r_numero)::varchar
         END) AS comprobante_ref,
 
     efectivo,
