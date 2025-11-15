@@ -37,7 +37,6 @@ const obtenerRegistroTodos = async (req, res, next) => {
     r_numero_ref,
     glosa,
     r_vfirmado,
-
     (CASE 
         WHEN r_cod_ref IS NULL THEN 
           null::varchar
@@ -52,6 +51,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
     (gre_cod || '-' ||
       gre_serie || '-' ||
       gre_numero)::VARCHAR(50) AS gre_ref,
+    (r_cod || '-' || r_serie || '-' || r_numero)::varchar as comprobante_key,
     elemento
   `;
 
