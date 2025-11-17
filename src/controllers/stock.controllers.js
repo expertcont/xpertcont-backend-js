@@ -130,6 +130,55 @@ const obtenerInventario = async (req, res, next) => {
   }
 };
 
+const obtenerKardex = async (req, res, next) => {
+  let { periodo, id_anfitrion, documento_id, dia, id_producto, id_almacen } = req.params;
+
+  // Si el día no es '*', arma la fecha completa, ejemplo: "2025-10-15"
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
+
+  // Normalizar id_producto: '' debe convertirse en null
+  if (!id_producto || id_producto.trim() === '') {
+    id_producto = null;
+  }
+  // Normalizar id_almacen: '' debe convertirse en null
+  if (!id_almacen || id_almacen.trim() === '') {
+    id_almacen = null;
+  }
+
+  const sQuery = `
+    SELECT 
+         descripcion
+        ,id_producto
+        ,cont_und
+        ,comprobante
+        ,emision
+        ,id_opcontable
+        ,op_contable
+        ,orden
+        ,ingreso
+        ,egreso
+        ,saldo
+    FROM fst_kardex_fisico($1, $2, $3, $4, $5, $6)
+  `;
+
+  const params = [
+    periodo,               // $1
+    id_anfitrion,          // $2
+    documento_id,          // $3
+    id_almacen,            // $4
+    fechaFiltro,           // $5
+    id_producto            // $6
+  ];
+
+  try {
+    const { rows } = await pool.query(sQuery, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error en obtener Kardex:", error.message);
+    next(error);
+  }
+};
+
 const obtenerRegistro = async (req,res,next)=> {
     try {
         const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
@@ -853,6 +902,7 @@ module.exports = {
     obtenerRegistroTodos,
     obtenerMotivos, //Motivos de movimientos Almacen
     obtenerInventario, //New Reporte ;)
+    obtenerKardex, //New reporte ;)
     obtenerRegistro,
     crearRegistro,
     generarRegistro,
