@@ -269,30 +269,47 @@ const crearProducto = async (req,res,next)=> {
     }
 };
 
-const eliminarProducto = async (req,res,next)=> {
-    try {
-        let strSQL;
-        const {id_anfitrion,documento_id,id_producto} = req.params;
-        strSQL = `
-            DELETE FROM mst_producto
-            WHERE id_usuario   = $1
-            AND documento_id   = $2
-            AND id_producto    = $3
-        `;
+const eliminarProducto = async (req, res, next) => {
+  try {
+    const { id_anfitrion, documento_id, id_producto } = req.params;
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
+    // 1) Eliminar precios del producto
+    const sqlPrecios = `
+      DELETE FROM mst_producto_precio
+      WHERE id_usuario   = $1
+      AND   documento_id = $2
+      AND   id_producto  = $3
+    `;
 
-        if (result.rowCount === 0)
-            return res.status(404).json({
-                message:"Producto no encontrado"
-            });
+    await pool.query(sqlPrecios, [id_anfitrion, documento_id, id_producto]);
 
-        return res.sendStatus(204);
-    } catch (error) {
-        console.log(error.message);
+    // 2) Eliminar producto
+    const sqlProducto = `
+      DELETE FROM mst_producto
+      WHERE id_usuario   = $1
+      AND   documento_id = $2
+      AND   id_producto  = $3
+    `;
+
+    const result = await pool.query(sqlProducto, [
+      id_anfitrion,
+      documento_id,
+      id_producto,
+    ]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        message: "Producto no encontrado",
+      });
     }
 
+    return res.sendStatus(204);
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ message: "Error en el servidor" });
+  }
 };
+
 const actualizarProducto = async (req,res,next)=> {
     try {
         let strSQL;
