@@ -155,6 +155,7 @@ const obtenerKardex = async (req, res, next) => {
         ,id_opcontable
         ,op_contable
         ,orden
+        ,id_almacen
         ,ingreso
         ,egreso
         ,saldo
