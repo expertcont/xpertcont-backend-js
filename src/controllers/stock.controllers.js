@@ -151,7 +151,7 @@ const obtenerKardex = async (req, res, next) => {
         ,id_producto
         ,cont_und
         ,comprobante
-        ,emision
+        ,cast(emision as varchar)::varchar as emision
         ,id_opcontable
         ,op_contable
         ,orden
