@@ -744,6 +744,49 @@ const eliminarGrupoMasivo = async (req,res,next)=> {
 
 };
 
+const clonarProducto = async (req, res) => {
+  const { 
+    id_anfitrion, 
+    documento_id, 
+    id_producto, 
+    id_producto_nuevo, 
+    nombre_nuevo 
+  } = req.body;
+
+  try {
+    // Llamar a la función de la BD (fst_clonar_producto)
+    const result = await pool.query(
+      `SELECT * FROM fst_clonar_producto($1, $2, $3, $4, $5)`,
+      [id_anfitrion, documento_id, id_producto, id_producto_nuevo, nombre_nuevo]
+    );
+
+    // Validación por si la función no devolvió filas
+    if (result.rows.length === 0) {
+      return res.status(500).json({
+        exito: false,
+        mensaje: "La función no devolvió respuesta."
+      });
+    }
+
+    const { exito, mensaje } = result.rows[0];
+
+    // Devolver al frontend
+    return res.json({
+      exito,
+      mensaje
+    });
+
+  } catch (error) {
+    console.error("Error en clonarProducto:", error.message);
+
+    return res.status(500).json({
+      exito: false,
+      mensaje: "Error interno en el servidor.",
+      detalle: error.message
+    });
+  }
+};
+
 module.exports = {
     obtenerTodosProductos,
     obtenerTodosProductosPrecios,
@@ -761,6 +804,7 @@ module.exports = {
     importarExcelProductosPrecios,
     obtenerProductoPrecio,
     actualizarProductoPrecio,
+    clonarProducto,
     
     crearGrupo,
     eliminarGrupo,
