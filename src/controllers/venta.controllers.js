@@ -68,14 +68,14 @@ const obtenerRegistroTodos = async (req, res, next) => {
     r_razon_social,
 
     -- Afecta, IGV, Exonerado, etc.
-    CASE WHEN r_cod = '07' THEN r_base001 * -1 ELSE r_base001 END AS export,
-    CASE WHEN r_cod = '07' THEN r_base002 * -1 ELSE r_base002 END AS base,
-    CASE WHEN r_cod = '07' THEN r_igv002 * -1 ELSE r_igv002 END AS igv,
-    CASE WHEN r_cod = '07' THEN r_base003 * -1 ELSE r_base003 END AS exonera,
-    CASE WHEN r_cod = '07' THEN r_base004 * -1 ELSE r_base004 END AS inafecta,
-    CASE WHEN r_cod = '07' THEN r_monto_icbp * -1 ELSE r_monto_icbp END AS r_monto_icbp,
-    CASE WHEN r_cod = '07' THEN r_monto_otros * -1 ELSE r_monto_otros END AS r_monto_otros,
-    CASE WHEN r_cod = '07' THEN r_monto_total * -1 ELSE r_monto_total END AS r_monto_total,
+    CASE WHEN r_cod_ref = '07' THEN r_base001 * -1 ELSE r_base001 END AS export,
+    CASE WHEN r_cod_ref = '07' THEN r_base002 * -1 ELSE r_base002 END AS base,
+    CASE WHEN r_cod_ref = '07' THEN r_igv002 * -1 ELSE r_igv002 END AS igv,
+    CASE WHEN r_cod_ref = '07' THEN r_base003 * -1 ELSE r_base003 END AS exonera,
+    CASE WHEN r_cod_ref = '07' THEN r_base004 * -1 ELSE r_base004 END AS inafecta,
+    CASE WHEN r_cod_ref = '07' THEN r_monto_icbp * -1 ELSE r_monto_icbp END AS r_monto_icbp,
+    CASE WHEN r_cod_ref = '07' THEN r_monto_otros * -1 ELSE r_monto_otros END AS r_monto_otros,
+    CASE WHEN r_cod_ref = '07' THEN r_monto_total * -1 ELSE r_monto_total END AS r_monto_total,
 
     r_moneda,
     r_tc,
