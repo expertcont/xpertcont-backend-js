@@ -982,7 +982,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
         });
         
         const responseData = await apiResponse.json();
-        //console.log("respuesta generada: ",responseData); //agregamos
+        console.log("respuesta generada backend: ",responseData); //agregamos
 
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
