@@ -37,6 +37,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
     r_numero_ref,
     glosa,
     r_vfirmado,
+    cdr_descripcion,
     (CASE 
         WHEN r_cod_ref IS NULL THEN 
           null::varchar
