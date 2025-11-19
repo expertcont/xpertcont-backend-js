@@ -4,12 +4,11 @@ const fetch = require('node-fetch');
 
 const obtenerRegistroTodos = async (req, res, next) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
-  //console.log(periodo, id_anfitrion, documento_id, dia);
 
   const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
 
   // Definición compacta de columnas
-  const columnas = `
+  /*const columnas = `
     CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
     CAST(r_fecvcto AS VARCHAR(50)) AS r_fecvcto,
     r_cod,
@@ -54,6 +53,55 @@ const obtenerRegistroTodos = async (req, res, next) => {
       gre_numero)::VARCHAR(50) AS gre_ref,
     (r_cod || '-' || r_serie || '-' || r_numero || '-' || elemento)::varchar as comprobante_key,
     elemento
+  `;*/
+  const columnas = `
+    CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
+    CAST(r_fecvcto AS VARCHAR(50)) AS r_fecvcto,
+    r_cod,
+    r_serie,
+    r_numero,
+    (COALESCE(r_cod_ref, r_cod) || '-' ||
+      COALESCE(r_serie_ref, r_serie) || '-' ||
+      COALESCE(r_numero_ref, r_numero))::VARCHAR(50) AS comprobante,
+    r_id_doc,
+    r_documento_id,
+    r_razon_social,
+
+    -- Afecta, IGV, Exonerado, etc.
+    CASE WHEN r_cod = '07' THEN r_base001 * -1 ELSE r_base001 END AS export,
+    CASE WHEN r_cod = '07' THEN r_base002 * -1 ELSE r_base002 END AS base,
+    CASE WHEN r_cod = '07' THEN r_igv002 * -1 ELSE r_igv002 END AS igv,
+    CASE WHEN r_cod = '07' THEN r_base003 * -1 ELSE r_base003 END AS exonera,
+    CASE WHEN r_cod = '07' THEN r_base004 * -1 ELSE r_base004 END AS inafecta,
+    CASE WHEN r_cod = '07' THEN r_monto_icbp * -1 ELSE r_monto_icbp END AS r_monto_icbp,
+    CASE WHEN r_cod = '07' THEN r_monto_otros * -1 ELSE r_monto_otros END AS r_monto_otros,
+    CASE WHEN r_cod = '07' THEN r_monto_total * -1 ELSE r_monto_total END AS r_monto_total,
+
+    r_moneda,
+    r_tc,
+    CAST(r_fecemi_ref AS VARCHAR(50)) AS r_fecemi_ref,
+    r_cod_ref,
+    r_serie_ref,
+    r_numero_ref,
+    glosa,
+    r_vfirmado,
+    cdr_descripcion,
+    
+    (CASE 
+        WHEN r_cod_ref IS NULL THEN null::varchar
+        ELSE (r_cod || '-' || r_serie || '-' || r_numero)::varchar
+    END) AS comprobante_ref,
+
+    efectivo,
+    forma_pago2,
+    efectivo2,
+    gre_vfirmado,
+    (gre_cod || '-' ||
+      gre_serie || '-' ||
+      gre_numero)::VARCHAR(50) AS gre_ref,
+
+    (r_cod || '-' || r_serie || '-' || r_numero || '-' || elemento)::varchar as comprobante_key,
+    elemento
   `;
 
   let query = `
@@ -73,8 +121,6 @@ const obtenerRegistroTodos = async (req, res, next) => {
   }
 
   query += " ORDER BY r_fecemi DESC, r_cod, r_serie, r_numero DESC";
-
-  //console.log("SQL:", query, "PARAMS:", params);
 
   try {
     const { rows } = await pool.query(query, params);
