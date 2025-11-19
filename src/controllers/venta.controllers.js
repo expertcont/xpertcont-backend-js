@@ -995,6 +995,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
         
           // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
           console.log('codigo_hash: ',codigo_hash);
+          const descripcionCorta = (respuesta_sunat_descripcion || '').substring(0, 80);
 
           if (codigo_hash !== null){
               // 2. Lectura de datos de la tabla mve_venta, solo en modo producccion, nada que ver con confucio ;)
@@ -1002,11 +1003,11 @@ const generarCPEexpertcont = async (req,res,next)=> {
               if (data.empresa.modo === "1") {
                   await pool.query(
                     `
-                    UPDATE mve_venta set r_vfirmado = $8
+                    UPDATE mve_venta set r_vfirmado = $8, cdr_descripcion = $9
                     WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
                       AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
                     `,
-                    [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, codigo_hash]
+                    [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, codigo_hash, descripcionCorta]
                   );
               }
           }
