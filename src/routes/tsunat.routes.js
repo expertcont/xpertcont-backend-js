@@ -1,6 +1,6 @@
 const {Router} = require('express');
 const router = Router();
-const {obtenerTodosPais,obtenerTodosBss,obtenerTodosAduana,obtenerTodosComprobante,obtenerTodosMedioPago, obtenerTodosIdDoc, obtenerTodosCCostoPopUp, obtenerTodosLibros, obtenerTCSunat, generarTCSunat, obtenerTodosUnidadesMedida} = require('../controllers/tsunat.controllers')
+const {obtenerTodosPais,obtenerTodosBss,obtenerTodosAduana,obtenerTodosComprobante,obtenerTodosMedioPago, obtenerTodosIdDoc, obtenerTodosCCostoPopUp, obtenerTodosLibros, obtenerTCSunat, generarTCSunat, obtenerTodosUnidadesMedida, obtenerTodosMotivosNota} = require('../controllers/tsunat.controllers')
 
 //Tablas sunat, no se editan, solo se administran en plataforma
 router.get('/pais', obtenerTodosPais);
@@ -16,5 +16,6 @@ router.get('/tipocambio/:fecha/:tipo', obtenerTCSunat);
 router.post('/tipocambiogenera', generarTCSunat);
 
 router.get('/unidadmedida', obtenerTodosUnidadesMedida);
+router.get('/motivonota/:cod', obtenerTodosMotivosNota);//cod='07' o '08'
 
 module.exports = router;

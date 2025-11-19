@@ -285,6 +285,24 @@ const obtenerTodosUnidadesMedida = async (req,res,next)=> {
     }
 };
 
+const obtenerTodosMotivosNota = async (req,res,next)=> {
+    try {
+        //recibir parametros cod
+        const {cod} = req.params; //cod = 07 o 08 
+
+        const strSQL = `SELECT id_motivo as codigo, nombre as descripcion
+                        FROM mct_tmotivonota
+                        WHERE cod = $1
+                        ORDER BY codigo`;
+
+        const todosReg = await pool.query(strSQL,[cod]);
+        res.json(todosReg.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 module.exports = {
     obtenerTodosPais,
     obtenerTodosBss,
@@ -296,5 +314,6 @@ module.exports = {
     obtenerTodosLibros,
     obtenerTCSunat,
     generarTCSunat,
-    obtenerTodosUnidadesMedida
+    obtenerTodosUnidadesMedida,
+    obtenerTodosMotivosNota
  }; 
