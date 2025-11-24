@@ -52,6 +52,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
       gre_serie || '-' ||
       gre_numero)::VARCHAR(50) AS gre_ref,
     (r_cod || '-' || r_serie || '-' || r_numero || '-' || elemento)::varchar as comprobante_key,
+    cdr_pendiente,
     elemento
   `;*/
   const columnas = `
@@ -101,6 +102,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
       gre_numero)::VARCHAR(50) AS gre_ref,
 
     (r_cod || '-' || r_serie || '-' || r_numero || '-' || elemento)::varchar as comprobante_key,
+    cdr_pendiente,
     elemento
   `;
 
