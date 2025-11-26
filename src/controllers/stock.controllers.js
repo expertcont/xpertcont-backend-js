@@ -754,7 +754,8 @@ const anularRegistro = async (req,res,next)=> {
         let strSQL;
         let result;
         let result2;
-
+        console.log(req.body);
+        
         strSQL = `UPDATE mst_movimientodet SET registrado = 0
                   WHERE periodo = $1
                   AND id_usuario = $2
