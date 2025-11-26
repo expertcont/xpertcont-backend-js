@@ -1054,7 +1054,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
               if (data.empresa.modo === "1") {
                   await pool.query(
                     `
-                    UPDATE mve_venta set r_vfirmado = $8, cdr_descripcion = $9, cdr_pendiente=$10
+                    UPDATE mve_venta set r_vfirmado = coalesce($8,r_vfirmado), cdr_descripcion = $9, cdr_pendiente=$10
                     WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
                       AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
                     `,
