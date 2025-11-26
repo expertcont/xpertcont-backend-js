@@ -18,7 +18,7 @@ router.post('/ad_stockinventario', generarSaldosIniciales);
 router.post('/ad_stockclon', clonarRegistro);
 
 router.put('/ad_stock', actualizarRegistro); //modifica datos cabecera
-router.put('/ad_stock/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem/anular', anularRegistro);
+router.put('/ad_stockanula', anularRegistro);
 router.delete('/ad_stockdel', eliminarRegistro); //elimina ultimo registro de venta
 
 

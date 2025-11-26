@@ -749,7 +749,8 @@ const actualizarRegistro = async (req,res,next)=> {
 
 const anularRegistro = async (req,res,next)=> {
     try {
-        const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
+        //const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
+        const { periodo, id_anfitrion, documento_id, cod, serie, numero } = req.body;
         var strSQL;
         var result;
         var result2;
@@ -761,7 +762,7 @@ const anularRegistro = async (req,res,next)=> {
         strSQL += " AND cod = $4";
         strSQL += " AND serie = $5";
         strSQL += " AND numero = $6";
-        result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
+        result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
 
         strSQL = "UPDATE mst_movimiento SET registrado = 0";
         strSQL += " WHERE periodo = $1";
@@ -770,7 +771,7 @@ const anularRegistro = async (req,res,next)=> {
         strSQL += " AND cod = $4";
         strSQL += " AND serie = $5";
         strSQL += " AND numero = $6";
-        result2 = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
+        result2 = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
 
         return res.sendStatus(204);
     } catch (error) {
@@ -898,6 +899,7 @@ const obtenerTotalUnidadesStocks = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
     obtenerRegistroTodos,
