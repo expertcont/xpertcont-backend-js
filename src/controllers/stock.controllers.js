@@ -759,7 +759,7 @@ const anularRegistro = async (req,res,next)=> {
         let strSQL;
         let result;
         let result2;
-        console.log(req.body.data);
+        //console.log(req.body.data);
 
         strSQL = `UPDATE mst_movimientodet SET registrado = 0
                   WHERE periodo = $1
@@ -779,7 +779,7 @@ const anularRegistro = async (req,res,next)=> {
                   AND numero = $6
                   RETURNING *`;
         result2 = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
-        console.log(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
+        //console.log(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
         //return res.sendStatus(204);
       // Si la función devolvió resultados, enviarlos al frontend
       if (result2.rows.length > 0) {
