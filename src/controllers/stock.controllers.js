@@ -750,12 +750,12 @@ const actualizarRegistro = async (req,res,next)=> {
 const anularRegistro = async (req,res,next)=> {
     try {
         //const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
-        const { periodo, id_anfitrion, documento_id, cod, serie, numero } = req.body;
+        const { periodo, id_anfitrion, documento_id, cod, serie, numero } = req.body.data;
         let strSQL;
         let result;
         let result2;
-        console.log(req.body);
-        
+        console.log(req.body.data);
+
         strSQL = `UPDATE mst_movimientodet SET registrado = 0
                   WHERE periodo = $1
                   AND id_usuario = $2
