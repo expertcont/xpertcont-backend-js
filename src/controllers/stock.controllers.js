@@ -23,6 +23,11 @@ const obtenerRegistroTodos = async (req, res, next) => {
     mst_movimiento.r_razon_social,
     mst_movimiento.r_monto_total,
     mst_movimiento.r_tc,
+    (CASE 
+      WHEN mst_movimiento.registrado = 0 THEN 'NULO'
+      ELSE ''
+    END)::varchar AS estado,
+
     (mst_movimiento.gre_cod || '-' ||
       mst_movimiento.gre_serie || '-' ||
       mst_movimiento.gre_numero)::VARCHAR(50) AS gre_ref
