@@ -751,29 +751,43 @@ const anularRegistro = async (req,res,next)=> {
     try {
         //const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
         const { periodo, id_anfitrion, documento_id, cod, serie, numero } = req.body;
-        var strSQL;
-        var result;
-        var result2;
+        let strSQL;
+        let result;
+        let result2;
 
-        strSQL = "UPDATE mst_movimientodet SET registrado = 0";
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND cod = $4";
-        strSQL += " AND serie = $5";
-        strSQL += " AND numero = $6";
+        strSQL = `UPDATE mst_movimientodet SET registrado = 0
+                  WHERE periodo = $1
+                  AND id_usuario = $2
+                  AND documento_id = $3
+                  AND cod = $4
+                  AND serie = $5
+                  AND numero = $6`;
         result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
 
-        strSQL = "UPDATE mst_movimiento SET registrado = 0";
-        strSQL += " WHERE periodo = $1";
-        strSQL += " AND id_usuario = $2";
-        strSQL += " AND documento_id = $3";
-        strSQL += " AND cod = $4";
-        strSQL += " AND serie = $5";
-        strSQL += " AND numero = $6";
+        strSQL = `UPDATE mst_movimiento SET registrado = 0
+                  WHERE periodo = $1
+                  AND id_usuario = $2
+                  AND documento_id = $3
+                  AND cod = $4
+                  AND serie = $5
+                  AND numero = $6
+                  RETURNING *`;
         result2 = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
 
-        return res.sendStatus(204);
+        //return res.sendStatus(204);
+      // Si la función devolvió resultados, enviarlos al frontend
+      if (result.rows.length > 0) {
+        res.status(200).json({
+          success: true,
+          ... result.rows[0], // Devolver el primer (y único) resultado
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'No se encontraron resultados o no se pudo crear el pedido.',
+        });
+      }
+
     } catch (error) {
         console.log(error.message);
     }
