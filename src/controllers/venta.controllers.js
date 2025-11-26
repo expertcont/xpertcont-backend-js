@@ -1035,6 +1035,7 @@ const generarCPEexpertcont = async (req,res,next)=> {
         if (apiResponse.ok) {
           // 6. Extraer datos de la respuesta y retornar
           const {
+            estado,
             cdr_pendiente,
             respuesta_sunat_descripcion,
             ruta_xml,
@@ -1064,6 +1065,8 @@ const generarCPEexpertcont = async (req,res,next)=> {
           }
 
           return res.json({
+            estado,
+            cdr_pendiente,
             respuesta_sunat_descripcion,
             ruta_xml,
             ruta_cdr,
