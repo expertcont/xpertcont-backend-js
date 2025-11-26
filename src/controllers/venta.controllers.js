@@ -1193,7 +1193,7 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             producto: item.descripcion,
             cantidad: item.cantidad,
             precio_base: item.monto_base,
-            codigo_sunat: "50101500", //Generico abarrotes y alimentos bebidas
+            codigo_sunat: "50101716", //Generico abarrotes y alimentos bebidas
             codigo_producto: item.id_producto,
             codigo_unidad: item.cont_und,
             tipo_igv_codigo: (item.tipo_igv_codigo && item.tipo_igv_codigo.toString().trim()) || "10",
