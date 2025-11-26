@@ -773,10 +773,10 @@ const anularRegistro = async (req,res,next)=> {
                   AND numero = $6
                   RETURNING *`;
         result2 = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
-
+        console.log(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,numero]);
         //return res.sendStatus(204);
       // Si la función devolvió resultados, enviarlos al frontend
-      if (result.rows.length > 0) {
+      if (result2.rows.length > 0) {
         res.status(200).json({
           success: true,
           ... result.rows[0], // Devolver el primer (y único) resultado
