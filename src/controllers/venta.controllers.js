@@ -1288,6 +1288,7 @@ const obtenerTotalRecaudacion = async (req, res) => {
         WHERE periodo = $1
           AND id_usuario = $2
           AND documento_id = $3
+          AND registrado = 1
           AND ($4::date IS NULL OR r_fecemi = $4::date)
         
         UNION ALL
@@ -1299,6 +1300,7 @@ const obtenerTotalRecaudacion = async (req, res) => {
         WHERE periodo = $1
           AND id_usuario = $2
           AND documento_id = $3
+          AND registrado = 1
           AND ($4::date IS NULL OR r_fecemi = $4::date)
         GROUP BY forma_pago2
       ) AS consulta
