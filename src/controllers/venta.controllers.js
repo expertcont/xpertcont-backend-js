@@ -1225,6 +1225,7 @@ const obtenerTotalVentas = async (req, res) => {
       FROM mve_venta
       WHERE periodo = $1
         AND id_usuario = $2
+        AND registrado = 1
     `;
     const params = [periodo, id_anfitrion];
 
