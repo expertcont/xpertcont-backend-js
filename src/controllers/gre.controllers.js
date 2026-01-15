@@ -695,10 +695,11 @@ const crearRegistroRef = async (req, res, next) => {
     //console.log(datos);
 
     const datosJSON = JSON.stringify(datos);
-    console.log(datosJSON,periodo, id_anfitrion, documento_id, id_invitado, cod_emitir);
+    console.log('datosJSON: ', datosJSON);
+    console.log('parametros: ', periodo, id_anfitrion, documento_id, id_invitado, cod_emitir);
     strSQL = "SELECT cod, serie, numero FROM fve_generagrejson($1, $2, $3, $4, $5, $6)";
     try {
-        const parametros = [datosJSON, id_anfitrion, documento_id, periodo, id_invitado, cod_emitir];
+        const parametros = [id_anfitrion, documento_id, periodo, id_invitado, cod_emitir, datosJSON];
         const result = await pool.query(strSQL, parametros);
         console.log('Gre creada en BD');
         if (result.rows.length > 0) {
