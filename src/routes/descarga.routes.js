@@ -6,7 +6,7 @@ router.get('/descarga/:ruc/:archivo', (req, res) => {
 
   // URL real donde Nginx sirve el archivo
   const urlVps =
-    `http://74.208.184.113:8080/descargas/${ruc}/${archivo}`;
+    `http://74.208.184.113:8080/descarga/${ruc}/${archivo}`;
 
   // Redirección directa (descarga inmediata)
   res.redirect(urlVps);
