@@ -804,6 +804,48 @@ const clonarProducto = async (req, res) => {
   }
 };
 
+const crearProductoPrecio = async (req,res,next)=> {
+    const {id_anfitrion,documento_id,id_producto,unidades} = req.params; //04
+    const { 
+            precio_venta,   //05
+            cant_min,       //06
+            cant_max        //07
+    } = req.body    
+        
+    let strSQL;
+    try {
+        strSQL = "INSERT INTO mst_producto_precio(";
+        strSQL += " id_usuario";    //01
+        strSQL += ",documento_id";  //02
+        strSQL += ",id_producto";   //03
+        strSQL += ",unidades";        //04
+        strSQL += ",precio_venta";  //05
+        strSQL += ",cant_min";      //06
+        strSQL += ",cant_max";        //07
+        strSQL += ",origen";        //07
+        strSQL += ") VALUES ( ";
+
+        strSQL += " $1,$2,$3,$4,$5,$6,$7,'MANUAL' ";
+        strSQL += " ) RETURNING *";
+
+        const result = await pool.query(strSQL, [
+        id_anfitrion,                     // 01
+        documento_id,                     // 02
+        id_producto,                      // 03
+        unidades,                         // 04
+        precio_venta,                     // 05
+        cant_min,                         // 06
+        cant_max                          // 07
+        ]);
+        
+        res.json(result.rows[0]);
+    }catch(error){
+        //res.json({error:error.message});
+        console.log(error);
+        next(error)
+    }
+};
+
 module.exports = {
     obtenerTodosProductos,
     obtenerTodosProductosPrecios,
@@ -822,7 +864,7 @@ module.exports = {
     obtenerProductoPrecio,
     actualizarProductoPrecio,
     clonarProducto,
-    
+    crearProductoPrecio,
     crearGrupo,
     eliminarGrupo,
     actualizarGrupo,
