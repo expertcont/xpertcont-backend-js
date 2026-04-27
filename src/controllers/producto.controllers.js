@@ -805,6 +805,7 @@ const clonarProducto = async (req, res) => {
 };
 
 const crearProductoPrecio = async (req,res,next)=> {
+    //Actualmente se utiliza con la opcion de clonado, para obtener id_producto desde el origen del clon
     const {id_anfitrion,documento_id,id_producto,unidades} = req.params; //04
     const { 
             precio_venta,   //05
@@ -818,11 +819,11 @@ const crearProductoPrecio = async (req,res,next)=> {
         strSQL += " id_usuario";    //01
         strSQL += ",documento_id";  //02
         strSQL += ",id_producto";   //03
-        strSQL += ",unidades";        //04
+        strSQL += ",unidades";      //04
         strSQL += ",precio_venta";  //05
         strSQL += ",cant_min";      //06
-        strSQL += ",cant_max";        //07
-        strSQL += ",origen";        //07
+        strSQL += ",cant_max";      //07
+        strSQL += ",origen";        //08
         strSQL += ") VALUES ( ";
 
         strSQL += " $1,$2,$3,$4,$5,$6,$7,'MANUAL' ";

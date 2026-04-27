@@ -1172,6 +1172,8 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             fecha_vencimiento: "",
             moneda_id: "PEN",     //hardcode temporal
             forma_pago_id: "Contado", //hardcode temporal
+            efectivo2: venta.efectivo2,     //datos no obligatorios (Admin)
+            forma_pago2: venta.forma_pago2,     //datos no obligatorios (Admin)
             
             base_gravada: venta.r_base002,
             base_exonerada: venta.r_base003, //new
