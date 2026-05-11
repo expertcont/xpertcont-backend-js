@@ -1533,7 +1533,7 @@ const obtenerPedidosPendientes = async (req, res) => {
       AND mve_venta.mve_venta.r_cod='NP'      
       AND mve_venta.registrado = 1
       AND mve_venta.fact_cod is null
-      ORDER BY r_cod,r_serie,r_numero
+      ORDER BY mve_venta.r_cod,mve_venta.r_serie,mve_venta.r_numero
     `;
 
     const params = [periodo, id_anfitrion];
