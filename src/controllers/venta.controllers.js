@@ -1528,11 +1528,12 @@ const obtenerPedidosPendientes = async (req, res) => {
           mve_venta.r_id_doc = mad_correntista_fact.id_doc and
           mve_venta.r_documento_id = mad_correntista_fact.documento_id )
 
-      WHERE periodo = $1
-      AND id_usuario = $2
-      AND mve_venta.r_cod='NP'      
-      AND registrado = 1
-        ORDER BY descripcion
+      WHERE mve_venta.periodo = $1
+      AND mve_venta.id_usuario = $2
+      AND mve_venta.mve_venta.r_cod='NP'      
+      AND mve_venta.registrado = 1
+      AND mve_venta.fact_cod is null
+      ORDER BY r_cod,r_serie,r_numero
     `;
 
     const params = [periodo, id_anfitrion];
