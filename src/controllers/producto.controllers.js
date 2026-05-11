@@ -4,8 +4,9 @@ const { Readable } = require('stream');
 //const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
+const resolverDocumentoId = require('../utils/libreria.utils');
 
-const obtenerTodosProductos = async (req,res,next)=> {
+/*const obtenerTodosProductos = async (req,res,next)=> {
     try {
         //console.log(req.params);
         let strSQL;
@@ -32,6 +33,44 @@ const obtenerTodosProductos = async (req,res,next)=> {
         console.log(error.message);
     }
     //res.send('Listado de todas los zonas');
+};*/
+
+const obtenerTodosProductos = async (req, res, next) => {
+    try {
+        const { id_anfitrion, documento_id } = req.params;
+
+        // 🔥 Aquí usas la función reutilizable
+        const documentoIdFinal = await resolverDocumentoId(pool,id_anfitrion,documento_id);
+
+        const strSQL = `
+            SELECT 
+                id_producto,
+                nombre,
+                descripcion,
+                precio_venta,
+                cont_und,
+                porc_igv,
+                origen,
+                (precio_venta || '-' || cont_und || '-' || porc_igv)::varchar as auxiliar
+            FROM mst_producto
+            WHERE id_usuario = $1
+            AND documento_id = $2
+            ORDER BY id_producto
+        `;
+
+        const result = await pool.query(strSQL, [id_anfitrion, documentoIdFinal]);
+
+        res.json(result.rows);
+
+    } catch (error) {
+        console.log(error.message);
+
+        if (error.message.includes('no encontrado') || error.message.includes('no pertenece')) {
+            return res.status(400).json({ error: error.message });
+        }
+
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
 };
 
 const obtenerTodosProductosPrecios = async (req,res,next)=> {
@@ -846,6 +885,7 @@ const crearProductoPrecio = async (req,res,next)=> {
         next(error)
     }
 };
+
 
 module.exports = {
     obtenerTodosProductos,

@@ -1495,6 +1495,64 @@ const generarPDFexpertcont = async (req,res,next)=> {
       }
 };
 
+const obtenerPedidosPendientes = async (req, res) => {
+  const { periodo, id_anfitrion} = req.params;
+
+  if (!periodo || !id_anfitrion) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: periodo, id_anfitrion',
+    });
+  }
+
+  try {
+    const query = `
+      SELECT mve_venta.r_cod,
+      mve_venta.r_serie,
+      mve_venta.r_numero,
+      mve_venta.r_fecemi,
+      mad_correntista_fact.documento_id,
+      mad_correntista_fact.razon_social,
+
+      mad_correntista_fact.fact_ruc,
+      mad_correntista_fact.fact_razon_social,
+      mad_correntista_fact.fact_direccion,
+
+      mve_venta.r_forma_pago_id,
+      mve_venta.r_moneda,
+      mve_venta.r_monto_total
+
+      FROM
+      mve_venta LEFT JOIN mad_correntista_fact
+      ON (mve_venta.id_usuario = mad_correntista_fact.id_usuario and
+          mve_venta.r_id_doc = mad_correntista_fact.id_doc and
+          mve_venta.r_documento_id = mad_correntista_fact.documento_id )
+
+      WHERE periodo = $1
+      AND id_usuario = $2
+      AND mve_venta.r_cod='NP'      
+      AND registrado = 1
+        ORDER BY descripcion
+    `;
+
+    const params = [periodo, id_anfitrion];
+
+    const ventaResult = await pool.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      data: ventaResult.rows
+    });
+
+  } catch (error) {
+    console.error('Error al obtener pedidos pendientes de facturar:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
 module.exports = {
     obtenerRegistroTodos,
     obtenerRegistro,
@@ -1509,9 +1567,10 @@ module.exports = {
     anularRegistro,
     generarCPE,
     generarCPEexpertcont,
-    generarPDFexpertcont, //New
+    generarPDFexpertcont, 
     obtenerTotalVentas,
     obtenerTotalRecaudacion,
     obtenerTotalUnidades,
-    obtenerCodigosComprobante
+    obtenerCodigosComprobante,
+    obtenerPedidosPendientes //New
  }; 

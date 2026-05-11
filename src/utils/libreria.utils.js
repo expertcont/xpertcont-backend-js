@@ -208,6 +208,42 @@ const devuelveCadenaNull = (value) => {
   return letras;
 }
 
+//Version multiempresa
+const resolverDocumentoId = async (pool, id_usuario, documento_id) => {
+    // 1. Verificar si es multiempresa
+    const resultUsuario = await pool.query(
+        `SELECT multiempresa 
+         FROM mad_usuario 
+         WHERE id_usuario = $1`,
+        [id_usuario]
+    );
+
+    if (resultUsuario.rows.length === 0) {
+        throw new Error('Usuario no encontrado');
+    }
+
+    const multiempresa = resultUsuario.rows[0].multiempresa || '0';
+
+    // 2. Caso MULTIEMPRESA → usar matriz
+    if (multiempresa === '1') {
+        const resultDocs = await pool.query(
+            `SELECT documento_id 
+             FROM mad_usuariocontabilidad
+             WHERE id_usuario = $1
+             AND matriz = '1'`,
+            [id_usuario]
+        );
+
+        if (resultDocs.rows.length === 0) {
+            throw new Error('No existe contabilidad matriz');
+        }
+
+        return resultDocs.rows[0].documento_id;
+    }
+
+    return documento_id;
+};
+
 
 module.exports = {
     devuelveCadenaNull,
@@ -218,6 +254,7 @@ module.exports = {
     corregirTCPEN,
     corregirMontoNotaCredito,
     formatearFecha,
-    numeroALetras
+    numeroALetras,
+    resolverDocumentoId
   };
   
