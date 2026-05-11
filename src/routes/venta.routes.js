@@ -9,7 +9,7 @@ router.get('/ad_ventatotal/:periodo/:id_anfitrion/:id_invitado/:dia', obtenerTot
 router.get('/ad_ventarecaudacion/:periodo/:id_anfitrion/:documento_id/:dia', obtenerTotalRecaudacion);//
 router.get('/ad_ventaunidades/:periodo/:id_anfitrion/:documento_id/:dia', obtenerTotalUnidades);//
 router.get('/ad_ventasegcod/:id_anfitrion/:documento_id/:id_invitado', obtenerCodigosComprobante);// COmprobantes habilitados con serie por usuario
-router.get('/ad_ventaspendientes/:id_anfitrion/:documento_id', obtenerPedidosPendientes);// Pedidos por facturar
+router.get('/ad_ventaspendientes/:periodo/:id_anfitrion', obtenerPedidosPendientes);// Pedidos por facturar
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerRegistro);
 router.post('/ad_venta/:periodo/:id_anfitrion/:documento_id', crearRegistro);
