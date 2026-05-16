@@ -1195,6 +1195,9 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             producto: item.descripcion,
             cantidad: item.cantidad,
             precio_base: item.monto_base,
+            
+            precio_neto:item.precio_neto, //Opcional en caso de redondeo, Dato comercial no tributario para tema de impresion PDF
+            
             codigo_sunat: "-", //Generico abarrotes y frutos secos
             codigo_producto: item.id_producto,
             codigo_unidad: item.cont_und,
