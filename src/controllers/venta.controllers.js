@@ -1554,6 +1554,157 @@ const obtenerPedidosPendientes = async (req, res) => {
   }
 };
 
+const insertarVentaRef = async (req, res) => {
+  /*
+  |--------------------------------------------------------------------------
+  | BODY
+  |--------------------------------------------------------------------------
+  |
+  | {
+  |   id_usuario,
+  |   documento_id,
+  |   r_cod,
+  |   r_serie,
+  |   r_numero,
+  |
+  |   referencias:[]
+  | }
+  |
+  */
+
+  const {
+    id_usuario,
+    documento_id,
+    r_cod,
+    r_serie,
+    r_numero,
+
+    referencias
+  } = req.body;
+
+  /*
+  |--------------------------------------------------------------------------
+  | VALIDACIONES
+  |--------------------------------------------------------------------------
+  */
+  if (!id_usuario || !documento_id || !r_cod || !r_serie || !r_numero) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos'
+    });
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | VALIDAR REFERENCIAS
+  |--------------------------------------------------------------------------
+  */
+  if (
+      !referencias ||
+      !Array.isArray(referencias) ||
+      referencias.length === 0
+  ) {
+
+    return res.status(400).json({
+      success: false,
+      message: 'No existen referencias'
+    });
+  }
+
+  try {
+
+    /*
+    |--------------------------------------------------------------------------
+    | JSON A ENVIAR A POSTGRESQL
+    |--------------------------------------------------------------------------
+    */
+    const jsonData = {
+      id_usuario,
+      documento_id,
+      r_cod,
+      r_serie,
+      r_numero,
+
+      referencias
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | QUERY
+    |--------------------------------------------------------------------------
+    |
+    | Ejecuta:
+    | fve_ventaref_inserta(jsonb)
+    |
+    */
+    const query = `
+      SELECT fve_ventaref_inserta($1::jsonb) AS resultado
+    `;
+
+    /*
+    |--------------------------------------------------------------------------
+    | PARAMS
+    |--------------------------------------------------------------------------
+    */
+    const params = [
+      JSON.stringify(jsonData)
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | EJECUTAR
+    |--------------------------------------------------------------------------
+    */
+    const result = await pool.query(
+      query,
+      params
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | RESPUESTA FUNCTION
+    |--------------------------------------------------------------------------
+    */
+    const respuesta = result.rows[0].resultado;
+
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDAR RESPUESTA SQL
+    |--------------------------------------------------------------------------
+    */
+    if (!respuesta.success) {
+      return res.status(400).json({
+        success: false,
+        message: respuesta.message
+      });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | RESPUESTA OK
+    |--------------------------------------------------------------------------
+    */
+    return res.status(200).json({
+      success: true,
+      message: respuesta.message,
+      insertados: respuesta.insertados,
+      documento: respuesta.documento
+    });
+
+  } catch (error) {
+
+    console.error(
+      'Error al insertar referencias:',
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
     obtenerRegistroTodos,
     obtenerRegistro,
@@ -1573,5 +1724,6 @@ module.exports = {
     obtenerTotalRecaudacion,
     obtenerTotalUnidades,
     obtenerCodigosComprobante,
-    obtenerPedidosPendientes //New
+    obtenerPedidosPendientes, //New
+    insertarVentaRef          //New
  }; 

@@ -4,7 +4,7 @@ const { Readable } = require('stream');
 //const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
 const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
-const resolverDocumentoId = require('../utils/libreria.utils');
+const {resolverDocumentoId} = require('../utils/libreria.utils');
 
 /*const obtenerTodosProductos = async (req,res,next)=> {
     try {
