@@ -6,41 +6,12 @@ const { from: copyFrom } = require('pg-copy-streams');
 const { pipeline } = require('node:stream/promises');
 const {resolverDocumentoId} = require('../utils/libreria.utils');
 
-/*const obtenerTodosProductos = async (req,res,next)=> {
-    try {
-        //console.log(req.params);
-        let strSQL;
-        const {id_anfitrion,documento_id} = req.params;
-        strSQL = "SELECT "
-        strSQL += " id_producto";   //03
-        strSQL += ",nombre";        //04
-        strSQL += ",descripcion";   //05
-        strSQL += ",precio_venta";  //06
-        strSQL += ",cont_und";      //07
-        strSQL += ",porc_igv";      //08
-        strSQL += ",origen";        //09
-        strSQL += ",(precio_venta || '-' || cont_und || '-' || porc_igv )::varchar as auxiliar";
-        strSQL += " FROM mst_producto";   //03
-
-        strSQL += " WHERE id_usuario = $1";
-        strSQL += " AND documento_id = $2";
-        strSQL += " ORDER BY id_producto";
-        //console.log(strSQL,[id_usuario,documento_id]);
-        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
-        res.json(todosRegistros.rows);
-    }
-    catch(error){
-        console.log(error.message);
-    }
-    //res.send('Listado de todas los zonas');
-};*/
-
 const obtenerTodosProductos = async (req, res, next) => {
     try {
         const { id_anfitrion, documento_id } = req.params;
 
         // 🔥 Aquí usas la función reutilizable
-        const documentoIdFinal = await resolverDocumentoId(pool,id_anfitrion,documento_id);
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
 
         const strSQL = `
             SELECT 
@@ -58,60 +29,65 @@ const obtenerTodosProductos = async (req, res, next) => {
             ORDER BY id_producto
         `;
 
-        const result = await pool.query(strSQL, [id_anfitrion, documentoIdFinal]);
-
+        const result = await pool.query(strSQL, [id_anfitrion, documentoIdResuelto]);
         res.json(result.rows);
 
     } catch (error) {
         console.log(error.message);
-
         if (error.message.includes('no encontrado') || error.message.includes('no pertenece')) {
             return res.status(400).json({ error: error.message });
         }
-
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 };
 
-const obtenerTodosProductosPrecios = async (req,res,next)=> {
-    try {
-        //console.log(req.params);
-        //creo que auqi, debemos consultar si esta activado el precio por factor (por cantidad)
+const obtenerTodosProductosPrecios = async (req, res, next) => {
+  try {
+    const {
+      id_anfitrion,
+      documento_id
+    } = req.params;
 
-        //si es positivo precio por cantidad, entonces 
-        let strSQL;
-        const {id_anfitrion,documento_id} = req.params;
-        strSQL = "SELECT "
-        strSQL += " mst_producto_precio.id_producto";   //01
-        strSQL += ",mst_producto.nombre";               //02
-        strSQL += ",mst_producto_precio.unidades as descripcion";      //03
-        strSQL += ",mst_producto_precio.precio_venta";  //04
-        strSQL += ",mst_producto_precio.cant_min";      //05
-        strSQL += ",mst_producto_precio.cant_max";      //06
-        strSQL += ",mst_producto_precio.origen";        //07
-        strSQL += " FROM ";
-        strSQL += " mst_producto INNER JOIN mst_producto_precio";
-        strSQL += " ON (mst_producto.id_usuario = mst_producto_precio.id_usuario and ";
-        strSQL += "     mst_producto.documento_id = mst_producto_precio.documento_id and ";
-        strSQL += "     mst_producto.id_producto = mst_producto_precio.id_producto ) ";
-        strSQL += " WHERE mst_producto_precio.id_usuario = $1";
-        strSQL += " AND mst_producto_precio.documento_id = $2";
-        strSQL += " ORDER BY mst_producto.id_producto";
-        console.log(strSQL,[id_anfitrion,documento_id]);
-        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
-        res.json(todosRegistros.rows);
-    }
-    catch(error){
-        console.log(error.message);
-    }
-    //res.send('Listado de todas los zonas');
+    // Resolver empresa matriz si es multiempresa
+    const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
+
+    const strSQL = `
+      SELECT
+        mst_producto_precio.id_producto,
+        mst_producto.nombre,
+        mst_producto_precio.unidades AS descripcion,
+        mst_producto_precio.precio_venta,
+        mst_producto_precio.cant_min,
+        mst_producto_precio.cant_max,
+        mst_producto_precio.origen
+      FROM mst_producto
+      INNER JOIN mst_producto_precio
+        ON (
+          mst_producto.id_usuario = mst_producto_precio.id_usuario
+          AND mst_producto.documento_id = mst_producto_precio.documento_id
+          AND mst_producto.id_producto = mst_producto_precio.id_producto
+        )
+      WHERE mst_producto_precio.id_usuario = $1
+        AND mst_producto_precio.documento_id = $2
+      ORDER BY mst_producto.id_producto
+    `;
+
+    const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto]);
+    res.json(todosRegistros.rows);
+
+  } catch (error) {
+    console.log(error.message);
+    next(error);
+  }
 };
+
 
 const obtenerPreciosProducto = async (req,res,next)=> {
     try {
         //si es positivo precio por cantidad, entonces 
         let strSQL;
         const {id_anfitrion,documento_id,id_producto} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         strSQL = `SELECT 
                      unidades
                     ,precio_venta
@@ -122,7 +98,7 @@ const obtenerPreciosProducto = async (req,res,next)=> {
                   AND documento_id = $2
                   AND id_producto = $3
                   ORDER BY id_producto`;
-        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,id_producto]);
         res.json(todosRegistros.rows);
     }
     catch(error){
@@ -130,18 +106,18 @@ const obtenerPreciosProducto = async (req,res,next)=> {
     }
     //res.send('Listado de todas los zonas');
 };
-
 const obtenerTodosProductosPopUp = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
 
         // Consultar si está activado el parámetro
         const configRes = await pool.query(
         `SELECT precio_factor,producto_sku FROM mve_parametros 
         WHERE id_usuario = $1
         AND documento_id = $2`,  // corregido aquí
-        [id_anfitrion, documento_id]
+        [id_anfitrion, documentoIdResuelto]
         );
 
         // Asegura que el valor null no rompa la lógica
@@ -175,7 +151,7 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
                         ORDER BY mst_producto.id_producto`;
         }
 
-        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id,precioFactor,productoSKU]);
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,precioFactor,productoSKU]);
         res.json(todosRegistros.rows);
     }
     catch(error){
@@ -185,6 +161,7 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
 const obtenerTodosGruposPopUp = async (req,res,next)=> {
     try {
         const {id_anfitrion,documento_id} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         const strSQL = `SELECT 
                     id_grupo as codigo
                     ,nombre as descripcion
@@ -194,7 +171,7 @@ const obtenerTodosGruposPopUp = async (req,res,next)=> {
                 AND documento_id = $2
                 ORDER BY id_grupo`;
 
-        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto]);
         res.json(todosRegistros.rows);
     }
     catch(error){
@@ -206,13 +183,14 @@ const obtenerProducto = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
 
         strSQL = "select * from mst_producto "
         strSQL += " where id_usuario = $1";
         strSQL += " and documento_id = $2";
         strSQL += " and id_producto = $3";
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,id_producto]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -228,12 +206,13 @@ const obtenerProductoIgv = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         strSQL = "select porc_igv from mst_producto "
         strSQL += " where id_usuario = $1";
         strSQL += " and documento_id = $2";
         strSQL += " and id_producto = $3";
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto]);
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,id_producto]);
 
         if (result.rows.length === 0){
             res.json({porc_igv:"0.00"});
@@ -248,17 +227,17 @@ const obtenerParametrosVenta = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         strSQL = "select * from mve_parametros "
         strSQL += " where id_usuario = $1";
         strSQL += " and documento_id = $2";
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id]);
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto]);
         res.json(result.rows[0]);
     } catch (error) {
         console.log(error.message);
     }
 };
-
 const crearProducto = async (req,res,next)=> {
     const { 
             id_anfitrion,     //01
@@ -273,6 +252,7 @@ const crearProducto = async (req,res,next)=> {
         } = req.body
     let strSQL;
     try {
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         strSQL = "INSERT INTO mst_producto(";
         strSQL += " id_usuario";    //01
         strSQL += ",documento_id";  //02
@@ -290,7 +270,7 @@ const crearProducto = async (req,res,next)=> {
 
         const result = await pool.query(strSQL, [
         id_anfitrion,                     // 01
-        documento_id,                     // 02
+        documentoIdResuelto,              // 02
         id_producto,                      // 03
         nombre?.toUpperCase(),            // 04
         descripcion?.toUpperCase(),       // 05
@@ -307,10 +287,10 @@ const crearProducto = async (req,res,next)=> {
         next(error)
     }
 };
-
 const eliminarProducto = async (req, res, next) => {
   try {
     const { id_anfitrion, documento_id, id_producto } = req.params;
+    const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
 
     // 1) Eliminar precios del producto
     const sqlPrecios = `
@@ -320,7 +300,7 @@ const eliminarProducto = async (req, res, next) => {
       AND   id_producto  = $3
     `;
 
-    await pool.query(sqlPrecios, [id_anfitrion, documento_id, id_producto]);
+    await pool.query(sqlPrecios, [id_anfitrion, documentoIdResuelto, id_producto]);
 
     // 2) Eliminar producto
     const sqlProducto = `
@@ -332,7 +312,7 @@ const eliminarProducto = async (req, res, next) => {
 
     const result = await pool.query(sqlProducto, [
       id_anfitrion,
-      documento_id,
+      documentoIdResuelto,
       id_producto,
     ]);
 
@@ -348,11 +328,11 @@ const eliminarProducto = async (req, res, next) => {
     return res.status(500).json({ message: "Error en el servidor" });
   }
 };
-
 const actualizarProducto = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto} = req.params; //03
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         const { nombre,         //04
                 descripcion,    //05
                 precio_venta,   //06
@@ -378,7 +358,7 @@ const actualizarProducto = async (req,res,next)=> {
             AND id_producto = $3
         `;
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto,
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,id_producto,
                                                 nombre,
                                                 descripcion,
                                                 precio_venta,
@@ -399,7 +379,6 @@ const actualizarProducto = async (req,res,next)=> {
         console.log(error.message);
     }
 };
-
 const importarExcelProductos = async (req, res, next) => {
     //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
     const datosCarga = JSON.parse(req.body.datosCarga);
@@ -409,6 +388,7 @@ const importarExcelProductos = async (req, res, next) => {
     } = datosCarga;
     
     try {
+      const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
       const fileBuffer = req.file.buffer;
 
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
@@ -420,7 +400,7 @@ const importarExcelProductos = async (req, res, next) => {
         const csvData = sheetData
         .map((row,index) => [
             id_anfitrion,                                 // id_anfitrion
-            documento_id,                                 // documento_id            
+            documentoIdResuelto,                          // documento_id            
             'EXCEL',                                        //origen
             (row[0] || '').toString().replace(/,/g, ''),    //A id_producto
             (row[1] || '').toString().replace(/,/g, ''),    //B nombre
@@ -466,6 +446,7 @@ const importarExcelProductos = async (req, res, next) => {
 const eliminarProductoMasivo = async (req,res,next)=> {
     try {
         const {id_anfitrion, documento_id,origen} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         let strSQL;
         
         //primero eliminar todos detalles
@@ -474,8 +455,8 @@ const eliminarProductoMasivo = async (req,res,next)=> {
         strSQL += " AND documento_id = $2";
         strSQL += " AND origen = $3";
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,origen]);
-        console.log(strSQL,[id_anfitrion,documento_id,origen]);
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,origen]);
+        console.log(strSQL,[id_anfitrion,documentoIdResuelto,origen]);
         if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Productos no encontrados"
@@ -488,7 +469,6 @@ const eliminarProductoMasivo = async (req,res,next)=> {
     }
 
 };
-
 const importarExcelProductosPrecios = async (req, res, next) => {
     //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
     const datosCarga = JSON.parse(req.body.datosCarga);
@@ -498,6 +478,7 @@ const importarExcelProductosPrecios = async (req, res, next) => {
     } = datosCarga;
     
     try {
+      const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
       const fileBuffer = req.file.buffer;
 
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
@@ -509,7 +490,7 @@ const importarExcelProductosPrecios = async (req, res, next) => {
         const csvData = sheetData
         .map((row,index) => [
             id_anfitrion,                                 // id_anfitrion
-            documento_id,                                 // documento_id            
+            documentoIdResuelto,                          // documento_id            
             'EXCEL',                                        //origen
             (row[0] || '').toString().replace(/,/g, ''),    //A id_producto
             (row[1] || '').toString().replace(/,/g, ''),    //B unidades
@@ -551,11 +532,11 @@ const importarExcelProductosPrecios = async (req, res, next) => {
       next(error);
     }
 };
-
 const obtenerProductoPrecio = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto,unidades} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
 
         strSQL = `select mst_producto_precio.id_producto
                         ,mst_producto.nombre
@@ -572,7 +553,7 @@ const obtenerProductoPrecio = async (req,res,next)=> {
                     and mst_producto_precio.id_producto = $3
                     and mst_producto_precio.unidades = $4`;
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto,unidades]);
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,id_producto,unidades]);
 
         if (result.rows.length === 0)
             return res.status(404).json({
@@ -584,11 +565,11 @@ const obtenerProductoPrecio = async (req,res,next)=> {
         console.log(error.message);
     }
 };
-
 const actualizarProductoPrecio = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto,unidades} = req.params; //04
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         const { 
                 precio_venta,   //05
                 cant_min,       //06
@@ -604,7 +585,7 @@ const actualizarProductoPrecio = async (req,res,next)=> {
                     AND id_producto = $3
                     AND unidades = $4`;
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_producto,unidades,
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,id_producto,unidades,
                                                 precio_venta,
                                                 cant_min,
                                                 cant_max]);
@@ -619,7 +600,6 @@ const actualizarProductoPrecio = async (req,res,next)=> {
         console.log(error.message);
     }
 };
-
 const crearGrupo = async (req,res,next)=> {
     const { 
             id_anfitrion,   //01
@@ -628,9 +608,10 @@ const crearGrupo = async (req,res,next)=> {
             nombre,         //04
             descripcion,    //05
             origen          //06
-        } = req.body
+    } = req.body
     let strSQL;
     try {
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         strSQL = "INSERT INTO mst_producto_grupo(";
         strSQL += " id_usuario";    //01
         strSQL += ",documento_id";  //02
@@ -646,7 +627,7 @@ const crearGrupo = async (req,res,next)=> {
         const result = await pool.query(strSQL, 
         [   
             id_anfitrion,   //01
-            documento_id,   //02
+            documentoIdResuelto, //02
             id_producto,    //03    
             nombre,         //04
             descripcion,    //05
@@ -661,17 +642,17 @@ const crearGrupo = async (req,res,next)=> {
         next(error)
     }
 };
-
 const eliminarGrupo = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_grupo} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         strSQL = "DELETE FROM mst_producto_grupo "
         strSQL += " WHERE id_usuario = $1";
         strSQL += " AND documento_id = $2";
         strSQL += " AND id_grupo = $3";
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_grupo]);
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,id_grupo]);
 
         if (result.rowCount === 0)
             return res.status(404).json({
@@ -683,11 +664,11 @@ const eliminarGrupo = async (req,res,next)=> {
         console.log(error.message);
     }
 };
-
 const actualizarGrupo = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_grupo} = req.params; //03
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         const { nombre,         //04
                 descripcion,    //05
         } = req.body    
@@ -699,7 +680,7 @@ const actualizarGrupo = async (req,res,next)=> {
         strSQL += " AND documento_id = $2";
         strSQL += " AND id_grupo = $3";
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,id_grupo,
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,id_grupo,
                                                 nombre,
                                                 descripcion
                                                 ]);
@@ -723,6 +704,7 @@ const importarExcelGrupos = async (req, res, next) => {
     } = datosCarga;
     
     try {
+      const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
       const fileBuffer = req.file.buffer;
 
       const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
@@ -734,7 +716,7 @@ const importarExcelGrupos = async (req, res, next) => {
         const csvData = sheetData
         .map((row,index) => [
             id_anfitrion,                                 // id_anfitrion
-            documento_id,                                 // documento_id            
+            documentoIdResuelto,                          // documento_id            
             'EXCEL',                                        //origen
             (row[0] || '').toString().replace(/,/g, ''),    //A id_producto
             (row[1] || '').toString().replace(/,/g, ''),    //B nombre
@@ -777,6 +759,7 @@ const importarExcelGrupos = async (req, res, next) => {
 const eliminarGrupoMasivo = async (req,res,next)=> {
     try {
         const {id_anfitrion, documento_id,origen} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         let strSQL;
         
         //primero eliminar todos detalles
@@ -785,8 +768,8 @@ const eliminarGrupoMasivo = async (req,res,next)=> {
         strSQL += " AND documento_id = $2";
         strSQL += " AND origen = $3";
 
-        const result = await pool.query(strSQL,[id_anfitrion,documento_id,origen]);
-        console.log(strSQL,[id_anfitrion,documento_id,origen]);
+        const result = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,origen]);
+        console.log(strSQL,[id_anfitrion,documentoIdResuelto,origen]);
         if (result.rowCount === 0)
             return res.status(404).json({
                 message:"Productos no encontrados"
@@ -799,7 +782,6 @@ const eliminarGrupoMasivo = async (req,res,next)=> {
     }
 
 };
-
 const clonarProducto = async (req, res) => {
   const { 
     id_anfitrion, 
@@ -810,10 +792,11 @@ const clonarProducto = async (req, res) => {
   } = req.body;
 
   try {
+    const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
     // Llamar a la función de la BD (fst_clonar_producto)
     const result = await pool.query(
       `SELECT * FROM fst_clonar_producto($1, $2, $3, $4, $5)`,
-      [id_anfitrion, documento_id, id_producto, id_producto_nuevo, nombre_nuevo]
+      [id_anfitrion, documentoIdResuelto, id_producto, id_producto_nuevo, nombre_nuevo]
     );
 
     // Validación por si la función no devolvió filas
@@ -842,7 +825,6 @@ const clonarProducto = async (req, res) => {
     });
   }
 };
-
 const crearProductoPrecio = async (req,res,next)=> {
     //Actualmente se utiliza con la opcion de clonado, para obtener id_producto desde el origen del clon
     const {id_anfitrion,documento_id,id_producto,unidades} = req.params; //04
@@ -854,6 +836,7 @@ const crearProductoPrecio = async (req,res,next)=> {
         
     let strSQL;
     try {
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
         strSQL = "INSERT INTO mst_producto_precio(";
         strSQL += " id_usuario";    //01
         strSQL += ",documento_id";  //02
@@ -870,7 +853,7 @@ const crearProductoPrecio = async (req,res,next)=> {
 
         const result = await pool.query(strSQL, [
         id_anfitrion,                     // 01
-        documento_id,                     // 02
+        documentoIdResuelto,              // 02
         id_producto,                      // 03
         unidades,                         // 04
         precio_venta,                     // 05
