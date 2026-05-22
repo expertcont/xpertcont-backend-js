@@ -1232,6 +1232,7 @@ const obtenerTotalVentas = async (req, res) => {
         AND id_usuario = $2
         AND documento_id = $3
         AND registrado = 1
+        AND r_cod <> 'NP'
     `;
     const params = [periodo, id_anfitrion, documento_id];
 
