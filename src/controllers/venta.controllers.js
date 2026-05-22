@@ -1211,12 +1211,12 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
 };
 
 const obtenerTotalVentas = async (req, res) => {
-  const { periodo, id_anfitrion, id_invitado, dia } = req.params;
+  const { periodo, id_anfitrion, id_invitado, documento_id, dia } = req.params;
 
-  if (!periodo || !id_anfitrion || !id_invitado || dia === undefined) {
+  if (!periodo || !id_anfitrion || !id_invitado || !documento_id || dia === undefined) {
     return res.status(400).json({
       success: false,
-      message: 'Faltan parámetros requeridos: periodo, id_anfitrion, id_invitado o dia',
+      message: 'Faltan parámetros requeridos: periodo, id_anfitrion, id_invitado, documento_id o dia',
     });
   }
 
@@ -1230,9 +1230,10 @@ const obtenerTotalVentas = async (req, res) => {
       FROM mve_venta
       WHERE periodo = $1
         AND id_usuario = $2
+        AND documento_id = $3
         AND registrado = 1
     `;
-    const params = [periodo, id_anfitrion];
+    const params = [periodo, id_anfitrion, documento_id];
 
     if (fechaFiltro) {
       query += ` AND r_fecemi = $3`;
