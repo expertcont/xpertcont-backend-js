@@ -1236,7 +1236,7 @@ const obtenerTotalVentas = async (req, res) => {
     const params = [periodo, id_anfitrion, documento_id];
 
     if (fechaFiltro) {
-      query += ` AND r_fecemi = $3`;
+      query += ` AND r_fecemi = $4`;
       params.push(fechaFiltro);
     }
 
