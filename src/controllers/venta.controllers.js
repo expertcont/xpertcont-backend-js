@@ -1535,7 +1535,7 @@ const obtenerPedidosPendientes = async (req, res) => {
 
       WHERE mve_venta.periodo = $1
       AND mve_venta.id_usuario = $2
-      AND mve_venta.r_cod='NP'      
+      AND mve_venta.r_cod='NV'      
       AND mve_venta.registrado = 1
       AND mve_venta.fact_cod is null
       ORDER BY mve_venta.r_cod,mve_venta.r_serie,mve_venta.r_numero
