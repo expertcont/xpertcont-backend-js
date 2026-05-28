@@ -1569,7 +1569,14 @@ const insertarVentaRefGrupo = async (req, res) => {
 
     referencias
   } = req.body;
-
+  
+  console.log(id_usuario,
+    documento_id,
+    r_cod,
+    r_serie,
+    r_numero,
+    referencias);
+    
   // VALIDACIONES
   if (!id_usuario || !documento_id || !r_cod || !r_serie || !r_numero) {
     return res.status(400).json({
