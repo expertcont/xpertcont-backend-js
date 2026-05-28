@@ -1561,27 +1561,22 @@ const obtenerPedidosPendientes = async (req, res) => {
 
 const insertarVentaRefGrupo = async (req, res) => {
   const {
+    periodo,
     id_usuario,
     documento_id,
     r_cod,
     r_serie,
     r_numero,
-
+    r_fecemi,
     referencias
   } = req.body;
   
-  console.log(id_usuario,
-    documento_id,
-    r_cod,
-    r_serie,
-    r_numero,
-    referencias);
-    
+   
   // VALIDACIONES
   if (!id_usuario || !documento_id || !r_cod || !r_serie || !r_numero) {
     return res.status(400).json({
       success: false,
-      message: 'Faltan parámetros de cabecera grupal'
+      message: 'Faltan parámetros de cabecera grupal, backend nodejs'
     });
   }
 
@@ -1596,18 +1591,21 @@ const insertarVentaRefGrupo = async (req, res) => {
   try {
     // JSON A ENVIAR A POSTGRESQL
     const jsonData = {
+      periodo,
       id_usuario,
       documento_id,
       r_cod,
       r_serie,
       r_numero,
-
+      r_fecemi,
       referencias
     };
 
     const query = `SELECT fve_ventaref_inserta_grupoproducto($1::jsonb) AS resultado`;
     const params = [JSON.stringify(jsonData)];
     const result = await pool.query(query,params);
+
+    console.log(query,params);
 
     const respuesta = result.rows[0].resultado;
 
