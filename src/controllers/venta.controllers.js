@@ -1559,24 +1559,7 @@ const obtenerPedidosPendientes = async (req, res) => {
   }
 };
 
-const insertarVentaRef = async (req, res) => {
-  /*
-  |--------------------------------------------------------------------------
-  | BODY
-  |--------------------------------------------------------------------------
-  |
-  | {
-  |   id_usuario,
-  |   documento_id,
-  |   r_cod,
-  |   r_serie,
-  |   r_numero,
-  |
-  |   referencias:[]
-  | }
-  |
-  */
-
+const insertarVentaRefGrupo = async (req, res) => {
   const {
     id_usuario,
     documento_id,
@@ -1587,11 +1570,7 @@ const insertarVentaRef = async (req, res) => {
     referencias
   } = req.body;
 
-  /*
-  |--------------------------------------------------------------------------
-  | VALIDACIONES
-  |--------------------------------------------------------------------------
-  */
+  // VALIDACIONES
   if (!id_usuario || !documento_id || !r_cod || !r_serie || !r_numero) {
     return res.status(400).json({
       success: false,
@@ -1599,17 +1578,8 @@ const insertarVentaRef = async (req, res) => {
     });
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | VALIDAR REFERENCIAS
-  |--------------------------------------------------------------------------
-  */
-  if (
-      !referencias ||
-      !Array.isArray(referencias) ||
-      referencias.length === 0
-  ) {
-
+  // VALIDAR REFERENCIAS
+  if (!referencias || !Array.isArray(referencias) || referencias.length === 0) {
     return res.status(400).json({
       success: false,
       message: 'No existen referencias'
@@ -1617,12 +1587,7 @@ const insertarVentaRef = async (req, res) => {
   }
 
   try {
-
-    /*
-    |--------------------------------------------------------------------------
-    | JSON A ENVIAR A POSTGRESQL
-    |--------------------------------------------------------------------------
-    */
+    // JSON A ENVIAR A POSTGRESQL
     const jsonData = {
       id_usuario,
       documento_id,
@@ -1633,50 +1598,12 @@ const insertarVentaRef = async (req, res) => {
       referencias
     };
 
-    /*
-    |--------------------------------------------------------------------------
-    | QUERY
-    |--------------------------------------------------------------------------
-    |
-    | Ejecuta:
-    | fve_ventaref_inserta(jsonb)
-    |
-    */
-    const query = `
-      SELECT fve_ventaref_inserta($1::jsonb) AS resultado
-    `;
+    const query = `SELECT fve_ventaref_inserta_grupoproducto($1::jsonb) AS resultado`;
+    const params = [JSON.stringify(jsonData)];
+    const result = await pool.query(query,params);
 
-    /*
-    |--------------------------------------------------------------------------
-    | PARAMS
-    |--------------------------------------------------------------------------
-    */
-    const params = [
-      JSON.stringify(jsonData)
-    ];
-
-    /*
-    |--------------------------------------------------------------------------
-    | EJECUTAR
-    |--------------------------------------------------------------------------
-    */
-    const result = await pool.query(
-      query,
-      params
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | RESPUESTA FUNCTION
-    |--------------------------------------------------------------------------
-    */
     const respuesta = result.rows[0].resultado;
 
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDAR RESPUESTA SQL
-    |--------------------------------------------------------------------------
-    */
     if (!respuesta.success) {
       return res.status(400).json({
         success: false,
@@ -1730,5 +1657,5 @@ module.exports = {
     obtenerTotalUnidades,
     obtenerCodigosComprobante,
     obtenerPedidosPendientes, //New
-    insertarVentaRef          //New
+    insertarVentaRefGrupo          //New
  }; 
