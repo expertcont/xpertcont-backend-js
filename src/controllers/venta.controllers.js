@@ -1581,7 +1581,7 @@ const insertarVentaRefGrupo = async (req, res) => {
   if (!id_usuario || !documento_id || !r_cod || !r_serie || !r_numero) {
     return res.status(400).json({
       success: false,
-      message: 'Faltan parámetros requeridos'
+      message: 'Faltan parámetros de cabecera grupal'
     });
   }
 
