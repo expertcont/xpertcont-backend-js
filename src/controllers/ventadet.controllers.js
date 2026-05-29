@@ -111,7 +111,7 @@ const obtenerVentaDetRef = async (req,res,next)=> {
          AND r_cod = $4
          AND r_serie = $5
          AND r_numero = $6
-         ORDER BY item`;
+         `;
         
         const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
         res.json(result.rows);
