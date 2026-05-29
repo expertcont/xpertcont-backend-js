@@ -6,7 +6,7 @@ const {obtenerVentaDet,obtenerVentaDetItem,crearVentaDet,actualizarVentaDet,elim
 router.get('/ad_ventadettodos/:periodo/:id_anfitrion/:documento_id/:dia', obtenerVentaDetTodos);
 router.get('/ad_ventadet/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerVentaDet);
 router.get('/ad_ventadet/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem/:item', obtenerVentaDetItem);
-router.get('/ad_ventadetref/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num', obtenerVentaDetRef);
+router.get('/ad_ventadetref/:id_anfitrion/:documento_id/:cod/:serie/:num', obtenerVentaDetRef);
 
 router.post('/ad_ventadet', crearVentaDet);
 
