@@ -101,19 +101,18 @@ const obtenerVentaDet = async (req,res,next)=> {
 const obtenerVentaDetRef = async (req,res,next)=> {
     //Detalles de un Pedido
     try {
-        const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
+        const {id_anfitrion,documento_id,cod,serie,num} = req.params;
         let strSQL;
         strSQL =  `SELECT * 
          FROM mve_ventaref
-         WHERE periodo = $1
-         AND id_usuario = $2
-         AND documento_id = $3
-         AND r_cod = $4
-         AND r_serie = $5
-         AND r_numero = $6
+         WHERE id_usuario = $1
+         AND documento_id = $2
+         AND r_cod = $3
+         AND r_serie = $4
+         AND r_numero = $5
          `;
         
-        const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
+        const result = await pool.query(strSQL,[id_anfitrion,documento_id,cod,serie,num]);
         res.json(result.rows);
 
     } catch (error) {
