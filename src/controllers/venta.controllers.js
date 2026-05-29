@@ -1605,7 +1605,7 @@ const insertarVentaRefGrupo = async (req, res) => {
     const params = [JSON.stringify(jsonData)];
     const result = await pool.query(query,params);
 
-    console.log(query,params);
+    //console.log(query,params);
 
     const respuesta = result.rows[0].resultado;
 

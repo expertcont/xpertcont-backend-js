@@ -98,6 +98,29 @@ const obtenerVentaDet = async (req,res,next)=> {
     }
 };
 
+const obtenerVentaDetRef = async (req,res,next)=> {
+    //Detalles de un Pedido
+    try {
+        const {periodo,id_anfitrion,documento_id,cod,serie,num} = req.params;
+        let strSQL;
+        strSQL =  `SELECT * 
+         FROM mve_ventaref
+         WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         ORDER BY item`;
+        
+        const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
+        res.json(result.rows);
+
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+
 const obtenerVentaDetItem = async (req,res,next)=> {
     //DEtalles de un Pedido
     try {
@@ -257,6 +280,7 @@ module.exports = {
     obtenerVentaDetTodos,
     obtenerVentaDet,
     obtenerVentaDetItem,
+    obtenerVentaDetRef,
     crearVentaDet,
     eliminarVentaDet,
     actualizarVentaDet
