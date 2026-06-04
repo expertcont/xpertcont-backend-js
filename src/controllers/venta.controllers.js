@@ -1178,9 +1178,11 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
             fecha_emision: venta.r_fecemi.toISOString().split("T")[0],
             hora_emision: venta.ctrl_crea.toISOString().split("T")[1].split(".")[0],
             
-            fecha_vencimiento: "",
-            moneda_id: "PEN",     //hardcode temporal
-            forma_pago_id: "Contado", //hardcode temporal
+            fecha_vencimiento: venta.r_fecvcto ? 
+              venta.r_fecvcto.toISOString().split("T")[0]
+              : "",            
+            moneda_id: venta.r_moneda,     //hardcode temporal "PEN"
+            forma_pago_id: venta.r_forma_pago_id, //hardcode temporal "Contado"
             efectivo2: venta.efectivo2,     //datos no obligatorios (Admin)
             forma_pago2: venta.forma_pago2,     //datos no obligatorios (Admin)
             
