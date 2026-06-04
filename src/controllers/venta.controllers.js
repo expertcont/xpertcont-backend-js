@@ -423,11 +423,16 @@ const generarComprobante = async (req, res, next) => {
     r_numero_ref,        //16
     r_idmotivo_ref,      //17
 
+    //New 
+    r_moneda,             //18
+    r_forma_pago_id,      //19
+    dias_credito,         //20
+
     // 🆕 Nuevos campos de cobranza
     efectivo,          //18
     vuelto,            //19
     forma_pago2,       //20
-    efectivo2          //21
+    efectivo2,          //21
   } = req.body;
 
   try {
@@ -447,13 +452,15 @@ const generarComprobante = async (req, res, next) => {
          FROM fve_crear_comprobante(
            $1, $2, $3, $4, $5, $6, $7, $8, $9, 
            $10, $11, $12, $13,
-           $14, $15, $16, $17
+           $14, $15, $16, $17, 
+           $18, $19, $20
          )`,
         [
           id_anfitrion, documento_id, periodo, id_invitado, fecha,
           r_cod, r_serie, r_numero, r_cod_emitir,
           r_id_doc, r_documento_id, r_razon_social, r_direccion,
-          efectivo, vuelto, forma_pago2, efectivo2
+          efectivo, vuelto, forma_pago2, efectivo2,
+          r_moneda, r_forma_pago_id, dias_credito
         ]
       );
     } else {
@@ -469,13 +476,15 @@ const generarComprobante = async (req, res, next) => {
         `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
          FROM fve_crear_comprobante_ref(
            $1, $2, $3, $4, $5, $6, $7, $8, $9,
-           $10, $11, $12, $13, $14, $15, $16, $17
+           $10, $11, $12, $13, $14, $15, $16, $17,
+           $18, $19, $20
          )`,
         [
           id_anfitrion, documento_id, periodo, id_invitado, fecha,
           r_cod, r_serie, r_numero, r_cod_emitir,
           r_id_doc, r_documento_id, r_razon_social, r_direccion,
-          r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
+          r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref,
+          r_moneda, r_forma_pago_id, dias_credito
         ]
       );
     }
