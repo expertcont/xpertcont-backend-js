@@ -1527,8 +1527,8 @@ const obtenerPedidosPendientes = async (req, res) => {
       mve_venta.r_serie,
       mve_venta.r_numero,
       cast(mve_venta.r_fecemi as varchar)::varchar(20) as r_fecemi,
-      mad_correntista_fact.documento_id,
-      mad_correntista_fact.razon_social,
+      mve_venta.r_documento_id,
+      mve_venta.r_razon_social,
 
       mad_correntista_fact.fact_ruc,
       mad_correntista_fact.fact_razon_social,
