@@ -1,7 +1,7 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont, obtenerTotalUnidades, obtenerCodigosComprobante, obtenerPedidosPendientes, insertarVentaRefGrupo} = require('../controllers/venta.controllers')
+const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont, obtenerTotalUnidades, obtenerCodigosComprobante, obtenerPedidosPendientes, insertarVentaRefGrupo, generarVentaRefGrupoPendientes, retrocederVentaRefGrupoPendientes} = require('../controllers/venta.controllers')
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroTodos);//
 
@@ -21,6 +21,9 @@ router.post('/ad_ventacpepdf', generarPDFexpertcont); //proveedor 02 solo PDF, a
 
 router.post('/ad_ventaclon', clonarRegistro);
 router.post('/ad_ventainsrefgrupo', insertarVentaRefGrupo); //new
+
+router.post('/ad_ventainsrefgrupo/generapendientes', generarVentaRefGrupoPendientes);       //new
+router.post('/ad_ventainsrefgrupo/retrocedependientes', retrocederVentaRefGrupoPendientes); //new
 
 router.put('/ad_venta', actualizarRegistro); //modifica datos cabecera
 router.put('/ad_venta/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem/anular', anularRegistro);

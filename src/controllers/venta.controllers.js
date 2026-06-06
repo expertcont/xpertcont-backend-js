@@ -1569,7 +1569,136 @@ const obtenerPedidosPendientes = async (req, res) => {
     });
   }
 };
+const generarVentaRefGrupoPendientes = async (req, res) => {
+  const {
+    id_usuario,
+    documento_id,
+    periodo_origen,
+    periodo_destino
+  } = req.params;
 
+  if (
+    !id_usuario ||
+    !documento_id ||
+    !periodo_origen ||
+    !periodo_destino
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        'Faltan parámetros requeridos: id_usuario, documento_id, periodo_origen, periodo_destino',
+    });
+  }
+
+  try {
+
+    const query = `
+      SELECT fve_ventaref_generar_pendientes(
+        $1,
+        $2,
+        $3,
+        $4
+      ) AS cantidad
+    `;
+
+    const params = [
+      id_usuario,
+      documento_id,
+      periodo_origen,
+      periodo_destino
+    ];
+
+    const result = await pool.query(query, params);
+
+    const cantidad = result.rows[0].cantidad;
+
+    res.status(200).json({
+      success: true,
+      cantidad,
+      message: `${cantidad} pedidos pendientes fueron generados en el nuevo periodo`
+    });
+
+  } catch (error) {
+
+    console.error(
+      'Error al generar pedidos pendientes:',
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+
+  }
+};
+
+const retrocederVentaRefGrupoPendientes = async (req, res) => {
+  const {
+    id_usuario,
+    documento_id,
+    periodo_origen,
+    periodo_destino
+  } = req.params;
+
+  if (
+    !id_usuario ||
+    !documento_id ||
+    !periodo_origen ||
+    !periodo_destino
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        'Faltan parámetros requeridos: id_usuario, documento_id, periodo_origen, periodo_destino',
+    });
+  }
+
+  try {
+
+    const query = `
+      SELECT fve_ventaref_retroceder_pendientes(
+        $1,
+        $2,
+        $3,
+        $4
+      ) AS cantidad
+    `;
+
+    const params = [
+      id_usuario,
+      documento_id,
+      periodo_origen,
+      periodo_destino
+    ];
+
+    const result = await pool.query(query, params);
+
+    const cantidad = result.rows[0].cantidad;
+
+    res.status(200).json({
+      success: true,
+      cantidad,
+      message:
+        cantidad > 0
+          ? `Se retrocedieron ${cantidad} pedidos pendientes`
+          : 'No existen pedidos pendientes para retroceder'
+    });
+
+  } catch (error) {
+
+    console.error(
+      'Error al retroceder pedidos pendientes:',
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+
+  }
+};
 const insertarVentaRefGrupo = async (req, res) => {
   const {
     periodo,
@@ -1672,6 +1801,8 @@ module.exports = {
     obtenerTotalRecaudacion,
     obtenerTotalUnidades,
     obtenerCodigosComprobante,
-    obtenerPedidosPendientes, //New
-    insertarVentaRefGrupo          //New
+    obtenerPedidosPendientes,   //New
+    generarVentaRefGrupoPendientes, //New para proximo PEriodo
+    retrocederVentaRefGrupoPendientes, //New para anular proceso de generar
+    insertarVentaRefGrupo       //New
  }; 
