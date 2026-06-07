@@ -244,6 +244,19 @@ const resolverDocumentoId = async (pool, id_usuario, documento_id) => {
     return documento_id;
 };
 
+const obtenerPeriodoAnterior = (periodo) => {
+
+  const [anio, mes] = periodo.split('-').map(Number);
+
+  const fecha = new Date(anio, mes - 1, 1);
+
+  fecha.setMonth(fecha.getMonth() - 1);
+
+  const nuevoAnio = fecha.getFullYear();
+  const nuevoMes = String(fecha.getMonth() + 1).padStart(2, '0');
+
+  return `${nuevoAnio}-${nuevoMes}`;
+};
 
 module.exports = {
     devuelveCadenaNull,
@@ -255,6 +268,7 @@ module.exports = {
     corregirMontoNotaCredito,
     formatearFecha,
     numeroALetras,
-    resolverDocumentoId
+    resolverDocumentoId,
+    obtenerPeriodoAnterior
   };
   

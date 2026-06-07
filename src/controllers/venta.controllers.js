@@ -1,5 +1,5 @@
 const pool = require('../db');
-const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito} = require('../utils/libreria.utils');
+const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito, obtenerPeriodoAnterior} = require('../utils/libreria.utils');
 const fetch = require('node-fetch');
 
 const obtenerRegistroTodos = async (req, res, next) => {
@@ -1569,28 +1569,29 @@ const obtenerPedidosPendientes = async (req, res) => {
     });
   }
 };
+
 const generarVentaRefGrupoPendientes = async (req, res) => {
   const {
+    periodo,
     id_usuario,
-    documento_id,
-    periodo_origen,
-    periodo_destino
+    documento_id
   } = req.params;
 
   if (
     !id_usuario ||
     !documento_id ||
-    !periodo_origen ||
-    !periodo_destino
+    !periodo
   ) {
     return res.status(400).json({
       success: false,
       message:
-        'Faltan parámetros requeridos: id_usuario, documento_id, periodo_origen, periodo_destino',
+        'Faltan parámetros requeridos: periodo, id_usuario, documento_id',
     });
   }
 
   try {
+
+    const periodo_anterior = obtenerPeriodoAnterior(periodo);
 
     const query = `
       SELECT fve_ventaref_generar_pendientes(
@@ -1604,8 +1605,8 @@ const generarVentaRefGrupoPendientes = async (req, res) => {
     const params = [
       id_usuario,
       documento_id,
-      periodo_origen,
-      periodo_destino
+      periodo_anterior,
+      periodo
     ];
 
     const result = await pool.query(query, params);
@@ -1635,26 +1636,26 @@ const generarVentaRefGrupoPendientes = async (req, res) => {
 
 const retrocederVentaRefGrupoPendientes = async (req, res) => {
   const {
+    periodo,
     id_usuario,
-    documento_id,
-    periodo_origen,
-    periodo_destino
+    documento_id
   } = req.params;
 
   if (
     !id_usuario ||
     !documento_id ||
-    !periodo_origen ||
-    !periodo_destino
+    !periodo
   ) {
     return res.status(400).json({
       success: false,
       message:
-        'Faltan parámetros requeridos: id_usuario, documento_id, periodo_origen, periodo_destino',
+        'Faltan parámetros requeridos: id_usuario, documento_id, periodo',
     });
   }
 
   try {
+
+    const periodo_anterior = obtenerPeriodoAnterior(periodo);
 
     const query = `
       SELECT fve_ventaref_retroceder_pendientes(
@@ -1668,8 +1669,8 @@ const retrocederVentaRefGrupoPendientes = async (req, res) => {
     const params = [
       id_usuario,
       documento_id,
-      periodo_origen,
-      periodo_destino
+      periodo_anterior,
+      periodo
     ];
 
     const result = await pool.query(query, params);
@@ -1699,6 +1700,7 @@ const retrocederVentaRefGrupoPendientes = async (req, res) => {
 
   }
 };
+
 const insertarVentaRefGrupo = async (req, res) => {
   const {
     periodo,
@@ -1802,7 +1804,7 @@ module.exports = {
     obtenerTotalUnidades,
     obtenerCodigosComprobante,
     obtenerPedidosPendientes,   //New
-    generarVentaRefGrupoPendientes, //New para proximo PEriodo
-    retrocederVentaRefGrupoPendientes, //New para anular proceso de generar
-    insertarVentaRefGrupo       //New
+    generarVentaRefGrupoPendientes,     //New para proximo PEriodo
+    retrocederVentaRefGrupoPendientes,  //New para anular proceso de generar
+    insertarVentaRefGrupo               //New
  }; 

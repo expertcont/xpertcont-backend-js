@@ -22,8 +22,8 @@ router.post('/ad_ventacpepdf', generarPDFexpertcont); //proveedor 02 solo PDF, a
 router.post('/ad_ventaclon', clonarRegistro);
 router.post('/ad_ventainsrefgrupo', insertarVentaRefGrupo); //new
 
-router.post('/ad_ventainsrefgrupo/generapendientes', generarVentaRefGrupoPendientes);       //new
-router.post('/ad_ventainsrefgrupo/retrocedependientes', retrocederVentaRefGrupoPendientes); //new
+router.post('/ad_ventainsrefgrupo/generapendientes/:periodo/:id_anfitrion/:documento_id', generarVentaRefGrupoPendientes);       //new
+router.post('/ad_ventainsrefgrupo/retrocedependientes/:periodo/:id_anfitrion/:documento_id', retrocederVentaRefGrupoPendientes); //new
 
 router.put('/ad_venta', actualizarRegistro); //modifica datos cabecera
 router.put('/ad_venta/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem/anular', anularRegistro);
