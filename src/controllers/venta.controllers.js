@@ -1575,7 +1575,7 @@ const generarVentaRefGrupoPendientes = async (req, res) => {
     periodo,
     id_usuario,
     documento_id
-  } = req.params;
+  } = req.body;
 
   if (
     !id_usuario ||
@@ -1639,7 +1639,7 @@ const retrocederVentaRefGrupoPendientes = async (req, res) => {
     periodo,
     id_usuario,
     documento_id
-  } = req.params;
+  } = req.body;
 
   if (
     !id_usuario ||
