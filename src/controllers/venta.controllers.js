@@ -1244,6 +1244,7 @@ const obtenerTotalVentas = async (req, res) => {
         AND documento_id = $3
         AND registrado = 1
         AND r_cod <> 'NP'
+        AND TO_CHAR(r_fecemi,'YYYY-MM') = periodo        
     `;
     const params = [periodo, id_anfitrion, documento_id];
 
