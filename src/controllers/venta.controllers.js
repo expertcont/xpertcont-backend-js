@@ -1785,6 +1785,78 @@ const insertarVentaRefGrupo = async (req, res) => {
   }
 };
 
+const obtenerReporteVentasReferencias = async (req, res) => {
+
+  const {
+    periodo,
+    id_anfitrion,
+    documento_id,
+    dia
+  } = req.params;
+
+  if (
+    !periodo ||
+    !id_anfitrion ||
+    !documento_id ||
+    dia === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        'Faltan parámetros requeridos: periodo, id_anfitrion, documento_id o dia',
+    });
+  }
+
+  // Si viene "*" no filtra fecha
+  const fechaFiltro =
+    dia !== '*'
+      ? `${periodo}-${dia}`
+      : null;
+
+  try {
+
+    const query = `
+      SELECT *
+      FROM fve_ventaref_reporte(
+        $1,
+        $2,
+        $3,
+        $4
+      )
+    `;
+
+    const params = [
+      id_anfitrion,
+      documento_id,
+      periodo,
+      fechaFiltro
+    ];
+
+    const result = await pool.query(
+      query,
+      params
+    );
+
+    res.status(200).json({
+      success: true,
+      data: result.rows
+    });
+
+  } catch (error) {
+
+    console.error(
+      'Error al obtener reporte de ventas con referencias:',
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+
+  }
+};
+
 module.exports = {
     obtenerRegistroTodos,
     obtenerRegistro,
@@ -1807,5 +1879,6 @@ module.exports = {
     obtenerPedidosPendientes,   //New
     generarVentaRefGrupoPendientes,     //New para proximo PEriodo
     retrocederVentaRefGrupoPendientes,  //New para anular proceso de generar
-    insertarVentaRefGrupo               //New
+    insertarVentaRefGrupo,               //New
+    obtenerReporteVentasReferencias      //New
  }; 
