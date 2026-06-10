@@ -360,18 +360,19 @@ const actualizarRegistro = async (req,res,next)=> {
 
           transp_ruc,               //16
           transp_razon_social,      //17
+          transp_mtc,               //18 New
 
-          conductor_dni,            //18
-          conductor_nombres,        //19
-          conductor_apellidos,      //20
-          conductor_licencia,       //21
-          vehiculo_placa,           //22
+          conductor_dni,            //19
+          conductor_nombres,        //20
+          conductor_apellidos,      //21
+          conductor_licencia,       //22
+          vehiculo_placa,           //23
 
-          destinatario_tipo,        //23
-          destinatario_ruc_dni,     //24
-          destinatario_razon_social,  //25
+          destinatario_tipo,        //24
+          destinatario_ruc_dni,     //25
+          destinatario_razon_social,  //26
           
-          id_invitado,        //26
+          id_invitado,        //27
 
         } = req.body;
         //faltan mas parametros de razon social ruc y direccion
@@ -401,18 +402,19 @@ const actualizarRegistro = async (req,res,next)=> {
 
             devuelveCadenaNull(transp_ruc),               //16
             devuelveCadenaNull(transp_razon_social),      //17
+            devuelveCadenaNull(transp_mtc),               //18 New
 
-            devuelveCadenaNull(conductor_dni),            //18
-            devuelveCadenaNull(conductor_nombres),        //19
-            devuelveCadenaNull(conductor_apellidos),      //20
-            devuelveCadenaNull(conductor_licencia),       //21
-            devuelveCadenaNull(vehiculo_placa),           //22
+            devuelveCadenaNull(conductor_dni),            //19
+            devuelveCadenaNull(conductor_nombres),        //20
+            devuelveCadenaNull(conductor_apellidos),      //21
+            devuelveCadenaNull(conductor_licencia),       //22
+            devuelveCadenaNull(vehiculo_placa),           //23
 
-            devuelveCadenaNull(destinatario_tipo),        //23
-            devuelveCadenaNull(destinatario_ruc_dni),     //24
-            devuelveCadenaNull(destinatario_razon_social),  //25
+            devuelveCadenaNull(destinatario_tipo),        //24
+            devuelveCadenaNull(destinatario_ruc_dni),     //25
+            devuelveCadenaNull(destinatario_razon_social),  //26
 
-            id_invitado                 //26
+            id_invitado                 //27
         ];
 
         strSQL = `UPDATE mve_gre SET 
@@ -429,18 +431,19 @@ const actualizarRegistro = async (req,res,next)=> {
 
                         ,transp_ruc = $16
                         ,transp_razon_social = $17
+                        ,transp_mtc = $18
 
-                        ,conductor_dni = $18
-                        ,conductor_nombres = $19
-                        ,conductor_apellidos = $20
-                        ,conductor_licencia = $21
-                        ,vehiculo_placa = $22
+                        ,conductor_dni = $19
+                        ,conductor_nombres = $20
+                        ,conductor_apellidos = $21
+                        ,conductor_licencia = $22
+                        ,vehiculo_placa = $23
 
-                        ,destinatario_tipo = $23
-                        ,destinatario_ruc_dni = $24
-                        ,destinatario_razon_social = $25
+                        ,destinatario_tipo = $24
+                        ,destinatario_ruc_dni = $25
+                        ,destinatario_razon_social = $26
 
-                        ,ctrl_mod_us = $26
+                        ,ctrl_mod_us = $27
                         ,ctrl_mod = CURRENT_TIMESTAMP
 
                   WHERE periodo = $1
