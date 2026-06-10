@@ -656,6 +656,8 @@ const generaJsonPrevioGREexpertcont = async( p_periodo,
             
             transp_ruc: registro.transp_ruc,
             transp_razon_social: registro.transp_razon_social,
+            transp_mtc: registro.transp_mtc,//New
+
             conductor_dni: registro.conductor_dni,
             conductor_nombres: registro.conductor_nombres,
             conductor_apellidos: registro.conductor_apellidos,
