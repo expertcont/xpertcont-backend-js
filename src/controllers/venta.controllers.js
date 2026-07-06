@@ -1168,7 +1168,7 @@ const generarCPEexpertcont = async (req, res, next) => {
         let r_estado = "PENDIENTE";
 
         if (consumioCorrelativo) {
-            r_estado = (estado==="0") ? 
+            r_estado = (estado) ? 
                   "ACEPTADO"
                 : "RECHAZADO";
         }
