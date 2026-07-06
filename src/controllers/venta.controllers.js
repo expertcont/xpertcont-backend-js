@@ -1106,6 +1106,7 @@ const generarCPEexpertcont = async (req, res, next) => {
         //----------------------------------------------------------
         // 1. Generar JSON
         //----------------------------------------------------------
+
         const jsonString = await generaJsonPrevioCPEexpertcont(
             p_periodo,
             p_id_usuario,
@@ -1119,7 +1120,9 @@ const generarCPEexpertcont = async (req, res, next) => {
         //----------------------------------------------------------
         // 2. Consumir API SUNAT
         //----------------------------------------------------------
-        const strUrlApi = "https://expertcont-api-sunat.up.railway.app/cpesunat";
+
+        const strUrlApi =
+            "https://expertcont-api-sunat.up.railway.app/cpesunat";
 
         const apiResponse = await fetch(strUrlApi, {
             method: "POST",
@@ -1134,11 +1137,9 @@ const generarCPEexpertcont = async (req, res, next) => {
         console.log("respuesta generada backend:", responseData);
 
         if (!apiResponse.ok) {
-            return res
-                .status(apiResponse.status)
-                .json({
-                    error: responseData || "Error en la API SUNAT"
-                });
+            return res.status(apiResponse.status).json({
+                error: responseData || "Error en la API SUNAT"
+            });
         }
 
         //----------------------------------------------------------
@@ -1165,14 +1166,25 @@ const generarCPEexpertcont = async (req, res, next) => {
         // Estado del comprobante
         //----------------------------------------------------------
 
-        let r_estado = "PENDIENTE";
+        let r_estado;
 
-        console.log('consumioCorrelativo: ',consumioCorrelativo);
-        if (consumioCorrelativo) {
-            r_estado = (estado) ? 
-                  "ACEPTADO"
-                : "RECHAZADO";
+        if (cdr_pendiente === "1") {
+            r_estado = "PENDIENTE";
+        } else if (estado) {
+            r_estado = "ACEPTADO";
+        } else {
+            r_estado = "RECHAZADO";
         }
+
+        //----------------------------------------------------------
+        // ¿Debe anular el comprobante?
+        //----------------------------------------------------------
+
+        const anularDocumento = r_estado === "RECHAZADO" && consumioCorrelativo;
+
+        console.log("r_estado:", r_estado);
+        console.log("consumioCorrelativo:", consumioCorrelativo);
+        console.log("anularDocumento:", anularDocumento);
 
         //----------------------------------------------------------
         // 4. Solo producción
@@ -1183,13 +1195,11 @@ const generarCPEexpertcont = async (req, res, next) => {
         if (data.empresa.modo === "1") {
 
             await pool.query("BEGIN");
-
             try {
 
                 //--------------------------------------------------
                 // Actualizar cabecera
                 //--------------------------------------------------
-
                 await pool.query(
                     `
                     UPDATE mve_venta
@@ -1201,10 +1211,9 @@ const generarCPEexpertcont = async (req, res, next) => {
                             cdr_pendiente   = $12,
                             r_estado        = $13,
                             registrado      = CASE
-                                                WHEN $13 = 'RECHAZADO' AND $14 = true
-                                                THEN 0
-                                                ELSE registrado
-                                              END                                               
+                                                  WHEN $14 THEN 0
+                                                  ELSE registrado
+                                               END
                      WHERE periodo      = $1
                        AND id_usuario   = $2
                        AND documento_id = $3
@@ -1214,29 +1223,29 @@ const generarCPEexpertcont = async (req, res, next) => {
                        AND elemento     = $7
                     `,
                     [
-                        p_periodo,
-                        p_id_usuario,
-                        p_documento_id,
-                        p_r_cod,
-                        p_r_serie,
-                        p_r_numero,
-                        p_elemento,
-                        codigo_hash,        //08
-                        codigo,             //09
+                        p_periodo,          //1
+                        p_id_usuario,       //2
+                        p_documento_id,     //3
+                        p_r_cod,            //4
+                        p_r_serie,          //5
+                        p_r_numero,         //6
+                        p_elemento,         //7
+                        codigo_hash,        //8
+                        codigo,             //9
                         descripcionCorta,   //10
                         nivel,              //11
                         cdr_pendiente,      //12
                         r_estado,           //13
-                        consumioCorrelativo //14
+                        anularDocumento     //14
                     ]
                 );
 
                 //--------------------------------------------------
-                // Si SALIO rechazado 
-                // también bloquear el detalle
+                // Si el documento quedó anulado,
+                // también anular el detalle.
                 //--------------------------------------------------
 
-                if (r_estado ==="RECHAZADO" && consumioCorrelativo) {
+                if (anularDocumento) {
                     await pool.query(
                         `
                         UPDATE mve_ventadet
@@ -1274,10 +1283,11 @@ const generarCPEexpertcont = async (req, res, next) => {
         }
 
         //----------------------------------------------------------
-        // 5. Respuesta al frontend
+        // 5. Respuesta
         //----------------------------------------------------------
 
         return res.json({
+
             estado,
             codigo,
             nivel,
@@ -1289,13 +1299,17 @@ const generarCPEexpertcont = async (req, res, next) => {
             ruta_pdf,
             codigo_hash,
             r_estado
+
         });
 
     }
     catch (error) {
+
         console.error(error);
         next(error);
+
     }
+
 };
 
 const generaJsonPrevioCPEexpertcont = async( p_periodo,
