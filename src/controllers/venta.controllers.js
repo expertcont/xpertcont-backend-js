@@ -998,97 +998,6 @@ const generarCPE = async (req,res,next)=> {
 };
 
 //Section Power: Api propio/////////////////////////////////////////////////
-/*const generarCPEexpertcont = async (req,res,next)=> {
-    //Consumo mi propio API ;) thanks
-    const {
-        p_periodo,
-        p_id_usuario,
-        p_documento_id,
-        p_r_cod,
-        p_r_serie,
-        p_r_numero,
-        p_elemento,
-      } = req.body;
-      
-      try {
-
-        const jsonString = await generaJsonPrevioCPEexpertcont(p_periodo,
-                                        p_id_usuario,
-                                        p_documento_id,
-                                        p_r_cod,
-                                        p_r_serie,
-                                        p_r_numero,
-                                        p_elemento);
-        
-        //console.log('jsonString armado: ',jsonString);
-
-        // 5. Enviar JSON a la API 
-        const strUrlApi = "https://expertcont-api-sunat.up.railway.app/cpesunat";
-        
-        const apiResponse = await fetch(strUrlApi, {
-          method: "POST",
-          body: jsonString,
-          headers: {
-                "Content-Type":"application/json"
-          }
-        });
-        
-        const responseData = await apiResponse.json();
-        console.log("respuesta generada backend: ",responseData); //agregamos
-
-        if (apiResponse.ok) {
-          // 6. Extraer datos de la respuesta y retornar
-          const {
-            estado,
-            cdr_pendiente,
-            respuesta_sunat_descripcion,
-            ruta_xml,
-            ruta_cdr,
-            ruta_pdf,
-            codigo_hash,
-          } = responseData;
-        
-          // Extraer directamente el valor del segundo elemento del objeto `codigo_hash`
-          console.log('codigo_hash: ',codigo_hash);
-          console.log('cdr_pendiente: ',cdr_pendiente);
-          const descripcionCorta = (respuesta_sunat_descripcion || '').substring(0, 80);
-          
-          if (codigo_hash !== null){
-              // 2. Lectura de datos de la tabla mve_venta, solo en modo producccion, nada que ver con confucio ;)
-              const data = JSON.parse(jsonString);
-              if (data.empresa.modo === "1") {
-                  await pool.query(
-                    `
-                    UPDATE mve_venta set r_vfirmado = coalesce($8,r_vfirmado), cdr_descripcion = $9, cdr_pendiente=$10
-                    WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3
-                      AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7
-                    `,
-                    [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento, codigo_hash, descripcionCorta, cdr_pendiente]
-                  );
-              }
-          }
-
-          return res.json({
-            estado,
-            cdr_pendiente,
-            respuesta_sunat_descripcion,
-            ruta_xml,
-            ruta_cdr,
-            ruta_pdf,
-            codigo_hash, // Incluye el nuevo campo en la respuesta
-          });
-        } else {
-          return res
-            .status(apiResponse.status)
-            .json({ error: responseData || "Error en la API de terceros" });
-        }
-            
-    
-      } catch (error) {
-        console.error("Error:", error);
-        res.status(500).json({ error: "Error en el servidor me lleva" });
-      }
-};*/
 const generarCPEexpertcont = async (req, res, next) => {
 
     const {
@@ -1106,7 +1015,6 @@ const generarCPEexpertcont = async (req, res, next) => {
         //----------------------------------------------------------
         // 1. Generar JSON
         //----------------------------------------------------------
-
         const jsonString = await generaJsonPrevioCPEexpertcont(
             p_periodo,
             p_id_usuario,
@@ -1120,10 +1028,7 @@ const generarCPEexpertcont = async (req, res, next) => {
         //----------------------------------------------------------
         // 2. Consumir API SUNAT
         //----------------------------------------------------------
-
-        const strUrlApi =
-            "https://expertcont-api-sunat.up.railway.app/cpesunat";
-
+        const strUrlApi = "https://expertcont-api-sunat.up.railway.app/cpesunat";
         const apiResponse = await fetch(strUrlApi, {
             method: "POST",
             body: jsonString,
@@ -1131,10 +1036,8 @@ const generarCPEexpertcont = async (req, res, next) => {
                 "Content-Type": "application/json"
             }
         });
-
         const responseData = await apiResponse.json();
-
-        console.log("respuesta generada backend:", responseData);
+        console.log("Respuesta API SUNAT:", responseData);
 
         if (!apiResponse.ok) {
             return res.status(apiResponse.status).json({
@@ -1145,7 +1048,6 @@ const generarCPEexpertcont = async (req, res, next) => {
         //----------------------------------------------------------
         // 3. Extraer respuesta
         //----------------------------------------------------------
-
         const {
             estado,
             codigo,
@@ -1159,41 +1061,28 @@ const generarCPEexpertcont = async (req, res, next) => {
             codigo_hash,
         } = responseData;
 
-        const descripcionCorta =
-            (respuesta_sunat_descripcion || "").substring(0, 200);
+        const descripcionCorta = (respuesta_sunat_descripcion || "").substring(0, 200);
 
         //----------------------------------------------------------
-        // Estado del comprobante
+        // ¿Debe anularse el comprobante?
         //----------------------------------------------------------
 
-        let r_estado;
+        const anularDocumento = nivel === "RECHAZADO" && consumioCorrelativo === true;
 
-        if (cdr_pendiente === "1") {
-            r_estado = "PENDIENTE";
-        } else if (estado) {
-            r_estado = "ACEPTADO";
-        } else {
-            r_estado = "RECHAZADO";
-        }
-
-        //----------------------------------------------------------
-        // ¿Debe anular el comprobante?
-        //----------------------------------------------------------
-
-        const anularDocumento = r_estado === "RECHAZADO" && consumioCorrelativo;
-
-        console.log("r_estado:", r_estado);
-        console.log("consumioCorrelativo:", consumioCorrelativo);
-        console.log("anularDocumento:", anularDocumento);
+        console.log("--------------------------------------------");
+        console.log("Nivel:", nivel);
+        console.log("Código SUNAT:", codigo);
+        console.log("Consumió correlativo:", consumioCorrelativo);
+        console.log("Anular documento:", anularDocumento);
+        console.log("--------------------------------------------");
 
         //----------------------------------------------------------
-        // 4. Solo producción
+        // 4. Actualizar BD (solo Producción)
         //----------------------------------------------------------
 
         const data = JSON.parse(jsonString);
 
         if (data.empresa.modo === "1") {
-
             await pool.query("BEGIN");
             try {
 
@@ -1209,9 +1098,8 @@ const generarCPEexpertcont = async (req, res, next) => {
                             cdr_descripcion = $10,
                             cdr_nivel       = $11,
                             cdr_pendiente   = $12,
-                            r_estado        = $13,
                             registrado      = CASE
-                                                  WHEN $14 THEN 0
+                                                  WHEN $13 THEN 0
                                                   ELSE registrado
                                                END
                      WHERE periodo      = $1
@@ -1235,16 +1123,14 @@ const generarCPEexpertcont = async (req, res, next) => {
                         descripcionCorta,   //10
                         nivel,              //11
                         cdr_pendiente,      //12
-                        r_estado,           //13
-                        anularDocumento     //14
+                        anularDocumento     //13
                     ]
                 );
 
                 //--------------------------------------------------
-                // Si el documento quedó anulado,
-                // también anular el detalle.
+                // Si SUNAT rechazó definitivamente,
+                // también invalidar el detalle.
                 //--------------------------------------------------
-
                 if (anularDocumento) {
                     await pool.query(
                         `
@@ -1269,25 +1155,18 @@ const generarCPEexpertcont = async (req, res, next) => {
                         ]
                     );
                 }
-
                 await pool.query("COMMIT");
-
             }
             catch (e) {
-
                 await pool.query("ROLLBACK");
                 throw e;
-
             }
-
         }
 
         //----------------------------------------------------------
-        // 5. Respuesta
+        // 5. Respuesta al Frontend
         //----------------------------------------------------------
-
         return res.json({
-
             estado,
             codigo,
             nivel,
@@ -1297,9 +1176,7 @@ const generarCPEexpertcont = async (req, res, next) => {
             ruta_xml,
             ruta_cdr,
             ruta_pdf,
-            codigo_hash,
-            r_estado
-
+            codigo_hash
         });
 
     }
@@ -1311,6 +1188,7 @@ const generarCPEexpertcont = async (req, res, next) => {
     }
 
 };
+
 
 const generaJsonPrevioCPEexpertcont = async( p_periodo,
                             p_id_usuario,
