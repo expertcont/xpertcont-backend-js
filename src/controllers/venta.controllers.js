@@ -1201,9 +1201,10 @@ const generarCPEexpertcont = async (req, res, next) => {
                             cdr_pendiente   = $12,
                             r_estado        = $13,
                             registrado      = CASE
-                                                  WHEN $14 THEN 0
-                                                  ELSE registrado
-                                               END
+                                                WHEN $13 = 'RECHAZADO' AND $14 = true
+                                                THEN 0
+                                                ELSE registrado
+                                              END                                               
                      WHERE periodo      = $1
                        AND id_usuario   = $2
                        AND documento_id = $3
@@ -1220,23 +1221,22 @@ const generarCPEexpertcont = async (req, res, next) => {
                         p_r_serie,
                         p_r_numero,
                         p_elemento,
-                        codigo_hash,
-                        codigo,
-                        descripcionCorta,
-                        nivel,
-                        cdr_pendiente,
-                        r_estado,
-                        consumioCorrelativo
+                        codigo_hash,        //08
+                        codigo,             //09
+                        descripcionCorta,   //10
+                        nivel,              //11
+                        cdr_pendiente,      //12
+                        r_estado,           //13
+                        consumioCorrelativo //14
                     ]
                 );
 
                 //--------------------------------------------------
-                // Si consumió correlativo,
+                // Si SALIO rechazado 
                 // también bloquear el detalle
                 //--------------------------------------------------
 
-                if (consumioCorrelativo) {
-
+                if (r_estado ==="RECHAZADO" && consumioCorrelativo) {
                     await pool.query(
                         `
                         UPDATE mve_ventadet
@@ -1259,7 +1259,6 @@ const generarCPEexpertcont = async (req, res, next) => {
                             p_elemento
                         ]
                     );
-
                 }
 
                 await pool.query("COMMIT");
