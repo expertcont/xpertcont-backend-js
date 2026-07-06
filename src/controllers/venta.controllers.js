@@ -998,7 +998,7 @@ const generarCPE = async (req,res,next)=> {
 };
 
 //Section Power: Api propio/////////////////////////////////////////////////
-const generarCPEexpertcont = async (req,res,next)=> {
+/*const generarCPEexpertcont = async (req,res,next)=> {
     //Consumo mi propio API ;) thanks
     const {
         p_periodo,
@@ -1027,15 +1027,10 @@ const generarCPEexpertcont = async (req,res,next)=> {
         
         const apiResponse = await fetch(strUrlApi, {
           method: "POST",
-          //body: JSON.stringify(jsonString),
           body: jsonString,
           headers: {
                 "Content-Type":"application/json"
           }
-          /*headers: {
-            "Content-Type":"application/json",
-            'Authorization': `Bearer ${datos.token_factintegral}`
-          }*/
         });
         
         const responseData = await apiResponse.json();
@@ -1093,6 +1088,214 @@ const generarCPEexpertcont = async (req,res,next)=> {
         console.error("Error:", error);
         res.status(500).json({ error: "Error en el servidor me lleva" });
       }
+};*/
+const generarCPEexpertcont = async (req, res, next) => {
+
+    const {
+        p_periodo,
+        p_id_usuario,
+        p_documento_id,
+        p_r_cod,
+        p_r_serie,
+        p_r_numero,
+        p_elemento,
+    } = req.body;
+
+    try {
+
+        //----------------------------------------------------------
+        // 1. Generar JSON
+        //----------------------------------------------------------
+        const jsonString = await generaJsonPrevioCPEexpertcont(
+            p_periodo,
+            p_id_usuario,
+            p_documento_id,
+            p_r_cod,
+            p_r_serie,
+            p_r_numero,
+            p_elemento
+        );
+
+        //----------------------------------------------------------
+        // 2. Consumir API SUNAT
+        //----------------------------------------------------------
+        const strUrlApi = "https://expertcont-api-sunat.up.railway.app/cpesunat";
+
+        const apiResponse = await fetch(strUrlApi, {
+            method: "POST",
+            body: jsonString,
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const responseData = await apiResponse.json();
+
+        console.log("respuesta generada backend:", responseData);
+
+        if (!apiResponse.ok) {
+            return res
+                .status(apiResponse.status)
+                .json({
+                    error: responseData || "Error en la API SUNAT"
+                });
+        }
+
+        //----------------------------------------------------------
+        // 3. Extraer respuesta
+        //----------------------------------------------------------
+
+        const {
+            estado,
+            codigo,
+            nivel,
+            consumioCorrelativo,
+            cdr_pendiente,
+            respuesta_sunat_descripcion,
+            ruta_xml,
+            ruta_cdr,
+            ruta_pdf,
+            codigo_hash,
+        } = responseData;
+
+        const descripcionCorta =
+            (respuesta_sunat_descripcion || "").substring(0, 200);
+
+        //----------------------------------------------------------
+        // Estado del comprobante
+        //----------------------------------------------------------
+
+        let r_estado = "PENDIENTE";
+
+        if (consumioCorrelativo) {
+            r_estado = estado
+                ? "ACEPTADO"
+                : "RECHAZADO";
+        }
+
+        //----------------------------------------------------------
+        // 4. Solo producción
+        //----------------------------------------------------------
+
+        const data = JSON.parse(jsonString);
+
+        if (data.empresa.modo === "1") {
+
+            await pool.query("BEGIN");
+
+            try {
+
+                //--------------------------------------------------
+                // Actualizar cabecera
+                //--------------------------------------------------
+
+                await pool.query(
+                    `
+                    UPDATE mve_venta
+                       SET
+                            r_vfirmado      = COALESCE($8,r_vfirmado),
+                            cdr_codigo      = $9,
+                            cdr_descripcion = $10,
+                            cdr_nivel       = $11,
+                            cdr_pendiente   = $12,
+                            r_estado        = $13,
+                            registrado      = CASE
+                                                  WHEN $14 THEN 0
+                                                  ELSE registrado
+                                               END
+                     WHERE periodo      = $1
+                       AND id_usuario   = $2
+                       AND documento_id = $3
+                       AND r_cod        = $4
+                       AND r_serie      = $5
+                       AND r_numero     = $6
+                       AND elemento     = $7
+                    `,
+                    [
+                        p_periodo,
+                        p_id_usuario,
+                        p_documento_id,
+                        p_r_cod,
+                        p_r_serie,
+                        p_r_numero,
+                        p_elemento,
+                        codigo_hash,
+                        codigo,
+                        descripcionCorta,
+                        nivel,
+                        cdr_pendiente,
+                        r_estado,
+                        consumioCorrelativo
+                    ]
+                );
+
+                //--------------------------------------------------
+                // Si consumió correlativo,
+                // también bloquear el detalle
+                //--------------------------------------------------
+
+                if (consumioCorrelativo) {
+
+                    await pool.query(
+                        `
+                        UPDATE mve_ventadet
+                           SET registrado = 0
+                         WHERE periodo      = $1
+                           AND id_usuario   = $2
+                           AND documento_id = $3
+                           AND r_cod        = $4
+                           AND r_serie      = $5
+                           AND r_numero     = $6
+                           AND elemento     = $7
+                        `,
+                        [
+                            p_periodo,
+                            p_id_usuario,
+                            p_documento_id,
+                            p_r_cod,
+                            p_r_serie,
+                            p_r_numero,
+                            p_elemento
+                        ]
+                    );
+
+                }
+
+                await pool.query("COMMIT");
+
+            }
+            catch (e) {
+
+                await pool.query("ROLLBACK");
+                throw e;
+
+            }
+
+        }
+
+        //----------------------------------------------------------
+        // 5. Respuesta al frontend
+        //----------------------------------------------------------
+
+        return res.json({
+            estado,
+            codigo,
+            nivel,
+            consumioCorrelativo,
+            cdr_pendiente,
+            respuesta_sunat_descripcion,
+            ruta_xml,
+            ruta_cdr,
+            ruta_pdf,
+            codigo_hash,
+            r_estado
+        });
+
+    }
+    catch (error) {
+        console.error(error);
+        next(error);
+    }
 };
 
 const generaJsonPrevioCPEexpertcont = async( p_periodo,
