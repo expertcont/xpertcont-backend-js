@@ -1037,7 +1037,6 @@ const generarCPEexpertcont = async (req, res, next) => {
             }
         });
         const responseData = await apiResponse.json();
-        //console.log("Respuesta API SUNAT:", responseData);
 
         if (!apiResponse.ok) {
             return res.status(apiResponse.status).json({
@@ -1067,13 +1066,7 @@ const generarCPEexpertcont = async (req, res, next) => {
         // ¿Debe anularse el comprobante?
         //----------------------------------------------------------
 
-        console.log("--------------------------------------------");
-        console.log("Nivel:", nivel);
-        console.log("Código SUNAT:", codigo);
-        console.log("Consumió correlativo:", consumioCorrelativo);
-        console.log("Anular documento:", anularDocumento);
-        console.log("--------------------------------------------");
-
+        console.log("Respuesta API SUNAT:", responseData);
         const anularDocumento = nivel === "RECHAZADO" && consumioCorrelativo === true;
         //----------------------------------------------------------
         // 4. Actualizar BD (solo Producción)
