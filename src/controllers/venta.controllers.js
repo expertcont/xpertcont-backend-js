@@ -1065,7 +1065,7 @@ const generarCPEexpertcont = async (req, res, next) => {
             codigo_hash,
         } = responseData;
 
-        const descripcionCorta = (respuesta_sunat_descripcion || "").substring(0, 200);
+        const descripcionCorta = (respuesta_sunat_descripcion || "").substring(0, 100);
 
         //----------------------------------------------------------
         // ¿Debe anularse el comprobante?
