@@ -1045,6 +1045,7 @@ const generarCPEexpertcont = async (req, res, next) => {
         }
         
         console.log("Respuesta API SUNAT:", responseData);
+        //vemos qu
         //----------------------------------------------------------
         // 3. Extraer respuesta
         //----------------------------------------------------------
@@ -1055,6 +1056,7 @@ const generarCPEexpertcont = async (req, res, next) => {
             consumioCorrelativo,
             cdr_pendiente,
             respuesta_sunat_descripcion,
+            
             ruta_xml,
             ruta_cdr,
             ruta_pdf,
@@ -1066,7 +1068,6 @@ const generarCPEexpertcont = async (req, res, next) => {
         //----------------------------------------------------------
         // ¿Debe anularse el comprobante?
         //----------------------------------------------------------
-
         
         const anularDocumento = nivel === "RECHAZADO" && consumioCorrelativo === true;
         //----------------------------------------------------------
