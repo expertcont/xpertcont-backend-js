@@ -1038,14 +1038,16 @@ const generarCPEexpertcont = async (req, res, next) => {
         });
         const responseData = await apiResponse.json();
 
+        console.log("Respuesta API SUNAT:", apiResponse);
+
+        //vemos qu
+
         if (!apiResponse.ok) {
             return res.status(apiResponse.status).json({
                 error: responseData || "Error en la API SUNAT"
             });
         }
         
-        console.log("Respuesta API SUNAT:", responseData);
-        //vemos qu
         //----------------------------------------------------------
         // 3. Extraer respuesta
         //----------------------------------------------------------
