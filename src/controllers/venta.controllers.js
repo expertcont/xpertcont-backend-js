@@ -1043,7 +1043,8 @@ const generarCPEexpertcont = async (req, res, next) => {
                 error: responseData || "Error en la API SUNAT"
             });
         }
-
+        
+        console.log("Respuesta API SUNAT:", responseData);
         //----------------------------------------------------------
         // 3. Extraer respuesta
         //----------------------------------------------------------
@@ -1066,7 +1067,7 @@ const generarCPEexpertcont = async (req, res, next) => {
         // ¿Debe anularse el comprobante?
         //----------------------------------------------------------
 
-        console.log("Respuesta API SUNAT:", responseData);
+        
         const anularDocumento = nivel === "RECHAZADO" && consumioCorrelativo === true;
         //----------------------------------------------------------
         // 4. Actualizar BD (solo Producción)
