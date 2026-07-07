@@ -1038,7 +1038,7 @@ const generarCPEexpertcont = async (req, res, next) => {
         });
         const responseData = await apiResponse.json();
 
-        console.log("Respuesta API SUNAT:", apiResponse);
+        console.log("Respuesta API SUNAT:", responseData);
 
         //vemos qu
 
@@ -1178,7 +1178,7 @@ const generarCPEexpertcont = async (req, res, next) => {
     }
     catch (error) {
 
-        console.error(error);
+        console.log(error);
         next(error);
 
     }
