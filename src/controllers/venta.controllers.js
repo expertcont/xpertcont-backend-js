@@ -1536,7 +1536,7 @@ const obtenerCodigosComprobante = async (req, res) => {
 const obtenerSeriesComprobante = async (req, res) => {
   const { id_anfitrion, documento_id, id_invitado, r_cod } = req.params;
 
-  if (!id_anfitrion || !documento_id || !id_invitado || r_cod ) {
+  if (!id_anfitrion || !documento_id || !id_invitado || !r_cod ) {
     return res.status(400).json({
       success: false,
       message: 'Faltan parámetros requeridos: id_anfitrion, id_invitado, id_invitado, r_cod',
