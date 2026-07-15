@@ -1,7 +1,7 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont, obtenerTotalUnidades, obtenerCodigosComprobante, obtenerPedidosPendientes, insertarVentaRefGrupo, generarVentaRefGrupoPendientes, retrocederVentaRefGrupoPendientes, obtenerReporteVentasReferencias} = require('../controllers/venta.controllers')
+const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont, obtenerTotalUnidades, obtenerCodigosComprobante, obtenerPedidosPendientes, insertarVentaRefGrupo, generarVentaRefGrupoPendientes, retrocederVentaRefGrupoPendientes, obtenerReporteVentasReferencias, obtenerSeriesComprobante} = require('../controllers/venta.controllers')
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroTodos);//
 
@@ -9,6 +9,7 @@ router.get('/ad_ventatotal/:periodo/:id_anfitrion/:id_invitado/:documento_id/:di
 router.get('/ad_ventarecaudacion/:periodo/:id_anfitrion/:documento_id/:dia', obtenerTotalRecaudacion);//
 router.get('/ad_ventaunidades/:periodo/:id_anfitrion/:documento_id/:dia', obtenerTotalUnidades);//
 router.get('/ad_ventasegcod/:id_anfitrion/:documento_id/:id_invitado', obtenerCodigosComprobante);// COmprobantes habilitados con serie por usuario
+router.get('/ad_ventaseries/:id_anfitrion/:documento_id/:id_invitado/:r_cod', obtenerSeriesComprobante);// new series por comprobante, so beginning party
 router.get('/ad_ventaspendientes/:periodo/:id_anfitrion', obtenerPedidosPendientes);// Pedidos por facturar
 router.get('/ad_ventasrefgrupo/:periodo/:id_anfitrion/:documento_id/:dia', obtenerReporteVentasReferencias);// para reporte
 

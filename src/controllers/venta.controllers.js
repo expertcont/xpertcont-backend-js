@@ -1533,6 +1533,45 @@ const obtenerCodigosComprobante = async (req, res) => {
   }
 };
 
+const obtenerSeriesComprobante = async (req, res) => {
+  const { id_anfitrion, documento_id, id_invitado, r_cod } = req.params;
+
+  if (!id_anfitrion || !documento_id || !id_invitado || r_cod ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: id_anfitrion, id_invitado, id_invitado, r_cod',
+    });
+  }
+
+  try {
+    const query = `
+        SELECT r_serie FROM mad_seguridad_serie
+        WHERE id_usuario = $1
+        AND documento_id = $2
+        AND id_invitado = $3
+        AND r_cod = $4
+        GROUP BY r_serie
+        ORDER BY r_serie
+    `;
+
+    const params = [id_anfitrion, documento_id, id_invitado, r_cod];
+
+    const registrosResult = await pool.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      data: registrosResult.rows
+    });
+
+  } catch (error) {
+    console.error('Error al obtener series:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
 const generarPDFexpertcont = async (req,res,next)=> {
     //Consumo mi propio API ;) thanks
     const {
@@ -1968,6 +2007,7 @@ module.exports = {
     obtenerTotalRecaudacion,
     obtenerTotalUnidades,
     obtenerCodigosComprobante,
+    obtenerSeriesComprobante,   //new
     obtenerPedidosPendientes,   //New
     generarVentaRefGrupoPendientes,     //New para proximo PEriodo
     retrocederVentaRefGrupoPendientes,  //New para anular proceso de generar
