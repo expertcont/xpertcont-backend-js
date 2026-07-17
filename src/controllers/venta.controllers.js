@@ -403,7 +403,8 @@ const generarRegistro = async (req,res,next)=> {
 
 };
 
-const generarComprobante = async (req, res, next) => {
+/*const generarComprobante = async (req, res, next) => {
+  //Aumentar r_serie_emitir junto a r_cod_emitir, valor nuevo para func psql
   const {
     id_anfitrion,        //01
     documento_id,        //02
@@ -430,10 +431,10 @@ const generarComprobante = async (req, res, next) => {
     dias_credito,         //20
 
     // 🆕 Nuevos campos de cobranza
-    efectivo,          //18
-    vuelto,            //19
-    forma_pago2,       //20
-    efectivo2,          //21
+    efectivo,          //21
+    vuelto,            //22
+    forma_pago2,       //23
+    efectivo2,          //24
   } = req.body;
 
   try {
@@ -441,13 +442,6 @@ const generarComprobante = async (req, res, next) => {
 
     if (r_cod_emitir !== '07' && r_cod_emitir !== '08') {
       // Venta regular (boleta o factura)
-      /*console.log('fve_crear_comprobante:', [
-        id_anfitrion, documento_id, periodo, id_invitado, fecha,
-        r_cod, r_serie, r_numero, r_cod_emitir,
-        r_id_doc, r_documento_id, r_razon_social, r_direccion,
-        efectivo, vuelto, forma_pago2, efectivo2
-      ]);*/
-
       result = await pool.query(
         `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
          FROM fve_crear_comprobante(
@@ -466,13 +460,6 @@ const generarComprobante = async (req, res, next) => {
       );
     } else {
       // Nota de crédito o débito (sin cambios aún)
-      /*console.log('fve_crear_comprobante_ref:', [
-        id_anfitrion, documento_id, periodo, id_invitado, fecha,
-        r_cod, r_serie, r_numero, r_cod_emitir,
-        r_id_doc, r_documento_id, r_razon_social, r_direccion,
-        r_cod_ref, r_serie_ref, r_numero_ref, r_idmotivo_ref
-      ]);*/
-
       result = await pool.query(
         `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total 
          FROM fve_crear_comprobante_ref(
@@ -502,6 +489,148 @@ const generarComprobante = async (req, res, next) => {
         message: 'No se encontraron resultados o no se pudo crear el comprobante.',
       });
     }
+  } catch (error) {
+    console.error('Error al ejecutar la función fve_crear_comprobante:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor.',
+    });
+  }
+};*/
+
+const generarComprobante = async (req, res, next) => {
+
+  const {
+    id_anfitrion,        //01
+    documento_id,        //02
+    periodo,             //03
+    id_invitado,         //04
+    fecha,               //05
+    r_cod,               //06
+    r_serie,             //07
+    r_numero,            //08
+    r_cod_emitir,        //09
+    r_serie_emitir,      //10  <-- NUEVO
+    r_id_doc,            //11
+    r_documento_id,      //12
+    r_razon_social,      //13
+    r_direccion,         //14
+
+    r_cod_ref,           //15 (solo para notas)
+    r_serie_ref,         //16
+    r_numero_ref,        //17
+    r_idmotivo_ref,      //18
+
+    // New
+    r_moneda,            //19
+    r_forma_pago_id,     //20
+    dias_credito,        //21
+
+    // Cobranza
+    efectivo,            //22
+    vuelto,              //23
+    forma_pago2,         //24
+    efectivo2,           //25
+
+  } = req.body;
+
+  try {
+
+    let result;
+
+    if (r_cod_emitir !== '07' && r_cod_emitir !== '08') {
+      // Venta regular (boleta o factura)
+      result = await pool.query(
+        `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total
+         FROM fve_crear_comprobante(
+           $1, $2, $3, $4, $5,
+           $6, $7, $8, $9, $10,
+           $11, $12, $13, $14,
+           $15, $16, $17, $18,
+           $19, $20, $21
+         )`,
+        [
+          id_anfitrion,
+          documento_id,
+          periodo,
+          id_invitado,
+          fecha,
+
+          r_cod,
+          r_serie,
+          r_numero,
+          r_cod_emitir,
+          r_serie_emitir,      // <-- NUEVO
+
+          r_id_doc,
+          r_documento_id,
+          r_razon_social,
+          r_direccion,
+
+          efectivo,
+          vuelto,
+          forma_pago2,
+          efectivo2,
+
+          r_moneda,
+          r_forma_pago_id,
+          dias_credito
+        ]
+      );
+
+    } else {
+      // Nota de crédito o débito (sin cambios)
+      result = await pool.query(
+        `SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total
+         FROM fve_crear_comprobante_ref(
+           $1, $2, $3, $4, $5,
+           $6, $7, $8, $9,
+           $10, $11, $12, $13,
+           $14, $15, $16, $17,
+           $18, $19, $20
+         )`,
+        [
+          id_anfitrion,
+          documento_id,
+          periodo,
+          id_invitado,
+          fecha,
+
+          r_cod,
+          r_serie,
+          r_numero,
+          r_cod_emitir,
+
+          r_id_doc,
+          r_documento_id,
+          r_razon_social,
+          r_direccion,
+
+          r_cod_ref,
+          r_serie_ref,
+          r_numero_ref,
+          r_idmotivo_ref,
+
+          r_moneda,
+          r_forma_pago_id,
+          dias_credito
+        ]
+      );
+
+    }
+
+    if (result.rows.length > 0) {
+      res.status(200).json({
+        success: true,
+        ...result.rows[0],
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'No se encontraron resultados o no se pudo crear el comprobante.',
+      });
+    }
+
   } catch (error) {
     console.error('Error al ejecutar la función fve_crear_comprobante:', error);
     res.status(500).json({
