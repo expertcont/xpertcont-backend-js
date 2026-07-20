@@ -206,8 +206,8 @@ const obtenerRegistro = async (req,res,next)=> {
         strSQL += " AND mst_movimiento.cod = $4";
         strSQL += " AND mst_movimiento.serie = $5";
         strSQL += " AND mst_movimiento.numero = $6";
-        //console.log(strSQL);
-
+        console.log(strSQL);
+        console.log([periodo,id_anfitrion,documento_id,cod,serie,num]);
         const result = await pool.query(strSQL,[periodo,id_anfitrion,documento_id,cod,serie,num]);
 
         if (result.rows.length === 0)
