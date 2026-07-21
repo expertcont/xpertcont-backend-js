@@ -86,28 +86,13 @@ const obtenerMotivos = async (req, res, next) => {
   }
 };
 
-const obtenerInventario = async (req, res, next) => {
+//Legacy
+/*const obtenerInventario = async (req, res, next) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
 
   // Si el día no es '*', arma la fecha completa, ejemplo: "2025-10-15"
   const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
 
-  /*const sQuery = `
-    SELECT 
-      f.*,
-      (f.saldo_inicial + f.ingresos - f.egresos) AS saldo,
-      p.cont_und
-    FROM fst_inventario_avanzado_fecha($1, $2, $3, $4, $5, $6) AS f
-    LEFT JOIN mst_producto AS p
-      ON (
-        CASE 
-          WHEN f.sku = '1' THEN split_part(f.id_producto, '-', 1)
-          ELSE f.id_producto
-        END = p.id_producto
-        AND p.id_usuario = $2
-        AND p.documento_id = $3
-      )
-  `;*/
   const sQuery = `
     SELECT 
       f.*,
@@ -124,6 +109,47 @@ const obtenerInventario = async (req, res, next) => {
     '',                    // $4 => id_almacen
     '',                    // $5 => id_producto
     fechaFiltro            // $6 => puede ser null
+  ];
+
+  try {
+    const { rows } = await pool.query(sQuery, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error en obtenerInventario:", error.message);
+    next(error);
+  }
+};*/
+
+const obtenerInventario = async (req, res, next) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+
+  // Normalizar documento_id:
+  // - Convierte "null", null, undefined o vacío a NULL real para PostgreSQL
+  // "*" significa inventario global sin documento
+  const documento = documento_id === '*'
+      ? null
+      : documento_id;
+
+  // Si el día no es '*', arma la fecha completa, ejemplo: "2025-10-15"
+  const fechaFiltro = dia !== '*' 
+      ? `${periodo}-${dia}` 
+      : null;
+
+  const sQuery = `
+    SELECT 
+      f.*,
+      (f.saldo_inicial + f.ingresos - f.egresos) AS saldo
+    FROM fst_inventario_avanzado_fecha($1, $2, $3, $4, $5, $6) AS f
+  `;
+
+  // Parámetros ordenados para la función PostgreSQL
+  const params = [
+    periodo,        // $1
+    id_anfitrion,   // $2
+    documento,      // $3 => puede ser documento o NULL global
+    '',             // $4 => id_almacen
+    '',             // $5 => id_producto
+    fechaFiltro     // $6 => fecha límite o NULL
   ];
 
   try {
