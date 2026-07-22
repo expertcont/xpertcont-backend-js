@@ -125,7 +125,8 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
         const precioFactor = configRes.rows[0]?.precio_factor === '1' ? '1' : '0';
         const productoSKU = configRes.rows[0]?.producto_sku === '1' ? 'zku' : '0';
         //console.log('precioFactor: ', precioFactor);
-
+        
+        //Agregamos dato comercial is true, disponible solo para ventas
         if (precioFactor === '0') {
             strSQL = `SELECT 
                         id_producto as codigo
@@ -134,6 +135,7 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
                     FROM mst_producto
                     WHERE id_usuario = $1
                     AND documento_id = $2
+                    AND comercial is true
                     ORDER BY nombre`;
         }else{
             strSQL = `SELECT 
@@ -148,6 +150,7 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
                             mst_producto_precio.unidades = 1)
                         WHERE mst_producto_precio.id_usuario = $1
                         AND mst_producto_precio.documento_id = $2
+                        AND mst_producto.comercial is true
                         ORDER BY mst_producto.id_producto`;
         }
 
@@ -159,52 +162,22 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
     }
 };
 //new
-const obtenerTodosProductosPopUpGeneral = async (req,res,next)=> {
+const obtenerTodosProductosPopUpAlmacenable = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id} = req.params;
         const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
 
-        // Consultar si está activado el parámetro
-        const configRes = await pool.query(
-        `SELECT precio_factor,producto_sku FROM mve_parametros 
-        WHERE id_usuario = $1
-        AND documento_id = $2`,  // corregido aquí
-        [id_anfitrion, documentoIdResuelto]
-        );
-
-        // Asegura que el valor null no rompa la lógica
-        //const valor = configRes.rows[0]?.precio_factor;
-        const precioFactor = configRes.rows[0]?.precio_factor === '1' ? '1' : '0';
-        const productoSKU = configRes.rows[0]?.producto_sku === '1' ? 'zku' : '0';
-        //console.log('precioFactor: ', precioFactor);
-
-        if (precioFactor === '0') {
-            strSQL = `SELECT 
-                        id_producto as codigo
-                        ,nombre as descripcion
-                        ,(precio_venta || '-' || cont_und || '-' || porc_igv || '-' || $3::varchar || '-' || $4::varchar )::varchar as auxiliar
-                    FROM mst_producto
-                    WHERE id_usuario = $1
-                    AND documento_id = $2
-                    ORDER BY nombre`;
-        }else{
-            strSQL = `SELECT 
-                        mst_producto_precio.id_producto as codigo
-                        ,mst_producto.nombre as descripcion
-                        ,(mst_producto_precio.precio_venta || '-' || mst_producto.cont_und || '-' || mst_producto.porc_igv || '-' || $3::varchar || '-' || $4::varchar )::varchar as auxiliar
-                        FROM
-                        mst_producto INNER JOIN mst_producto_precio
-                        ON (mst_producto.id_usuario = mst_producto_precio.id_usuario and
-                            mst_producto.documento_id = mst_producto_precio.documento_id and
-                            mst_producto.id_producto = mst_producto_precio.id_producto and
-                            mst_producto_precio.unidades = 1)
-                        WHERE mst_producto_precio.id_usuario = $1
-                        AND mst_producto_precio.documento_id = $2
-                        ORDER BY mst_producto.id_producto`;
-        }
-
-        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,precioFactor,productoSKU]);
+        strSQL = `SELECT 
+                    id_producto as codigo
+                    ,nombre as descripcion
+                    ,(COALESCE(precio_compra,0)::varchar || '-' || cont_und || '-' || porc_igv || '-' || $3::varchar || '-' || $4::varchar )::varchar as auxiliar
+                FROM mst_producto
+                WHERE id_usuario = $1
+                AND documento_id = $2
+                AND almacenable is true
+                ORDER BY nombre`;
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto]);
         res.json(todosRegistros.rows);
     }
     catch(error){
@@ -1064,6 +1037,7 @@ module.exports = {
     obtenerTodosProductos,
     obtenerTodosProductosPrecios,
     obtenerTodosProductosPopUp,
+    obtenerTodosProductosPopUpAlmacenable,
     obtenerTodosGruposPopUp,
     obtenerPreciosProducto,
     obtenerProducto,
