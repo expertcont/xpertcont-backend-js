@@ -158,6 +158,60 @@ const obtenerTodosProductosPopUp = async (req,res,next)=> {
         console.log(error.message);
     }
 };
+//new
+const obtenerTodosProductosPopUpGeneral = async (req,res,next)=> {
+    try {
+        let strSQL;
+        const {id_anfitrion,documento_id} = req.params;
+        const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
+
+        // Consultar si está activado el parámetro
+        const configRes = await pool.query(
+        `SELECT precio_factor,producto_sku FROM mve_parametros 
+        WHERE id_usuario = $1
+        AND documento_id = $2`,  // corregido aquí
+        [id_anfitrion, documentoIdResuelto]
+        );
+
+        // Asegura que el valor null no rompa la lógica
+        //const valor = configRes.rows[0]?.precio_factor;
+        const precioFactor = configRes.rows[0]?.precio_factor === '1' ? '1' : '0';
+        const productoSKU = configRes.rows[0]?.producto_sku === '1' ? 'zku' : '0';
+        //console.log('precioFactor: ', precioFactor);
+
+        if (precioFactor === '0') {
+            strSQL = `SELECT 
+                        id_producto as codigo
+                        ,nombre as descripcion
+                        ,(precio_venta || '-' || cont_und || '-' || porc_igv || '-' || $3::varchar || '-' || $4::varchar )::varchar as auxiliar
+                    FROM mst_producto
+                    WHERE id_usuario = $1
+                    AND documento_id = $2
+                    ORDER BY nombre`;
+        }else{
+            strSQL = `SELECT 
+                        mst_producto_precio.id_producto as codigo
+                        ,mst_producto.nombre as descripcion
+                        ,(mst_producto_precio.precio_venta || '-' || mst_producto.cont_und || '-' || mst_producto.porc_igv || '-' || $3::varchar || '-' || $4::varchar )::varchar as auxiliar
+                        FROM
+                        mst_producto INNER JOIN mst_producto_precio
+                        ON (mst_producto.id_usuario = mst_producto_precio.id_usuario and
+                            mst_producto.documento_id = mst_producto_precio.documento_id and
+                            mst_producto.id_producto = mst_producto_precio.id_producto and
+                            mst_producto_precio.unidades = 1)
+                        WHERE mst_producto_precio.id_usuario = $1
+                        AND mst_producto_precio.documento_id = $2
+                        ORDER BY mst_producto.id_producto`;
+        }
+
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,precioFactor,productoSKU]);
+        res.json(todosRegistros.rows);
+    }
+    catch(error){
+        console.log(error.message);
+    }
+};
+
 const obtenerTodosGruposPopUp = async (req,res,next)=> {
     try {
         const {id_anfitrion,documento_id} = req.params;
@@ -238,7 +292,8 @@ const obtenerParametrosVenta = async (req,res,next)=> {
         console.log(error.message);
     }
 };
-const crearProducto = async (req,res,next)=> {
+
+/*const crearProducto = async (req,res,next)=> {
     const { 
             id_anfitrion,     //01
             documento_id,   //02
@@ -286,6 +341,70 @@ const crearProducto = async (req,res,next)=> {
         console.log(error);
         next(error)
     }
+};*/
+const crearProducto = async (req,res,next)=> {
+    const { 
+            id_anfitrion,     //01
+            documento_id,     //02
+            id_producto,      //03
+            nombre,           //04
+            descripcion,      //05
+            precio_venta,     //06
+            cont_und,         //07
+            origen,           //08
+            porc_igv,         //09
+            comercial,        //10
+            almacenable       //11
+        } = req.body;
+
+    let strSQL;
+
+    try {
+
+        const documentoIdResuelto = await resolverDocumentoId(
+            pool,
+            id_anfitrion,
+            documento_id
+        );
+
+        strSQL = "INSERT INTO mst_producto(";
+        strSQL += " id_usuario";      //01
+        strSQL += ",documento_id";    //02
+        strSQL += ",id_producto";     //03
+        strSQL += ",nombre";          //04
+        strSQL += ",descripcion";     //05
+        strSQL += ",precio_venta";    //06
+        strSQL += ",cont_und";        //07
+        strSQL += ",origen";          //08
+        strSQL += ",porc_igv";        //09
+        strSQL += ",comercial";       //10
+        strSQL += ",almacenable";     //11
+        strSQL += ") VALUES (";
+
+        strSQL += " $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11 ";
+
+        strSQL += ") RETURNING *";
+
+        const result = await pool.query(strSQL, [
+            id_anfitrion,               //01
+            documentoIdResuelto,        //02
+            id_producto,                //03
+            nombre?.toUpperCase(),      //04
+            descripcion?.toUpperCase(), //05
+            precio_venta,               //06
+            cont_und,                   //07
+            origen,                     //08
+            porc_igv,                   //09
+            comercial,                  //10
+            almacenable                 //11
+        ]);
+
+        res.json(result.rows[0]);
+
+    } catch(error) {
+        console.log(error);
+        next(error);
+    }
 };
 const eliminarProducto = async (req, res, next) => {
   try {
@@ -328,7 +447,7 @@ const eliminarProducto = async (req, res, next) => {
     return res.status(500).json({ message: "Error en el servidor" });
   }
 };
-const actualizarProducto = async (req,res,next)=> {
+/*const actualizarProducto = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto} = req.params; //03
@@ -378,7 +497,78 @@ const actualizarProducto = async (req,res,next)=> {
     } catch (error) {
         console.log(error.message);
     }
+};*/
+const actualizarProducto = async (req,res,next)=> {
+    try {
+        let strSQL;
+
+        const {id_anfitrion,documento_id,id_producto} = req.params; //01,02,03
+
+        const documentoIdResuelto = await resolverDocumentoId(
+            pool,
+            id_anfitrion,
+            documento_id
+        );
+
+        const {
+                nombre,           //04
+                descripcion,      //05
+                precio_venta,     //06
+                porc_igv,         //07
+                cont_und,         //08
+                id_producto2,     //09
+                cantidad_und2,    //10
+                cont_und2,        //11
+                comercial,        //12
+                almacenable       //13
+        } = req.body;
+
+        strSQL = `
+            UPDATE mst_producto SET
+                 nombre = $4
+                ,descripcion = $5
+                ,precio_venta = $6
+                ,porc_igv = $7
+                ,cont_und = $8
+                ,id_producto2 = $9
+                ,cantidad_und2 = $10
+                ,cont_und2 = $11
+                ,comercial = $12
+                ,almacenable = $13
+            WHERE id_usuario = $1
+              AND documento_id = $2
+              AND id_producto = $3
+        `;
+
+        const result = await pool.query(strSQL,[
+            id_anfitrion,               //01
+            documentoIdResuelto,        //02
+            id_producto,                //03
+            nombre?.toUpperCase(),      //04
+            descripcion?.toUpperCase(), //05
+            precio_venta,               //06
+            porc_igv,                   //07
+            cont_und,                   //08
+            id_producto2,               //09
+            cantidad_und2,              //10
+            cont_und2,                  //11
+            comercial,                  //12
+            almacenable                 //13
+        ]);
+
+        if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Producto no encontrado"
+            });
+
+        return res.sendStatus(204);
+
+    } catch (error) {
+        console.log(error.message);
+        next(error);
+    }
 };
+
 const importarExcelProductos = async (req, res, next) => {
     //cuidado con los json que llegan con archivos adjuntos,se parsea primero    
     const datosCarga = JSON.parse(req.body.datosCarga);
