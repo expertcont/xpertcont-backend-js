@@ -104,7 +104,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
 
     ctrl_crea_us,
     ctrl_crea,
-    
+
     (r_cod || '-' || r_serie || '-' || r_numero || '-' || elemento)::varchar as comprobante_key,
     cdr_pendiente,
     elemento
@@ -1508,6 +1508,71 @@ const obtenerTotalVentas = async (req, res) => {
     });
   }
 };
+const obtenerTotalVentasUsuario = async (req, res) => {
+  const { periodo, id_anfitrion, id_invitado, documento_id, dia } = req.params;
+
+  if (!periodo || !id_anfitrion || !id_invitado || !documento_id || dia === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parámetros requeridos: periodo, id_anfitrion, id_invitado, documento_id o dia',
+    });
+  }
+
+  // Si no es "*", formatear a YYYY-MM-DD
+  const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
+
+  try {
+    // Construcción dinámica de consulta
+    let query = `
+      SELECT COALESCE(SUM(r_monto_total), 0) AS total, ctrl_crea_us
+      FROM mve_venta
+      WHERE periodo = $1
+        AND id_usuario = $2
+        AND documento_id = $3
+        AND registrado = 1
+        AND r_cod <> 'NP'
+        AND TO_CHAR(r_fecemi,'YYYY-MM') = periodo        
+      GROUP BY ctrl_crea_us
+      ORDER BY total
+    `;
+    const params = [periodo, id_anfitrion, documento_id];
+
+    if (fechaFiltro) {
+      query += ` AND r_fecemi = $4`;
+      params.push(fechaFiltro);
+    }
+
+    // Consulta del total de ventas
+    const ventaResult = await pool.query(query, params);
+    const total = ventaResult.rows[0].total;
+
+    // Determinar si es super
+    let isSuper = false;
+
+    if (String(id_anfitrion) === String(id_invitado)) {
+      isSuper = true;
+    } else {
+      const superResult = await pool.query(
+        `SELECT super FROM mad_usuario WHERE id_usuario = $1`,
+        [id_invitado]
+      );
+
+      isSuper = superResult.rows.length > 0 && superResult.rows[0].super === '1';
+    }
+
+    res.status(200).json({
+      success: true,
+      total,
+      super: isSuper,
+    });
+  } catch (error) {
+    console.error('Error al obtener total de ventas o verificar super:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
 
 const obtenerTotalRecaudacion = async (req, res) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
@@ -2136,6 +2201,7 @@ module.exports = {
     generarCPEexpertcont,
     generarPDFexpertcont, 
     obtenerTotalVentas,
+    obtenerTotalVentasUsuario,
     obtenerTotalRecaudacion,
     obtenerTotalUnidades,
     obtenerCodigosComprobante,
