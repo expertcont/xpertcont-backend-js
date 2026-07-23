@@ -168,6 +168,19 @@ const obtenerTodosProductosPopUpAlmacenable = async (req,res,next)=> {
         const {id_anfitrion,documento_id} = req.params;
         const documentoIdResuelto = await resolverDocumentoId(pool,id_anfitrion,documento_id);
 
+        // Consultar si está activado el parámetro
+        const configRes = await pool.query(
+        `SELECT precio_factor,producto_sku FROM mve_parametros 
+        WHERE id_usuario = $1
+        AND documento_id = $2`,  // corregido aquí
+        [id_anfitrion, documentoIdResuelto]
+        );
+
+        // Asegura que el valor null no rompa la lógica
+        //const valor = configRes.rows[0]?.precio_factor;
+        const precioFactor = configRes.rows[0]?.precio_factor === '1' ? '1' : '0';
+        const productoSKU = configRes.rows[0]?.producto_sku === '1' ? 'zku' : '0';
+
         strSQL = `SELECT 
                     id_producto as codigo
                     ,nombre as descripcion
@@ -177,7 +190,7 @@ const obtenerTodosProductosPopUpAlmacenable = async (req,res,next)=> {
                 AND documento_id = $2
                 AND almacenable is true
                 ORDER BY nombre`;
-        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto]);
+        const todosRegistros = await pool.query(strSQL,[id_anfitrion,documentoIdResuelto,precioFactor,productoSKU]);
         res.json(todosRegistros.rows);
     }
     catch(error){
