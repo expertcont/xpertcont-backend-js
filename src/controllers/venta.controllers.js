@@ -102,6 +102,9 @@ const obtenerRegistroTodos = async (req, res, next) => {
       gre_serie || '-' ||
       gre_numero)::VARCHAR(50) AS gre_ref,
 
+    ctrl_crea_us,
+    ctrl_crea,
+    
     (r_cod || '-' || r_serie || '-' || r_numero || '-' || elemento)::varchar as comprobante_key,
     cdr_pendiente,
     elemento
