@@ -741,7 +741,7 @@ const obtenerProductoPrecio = async (req,res,next)=> {
         console.log(error.message);
     }
 };
-const actualizarProductoPrecio = async (req,res,next)=> {
+/*const actualizarProductoPrecio = async (req,res,next)=> {
     try {
         let strSQL;
         const {id_anfitrion,documento_id,id_producto,unidades} = req.params; //04
@@ -775,7 +775,66 @@ const actualizarProductoPrecio = async (req,res,next)=> {
     } catch (error) {
         console.log(error.message);
     }
+};*/
+const actualizarProductoPrecio = async (req, res, next) => {
+    try {
+
+        const { id_anfitrion, documento_id, id_producto, unidades_original } = req.params;
+        // unidades = valor ORIGINAL
+
+        const documentoIdResuelto = await resolverDocumentoId(
+            pool,
+            id_anfitrion,
+            documento_id
+        );
+
+        const {
+            unidades,   // nuevo valor
+            precio_venta,
+            cant_min,
+            cant_max
+        } = req.body;
+
+        const strSQL = `
+            UPDATE mst_producto_precio
+            SET
+                unidades = $5,
+                precio_venta = $6,
+                cant_min = $7,
+                cant_max = $8
+            WHERE id_usuario = $1
+              AND documento_id = $2
+              AND id_producto = $3
+              AND unidades = $4
+        `;
+
+        const result = await pool.query(strSQL, [
+            id_anfitrion,
+            documentoIdResuelto,
+            id_producto,
+            unidades_original,          // valor ORIGINAL
+            unidades,     // valor NUEVO
+            precio_venta,
+            cant_min,
+            cant_max
+        ]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                message: "Precio de Producto no encontrado"
+            });
+        }
+
+        return res.sendStatus(204);
+
+    } catch (error) {
+        console.log(error.message);
+        return res.status(500).json({
+            message: error.message
+        });
+    }
 };
+
 const crearGrupo = async (req,res,next)=> {
     const { 
             id_anfitrion,   //01

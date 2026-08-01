@@ -31,7 +31,7 @@ router.delete('/ad_productomasivo/:id_anfitrion/:documento_id/:origen', eliminar
 //Seccion precios
 router.post('/ad_productoprecio/:id_anfitrion/:documento_id/:id_producto/:unidades', crearProductoPrecio);
 router.get('/ad_productoprecio/:id_anfitrion/:documento_id/:id_producto/:unidades', obtenerProductoPrecio);
-router.put('/ad_productoprecio/:id_anfitrion/:documento_id/:id_producto/:unidades', actualizarProductoPrecio);
+router.put('/ad_productoprecio/:id_anfitrion/:documento_id/:id_producto/:unidades_original', actualizarProductoPrecio);
 
 //Seccion Grupos
 router.post('/ad_grupo', crearGrupo);
