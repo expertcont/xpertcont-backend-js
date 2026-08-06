@@ -224,6 +224,10 @@ const actualizarServiciosDatos = async (req, res) => {
     descripcion,
     especificacion,
     cont_und,
+    cantidad,
+    precio_unitario,
+    precio_neto,
+    porc_igv,
     r_fecemi,
     r_fecvcto,
     r_moneda,
@@ -254,12 +258,16 @@ const actualizarServiciosDatos = async (req, res) => {
              descripcion = COALESCE($10, descripcion),
              especificacion = COALESCE($11, especificacion),
              cont_und = COALESCE($12, cont_und),
-             r_fecemi = COALESCE(NULLIF($13, '')::date, r_fecemi),
-             r_fecvcto = COALESCE(NULLIF($14, '')::date, r_fecvcto),
-             r_moneda = COALESCE($15, r_moneda),
-             r_tc = COALESCE($16::numeric, r_tc),
+             cantidad = COALESCE($13::numeric, cantidad),
+             precio_unitario = COALESCE($14::numeric, precio_unitario),
+             precio_neto = COALESCE($15::numeric, precio_neto),
+             porc_igv = COALESCE($16::numeric, porc_igv),
+             r_fecemi = COALESCE(NULLIF($17, '')::date, r_fecemi),
+             r_fecvcto = COALESCE(NULLIF($18, '')::date, r_fecvcto),
+             r_moneda = COALESCE($19, r_moneda),
+             r_tc = COALESCE($20::numeric, r_tc),
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = $17
+             ctrl_mod_us = $21
        WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -309,6 +317,10 @@ const actualizarServiciosDatos = async (req, res) => {
       descripcion,
       especificacion,
       cont_und,
+      cantidad,
+      precio_unitario,
+      precio_neto,
+      porc_igv,
       r_fecemi,
       r_fecvcto,
       r_moneda,
