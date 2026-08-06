@@ -32,6 +32,22 @@ Las fuentes oficiales de importes son:
 
 Nunca se deben recalcular totales desde React ni desde Node.js leyendo el detalle.
 
+## Convencion de usuarios
+
+En los payloads del backend se recibe `id_anfitrion` para identificar al usuario propietario de la cuenta o empresa.
+
+En PostgreSQL y en las tablas historicas ese mismo dato se mantiene como `id_usuario`.
+
+Tambien existe `id_invitado`, que representa al usuario operativo dentro de la cuenta del anfitrion.
+
+Resumen:
+
+```text
+API/backend: id_anfitrion
+BD/tablas:   id_usuario
+Operador:    id_invitado
+```
+
 ## Flujo de negocio
 
 ```text
@@ -193,6 +209,113 @@ app.js
 
 ## Endpoints actuales
 
+## Ambiente de pruebas Railway
+
+URL base usada para pruebas:
+
+```text
+https://xpertcont-backend-js-production-50e6.up.railway.app
+```
+
+Datos iniciales reales para pruebas frontend/backend:
+
+```json
+{
+  "id_anfitrion": "aguirre.roberto1711@gmail.com",
+  "id_usuario": "aguirre.roberto1711@gmail.com",
+  "documento_id": "20455026602",
+  "periodo": "2026-08",
+  "id_invitado": "ovivasar@gmail.com",
+  "fecha": "2026-08-05",
+  "r_cod": "NP",
+  "r_serie": "0001",
+  "r_numero": "0000001",
+  "elemento": 1,
+  "servicio": 1
+}
+```
+
+### Prueba 1: Crear u obtener pedido base
+
+Endpoint existente de ventas:
+
+```text
+POST /ad_venta
+```
+
+Payload:
+
+```json
+{
+  "id_anfitrion": "aguirre.roberto1711@gmail.com",
+  "documento_id": "20455026602",
+  "periodo": "2026-08",
+  "id_invitado": "ovivasar@gmail.com",
+  "fecha": "2026-08-05"
+}
+```
+
+Respuesta obtenida en Railway:
+
+```json
+{
+  "success": true,
+  "r_numero": "0000001",
+  "r_fecemi": "2026-08-05T00:00:00.000Z",
+  "r_monto_total": "0.00"
+}
+```
+
+Nota: si se vuelve a consumir el mismo endpoint con los mismos datos, `fve_crear_pedido()` devuelve el pedido existente en vez de crear otro, porque busca el `NP` abierto por `ctrl_crea_us`.
+
+### Prueba 2: Crear servicio
+
+Endpoint:
+
+```text
+POST /ad_presupuestoserv
+```
+
+Payload:
+
+```json
+{
+  "id_anfitrion": "aguirre.roberto1711@gmail.com",
+  "documento_id": "20455026602",
+  "periodo": "2026-08",
+  "r_cod": "NP",
+  "r_serie": "0001",
+  "r_numero": "0000001",
+  "elemento": 1,
+  "id_invitado": "ovivasar@gmail.com",
+  "fecha": "2026-08-05"
+}
+```
+
+Respuesta obtenida en Railway:
+
+```json
+{
+  "success": true,
+  "servicio": 1,
+  "descripcion": "NUEVO SERVICIO",
+  "precio_neto": "0.00"
+}
+```
+
+Se crearon particiones para las tablas nuevas antes de esta prueba:
+
+```text
+mve_ventaserv
+mve_ventaservdet
+```
+
+Rango usado por el proyecto:
+
+```text
+2025-01 hasta 2035-12
+```
+
 ### Listar servicios de un presupuesto
 
 ```text
@@ -251,6 +374,50 @@ Payload esperado:
   "elemento": 1,
   "id_invitado": "VENDEDOR01",
   "fecha": "2026-08-05"
+}
+```
+
+### Actualizar cabecera de servicio
+
+```text
+PUT /ad_presupuestoserv
+```
+
+Controller:
+
+```text
+actualizarServiciosDatos
+```
+
+Actualiza campos descriptivos y de cabecera del servicio en:
+
+```text
+mve_ventaserv
+```
+
+No recalcula impuestos ni totales. Los campos tributarios oficiales siguen siendo responsabilidad de PostgreSQL mediante las funciones de costeo.
+
+Payload esperado:
+
+```json
+{
+  "id_anfitrion": "USER01",
+  "documento_id": "20123456789",
+  "periodo": "2026-08",
+  "r_cod": "NP",
+  "r_serie": "0001",
+  "r_numero": "00000001",
+  "elemento": 1,
+  "servicio": 1,
+  "id_producto": "SERV001",
+  "descripcion": "SERVICIO DE INSTALACION",
+  "especificacion": "Incluye materiales y mano de obra",
+  "cont_und": "ZZ",
+  "r_fecemi": "2026-08-05",
+  "r_fecvcto": "2026-08-05",
+  "r_moneda": "PEN",
+  "r_tc": 1,
+  "ctrl_mod_us": "VENDEDOR01"
 }
 ```
 
