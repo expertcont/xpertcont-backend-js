@@ -1,5 +1,58 @@
 const pool = require('../db');
 
+const presupuestoCabeceraColumnas = `
+  CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
+  CAST(r_fecvcto AS VARCHAR(50)) AS r_fecvcto,
+  r_cod,
+  r_serie,
+  r_numero,
+  elemento,
+  r_id_doc,
+  r_documento_id,
+  r_razon_social,
+  r_direccion,
+  glosa,
+  r_base001,
+  r_base002,
+  r_base003,
+  r_base004,
+  r_igv002,
+  r_monto_total,
+  r_moneda,
+  r_tc,
+  r_forma_pago_id,
+  estado,
+  registrado,
+  ctrl_crea_us,
+  ctrl_crea,
+  ctrl_mod_us,
+  ctrl_mod
+`;
+
+const detalleServicioColumnas = `
+  item,
+  CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
+  id_producto,
+  descripcion,
+  cantidad,
+  precio_unitario,
+  monto_base,
+  igv,
+  precio_neto,
+  porc_igv,
+  tipo_igv_codigo,
+  cont_und,
+  largo,
+  ancho,
+  utilidad,
+  horas,
+  dias,
+  no_kardex,
+  registrado
+`;
+
+const normalizarVacio = (valor) => (valor === undefined || valor === '' ? null : valor);
+
 const crearPresupuesto = async (req, res) => {
   const {
     id_anfitrion,
@@ -48,6 +101,323 @@ const crearPresupuesto = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al ejecutar fve_crear_presupuesto:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const obtenerPresupuestos = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+
+  if (!periodo || !id_anfitrion || !documento_id || dia === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para obtener presupuestos'
+    });
+  }
+
+  try {
+    let query = `
+      SELECT ${presupuestoCabeceraColumnas},
+             (r_cod || '-' || r_serie || '-' || r_numero || '-' || elemento)::varchar AS comprobante_key
+        FROM mve_venta
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = 'NV'
+         AND registrado = 1
+    `;
+
+    const params = [periodo, id_anfitrion, documento_id];
+
+    if (dia !== '*') {
+      query += ' AND r_fecemi = $4';
+      params.push(`${periodo}-${dia}`);
+    }
+
+    query += ' ORDER BY r_fecemi DESC, r_serie, r_numero DESC, elemento';
+
+    const result = await pool.query(query, params);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error al obtener presupuestos:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const obtenerPresupuesto = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, cod, serie, num, elem } = req.params;
+
+  if (!periodo || !id_anfitrion || !documento_id || !cod || !serie || !num || elem === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para obtener presupuesto'
+    });
+  }
+
+  try {
+    const query = `
+      SELECT ${presupuestoCabeceraColumnas}
+        FROM mve_venta
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+    `;
+
+    const result = await pool.query(query, [
+      periodo,
+      id_anfitrion,
+      documento_id,
+      cod,
+      serie,
+      num,
+      elem
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presupuesto no encontrado'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al obtener presupuesto:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const obtenerPresupuestoFull = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, cod, serie, num, elem } = req.params;
+
+  if (!periodo || !id_anfitrion || !documento_id || !cod || !serie || !num || elem === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para obtener presupuesto completo'
+    });
+  }
+
+  try {
+    const cabeceraResult = await pool.query(`
+      SELECT ${presupuestoCabeceraColumnas}
+        FROM mve_venta
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem]);
+
+    if (cabeceraResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presupuesto no encontrado'
+      });
+    }
+
+    const serviciosResult = await pool.query(`
+      SELECT
+        servicio,
+        origen,
+        id_producto,
+        descripcion,
+        especificacion,
+        cont_und,
+        cantidad,
+        precio_unitario,
+        monto_base,
+        igv,
+        precio_neto,
+        porc_igv,
+        r_base001,
+        r_base002,
+        r_base003,
+        r_base004,
+        r_igv002,
+        r_base_gratuita,
+        r_total_gratuito,
+        r_monto_total,
+        r_moneda,
+        r_tc,
+        CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
+        CAST(r_fecvcto AS VARCHAR(50)) AS r_fecvcto,
+        registrado
+      FROM mve_ventaserv
+      WHERE periodo = $1
+        AND id_usuario = $2
+        AND documento_id = $3
+        AND r_cod = $4
+        AND r_serie = $5
+        AND r_numero = $6
+        AND elemento = $7
+      ORDER BY servicio
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem]);
+
+    const detallesResult = await pool.query(`
+      SELECT servicio, ${detalleServicioColumnas}
+      FROM mve_ventaservdet
+      WHERE periodo = $1
+        AND id_usuario = $2
+        AND documento_id = $3
+        AND r_cod = $4
+        AND r_serie = $5
+        AND r_numero = $6
+        AND elemento = $7
+      ORDER BY servicio, item
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem]);
+
+    const detallesPorServicio = detallesResult.rows.reduce((acc, detalle) => {
+      const key = String(detalle.servicio);
+      if (!acc[key]) acc[key] = [];
+      const { servicio, ...detalleSinServicio } = detalle;
+      acc[key].push(detalleSinServicio);
+      return acc;
+    }, {});
+
+    const servicios = serviciosResult.rows.map((servicio) => ({
+      ...servicio,
+      detalles: detallesPorServicio[String(servicio.servicio)] || []
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...cabeceraResult.rows[0],
+        servicios
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener presupuesto completo:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const actualizarPresupuesto = async (req, res) => {
+  const {
+    periodo,
+    id_anfitrion,
+    documento_id,
+    r_cod,
+    r_serie,
+    r_numero,
+    elemento,
+    r_fecemi,
+    r_fecvcto,
+    r_id_doc,
+    r_documento_id,
+    r_razon_social,
+    r_direccion,
+    glosa,
+    r_moneda,
+    r_tc,
+    r_forma_pago_id,
+    estado,
+    ctrl_mod_us
+  } = req.body;
+
+  if (
+    !periodo ||
+    !id_anfitrion ||
+    !documento_id ||
+    !r_cod ||
+    !r_serie ||
+    !r_numero ||
+    elemento === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para actualizar presupuesto'
+    });
+  }
+
+  try {
+    const query = `
+      UPDATE mve_venta
+         SET r_fecemi = COALESCE(NULLIF($8, '')::date, r_fecemi),
+             r_fecvcto = COALESCE(NULLIF($9, '')::date, r_fecvcto),
+             r_id_doc = COALESCE($10, r_id_doc),
+             r_documento_id = COALESCE($11, r_documento_id),
+             r_razon_social = COALESCE($12, r_razon_social),
+             r_direccion = COALESCE($13, r_direccion),
+             glosa = COALESCE($14, glosa),
+             r_moneda = COALESCE($15, r_moneda),
+             r_tc = COALESCE($16::numeric, r_tc),
+             r_forma_pago_id = COALESCE($17, r_forma_pago_id),
+             estado = COALESCE($18, estado),
+             ctrl_mod = CURRENT_TIMESTAMP,
+             ctrl_mod_us = $19
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+       RETURNING ${presupuestoCabeceraColumnas}
+    `;
+
+    const params = [
+      periodo,
+      id_anfitrion,
+      documento_id,
+      r_cod,
+      r_serie,
+      r_numero,
+      elemento,
+      normalizarVacio(r_fecemi),
+      normalizarVacio(r_fecvcto),
+      normalizarVacio(r_id_doc),
+      normalizarVacio(r_documento_id),
+      normalizarVacio(r_razon_social),
+      normalizarVacio(r_direccion),
+      normalizarVacio(glosa),
+      normalizarVacio(r_moneda),
+      normalizarVacio(r_tc),
+      normalizarVacio(r_forma_pago_id),
+      normalizarVacio(estado),
+      normalizarVacio(ctrl_mod_us)
+    ];
+
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presupuesto no encontrado'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al actualizar presupuesto:', error);
     return res.status(500).json({
       success: false,
       message: error.message || 'Error interno del servidor'
@@ -537,11 +907,328 @@ const insertarDetalleServicio = async (req, res) => {
   }
 };
 
+const actualizarDetalleServicio = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, cod, serie, num, elem, servicio, item } = req.params;
+  const {
+    r_fecemi,
+    id_producto,
+    descripcion,
+    cantidad,
+    precio_unitario,
+    precio_neto,
+    porc_igv,
+    cont_und,
+    largo,
+    ancho,
+    utilidad,
+    horas,
+    dias
+  } = req.body;
+
+  if (
+    !periodo ||
+    !id_anfitrion ||
+    !documento_id ||
+    !cod ||
+    !serie ||
+    !num ||
+    elem === undefined ||
+    servicio === undefined ||
+    item === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para actualizar detalle de servicio'
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const query = `
+      UPDATE mve_ventaservdet
+         SET r_fecemi = COALESCE(NULLIF($9, '')::date, r_fecemi),
+             id_producto = COALESCE($10, id_producto),
+             descripcion = COALESCE($11, descripcion),
+             cantidad = COALESCE($12::numeric, cantidad),
+             precio_unitario = COALESCE($13::numeric, precio_unitario),
+             precio_neto = COALESCE($14::numeric, precio_neto),
+             porc_igv = COALESCE($15::numeric, porc_igv),
+             cont_und = COALESCE($16, cont_und),
+             largo = COALESCE($17::numeric, largo),
+             ancho = COALESCE($18::numeric, ancho),
+             utilidad = COALESCE($19::numeric, utilidad),
+             horas = COALESCE($20::numeric, horas),
+             dias = COALESCE($21::numeric, dias),
+             monto_base = CASE
+               WHEN COALESCE($15::numeric, porc_igv, 0) > 0 THEN
+                 ROUND(
+                   (COALESCE($14::numeric, precio_neto, 0) / NULLIF(COALESCE($12::numeric, cantidad, 0), 0))
+                   / (1 + (COALESCE($15::numeric, porc_igv, 0) / 100)),
+                   6
+                 )
+               ELSE
+                 ROUND(
+                   COALESCE($14::numeric, precio_neto, 0) / NULLIF(COALESCE($12::numeric, cantidad, 0), 0),
+                   6
+                 )
+             END,
+             igv = CASE
+               WHEN COALESCE($15::numeric, porc_igv, 0) > 0 THEN
+                 COALESCE($13::numeric, precio_unitario, 0)
+                 - ROUND(
+                   COALESCE($13::numeric, precio_unitario, 0) / (1 + (COALESCE($15::numeric, porc_igv, 0) / 100)),
+                   4
+                 )
+               ELSE 0
+             END,
+             tipo_igv_codigo = CASE
+               WHEN COALESCE($15::numeric, porc_igv, 0) > 0 THEN '10'
+               ELSE '20'
+             END
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+         AND servicio = $8
+         AND item = $22
+       RETURNING ${detalleServicioColumnas}
+    `;
+
+    const params = [
+      periodo,
+      id_anfitrion,
+      documento_id,
+      cod,
+      serie,
+      num,
+      elem,
+      servicio,
+      normalizarVacio(r_fecemi),
+      normalizarVacio(id_producto),
+      normalizarVacio(descripcion),
+      normalizarVacio(cantidad),
+      normalizarVacio(precio_unitario),
+      normalizarVacio(precio_neto),
+      normalizarVacio(porc_igv),
+      normalizarVacio(cont_und),
+      normalizarVacio(largo),
+      normalizarVacio(ancho),
+      normalizarVacio(utilidad),
+      normalizarVacio(horas),
+      normalizarVacio(dias),
+      item
+    ];
+
+    const result = await client.query(query, params);
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'Detalle de servicio no encontrado'
+      });
+    }
+
+    const recalcResult = await client.query(`
+      SELECT fve_ventaservdet_rtotales($1, $2, $3, $4, $5, $6, $7, $8) AS success
+    `, [id_anfitrion, documento_id, periodo, cod, serie, num, elem, servicio]);
+
+    if (recalcResult.rows[0]?.success !== true) {
+      throw new Error('No se pudo recalcular totales del servicio');
+    }
+
+    await client.query('COMMIT');
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al actualizar detalle de servicio:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  } finally {
+    client.release();
+  }
+};
+
+const eliminarDetalleServicio = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, cod, serie, num, elem, servicio, item } = req.params;
+
+  if (
+    !periodo ||
+    !id_anfitrion ||
+    !documento_id ||
+    !cod ||
+    !serie ||
+    !num ||
+    elem === undefined ||
+    servicio === undefined ||
+    item === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para eliminar detalle de servicio'
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query(`
+      DELETE FROM mve_ventaservdet
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+         AND servicio = $8
+         AND item = $9
+       RETURNING item
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem, servicio, item]);
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'Detalle de servicio no encontrado'
+      });
+    }
+
+    const recalcResult = await client.query(`
+      SELECT fve_ventaservdet_rtotales($1, $2, $3, $4, $5, $6, $7, $8) AS success
+    `, [id_anfitrion, documento_id, periodo, cod, serie, num, elem, servicio]);
+
+    if (recalcResult.rows[0]?.success !== true) {
+      throw new Error('No se pudo recalcular totales del servicio');
+    }
+
+    await client.query('COMMIT');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Detalle de servicio eliminado correctamente'
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al eliminar detalle de servicio:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  } finally {
+    client.release();
+  }
+};
+
+const eliminarServicioPresupuesto = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, cod, serie, num, elem, servicio } = req.params;
+
+  if (
+    !periodo ||
+    !id_anfitrion ||
+    !documento_id ||
+    !cod ||
+    !serie ||
+    !num ||
+    elem === undefined ||
+    servicio === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para eliminar servicio'
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    await client.query(`
+      DELETE FROM mve_ventaservdet
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+         AND servicio = $8
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem, servicio]);
+
+    const result = await client.query(`
+      DELETE FROM mve_ventaserv
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+         AND servicio = $8
+       RETURNING servicio
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem, servicio]);
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado'
+      });
+    }
+
+    const recalcResult = await client.query(`
+      SELECT fve_ventaserv_rtotales($1, $2, $3, $4, $5, $6, $7) AS success
+    `, [id_anfitrion, documento_id, periodo, cod, serie, num, elem]);
+
+    if (recalcResult.rows[0]?.success !== true) {
+      throw new Error('No se pudo recalcular totales del presupuesto');
+    }
+
+    await client.query('COMMIT');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Servicio eliminado correctamente'
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al eliminar servicio:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   crearPresupuesto,
+  obtenerPresupuestos,
+  obtenerPresupuesto,
+  obtenerPresupuestoFull,
+  actualizarPresupuesto,
   obtenerServiciosPresupuesto,
   crearServicioPresupuesto,
   actualizarServiciosDatos,
+  eliminarServicioPresupuesto,
   obtenerDetallesServicio,
-  insertarDetalleServicio
+  insertarDetalleServicio,
+  actualizarDetalleServicio,
+  eliminarDetalleServicio
 };
