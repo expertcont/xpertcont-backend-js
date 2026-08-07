@@ -11,6 +11,8 @@ const presupuestoCabeceraColumnas = `
   r_documento_id,
   r_razon_social,
   r_direccion,
+  contacto_nombre,
+  contacto_celular,
   glosa,
   r_base001,
   r_base002,
@@ -92,12 +94,35 @@ const crearPresupuesto = async (req, res) => {
       });
     }
 
+    const creado = result.rows[0];
+
+    await pool.query(`
+      UPDATE mve_venta
+         SET r_fecvcto = COALESCE(r_fecvcto, r_fecemi),
+             r_id_doc = COALESCE(r_id_doc, '6'),
+             r_moneda = COALESCE(r_moneda, 'PEN'),
+             r_tc = COALESCE(r_tc, 1),
+             estado = COALESCE(estado, 'P')
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = 'NV'
+         AND r_serie = '0001'
+         AND r_numero = $4
+         AND elemento = 1
+    `, [periodo, id_anfitrion, documento_id, creado.r_numero]);
+
     return res.status(200).json({
       success: true,
       r_cod: 'NV',
       r_serie: '0001',
       elemento: 1,
-      ...result.rows[0]
+      ...creado,
+      r_fecvcto: creado.r_fecemi,
+      r_id_doc: '6',
+      r_moneda: 'PEN',
+      r_tc: '1.000',
+      estado: 'P'
     });
   } catch (error) {
     console.error('Error al ejecutar fve_crear_presupuesto:', error);
@@ -247,6 +272,7 @@ const obtenerPresupuestoFull = async (req, res) => {
         cont_und,
         cantidad,
         precio_unitario,
+        utilidad,
         monto_base,
         igv,
         precio_neto,
@@ -332,6 +358,8 @@ const actualizarPresupuesto = async (req, res) => {
     r_documento_id,
     r_razon_social,
     r_direccion,
+    contacto_nombre,
+    contacto_celular,
     glosa,
     r_moneda,
     r_tc,
@@ -359,18 +387,20 @@ const actualizarPresupuesto = async (req, res) => {
     const query = `
       UPDATE mve_venta
          SET r_fecemi = COALESCE(NULLIF($8, '')::date, r_fecemi),
-             r_fecvcto = COALESCE(NULLIF($9, '')::date, r_fecvcto),
-             r_id_doc = COALESCE($10, r_id_doc),
+             r_fecvcto = COALESCE(NULLIF($9, '')::date, NULLIF($8, '')::date, r_fecvcto, r_fecemi),
+             r_id_doc = COALESCE($10, r_id_doc, '6'),
              r_documento_id = COALESCE($11, r_documento_id),
              r_razon_social = COALESCE($12, r_razon_social),
              r_direccion = COALESCE($13, r_direccion),
-             glosa = COALESCE($14, glosa),
-             r_moneda = COALESCE($15, r_moneda),
-             r_tc = COALESCE($16::numeric, r_tc),
-             r_forma_pago_id = COALESCE($17, r_forma_pago_id),
-             estado = COALESCE($18, estado),
+             contacto_nombre = COALESCE($14, contacto_nombre),
+             contacto_celular = COALESCE($15, contacto_celular),
+             glosa = COALESCE($16, glosa),
+             r_moneda = COALESCE($17, r_moneda, 'PEN'),
+             r_tc = COALESCE($18::numeric, r_tc, 1),
+             r_forma_pago_id = COALESCE($19, r_forma_pago_id),
+             estado = COALESCE($20, estado, 'P'),
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = $19
+             ctrl_mod_us = COALESCE($21, ctrl_mod_us)
        WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -395,6 +425,8 @@ const actualizarPresupuesto = async (req, res) => {
       normalizarVacio(r_documento_id),
       normalizarVacio(r_razon_social),
       normalizarVacio(r_direccion),
+      normalizarVacio(contacto_nombre),
+      normalizarVacio(contacto_celular),
       normalizarVacio(glosa),
       normalizarVacio(r_moneda),
       normalizarVacio(r_tc),
@@ -454,6 +486,7 @@ const obtenerServiciosPresupuesto = async (req, res) => {
         cont_und,
         cantidad,
         precio_unitario,
+        utilidad,
         monto_base,
         igv,
         precio_neto,
@@ -598,6 +631,7 @@ const actualizarServiciosDatos = async (req, res) => {
     precio_unitario,
     precio_neto,
     porc_igv,
+    utilidad,
     r_fecemi,
     r_fecvcto,
     r_moneda,
@@ -632,12 +666,13 @@ const actualizarServiciosDatos = async (req, res) => {
              precio_unitario = COALESCE($14::numeric, precio_unitario),
              precio_neto = COALESCE($15::numeric, precio_neto),
              porc_igv = COALESCE($16::numeric, porc_igv),
-             r_fecemi = COALESCE(NULLIF($17, '')::date, r_fecemi),
-             r_fecvcto = COALESCE(NULLIF($18, '')::date, r_fecvcto),
-             r_moneda = COALESCE($19, r_moneda),
-             r_tc = COALESCE($20::numeric, r_tc),
+             utilidad = COALESCE($17::numeric, utilidad),
+             r_fecemi = COALESCE(NULLIF($18, '')::date, r_fecemi),
+             r_fecvcto = COALESCE(NULLIF($19, '')::date, NULLIF($18, '')::date, r_fecvcto, r_fecemi),
+             r_moneda = COALESCE($20, r_moneda, 'PEN'),
+             r_tc = COALESCE($21::numeric, r_tc, 1),
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = $21
+             ctrl_mod_us = COALESCE($22, ctrl_mod_us)
        WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -655,6 +690,7 @@ const actualizarServiciosDatos = async (req, res) => {
          cont_und,
          cantidad,
          precio_unitario,
+         utilidad,
          monto_base,
          igv,
          precio_neto,
@@ -691,6 +727,7 @@ const actualizarServiciosDatos = async (req, res) => {
       precio_unitario,
       precio_neto,
       porc_igv,
+      utilidad,
       r_fecemi,
       r_fecvcto,
       r_moneda,
