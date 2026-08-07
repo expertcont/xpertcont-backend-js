@@ -393,6 +393,11 @@ const obtenerDetallesServicio = async (req, res) => {
         porc_igv,
         tipo_igv_codigo,
         cont_und,
+        largo,
+        ancho,
+        utilidad,
+        horas,
+        dias,
         no_kardex,
         registrado
       FROM mve_ventaservdet
@@ -450,7 +455,12 @@ const insertarDetalleServicio = async (req, res) => {
     precio_unitario,
     precio_neto,
     porc_igv,
-    cont_und
+    cont_und,
+    largo,
+    ancho,
+    utilidad,
+    horas,
+    dias
   } = req.body;
 
   if (
@@ -475,7 +485,8 @@ const insertarDetalleServicio = async (req, res) => {
     const query = `
       SELECT fve_ventaservdet_inserta(
         $1, $2, $3, $4, $5, $6, $7, $8,
-        $9, $10, $11, $12, $13, $14, $15, $16
+        $9, $10, $11, $12, $13, $14, $15, $16,
+        $17, $18, $19, $20, $21
       ) AS success
     `;
 
@@ -495,7 +506,12 @@ const insertarDetalleServicio = async (req, res) => {
       precio_unitario,
       precio_neto,
       porc_igv,
-      cont_und
+      cont_und,
+      largo,
+      ancho,
+      utilidad,
+      horas,
+      dias
     ];
 
     const result = await pool.query(query, params);
