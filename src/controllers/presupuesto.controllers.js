@@ -147,41 +147,17 @@ const obtenerPresupuestos = async (req, res) => {
     let query = `
       SELECT ${presupuestoCabeceraColumnas},
              (mv.r_cod || '-' || mv.r_serie || '-' || mv.r_numero || '-' || mv.elemento)::varchar AS comprobante_key,
-             COALESCE((
-               SELECT json_agg(
-                 json_build_object(
-                   'servicio', ms.servicio,
-                   'descripcion', ms.descripcion,
-                   'especificacion', ms.especificacion,
-                   'cantidad', ms.cantidad,
-                   'utilidad', ms.utilidad,
-                   'origen', ms.origen,
-                   'r_monto_total', ms.r_monto_total,
-                   'detalles_count', COALESCE(det.detalles_count, 0)
-                 )
-                 ORDER BY ms.servicio
-               )
-               FROM mve_ventaserv ms
-               LEFT JOIN LATERAL (
-                 SELECT COUNT(*)::integer AS detalles_count
-                   FROM mve_ventaservdet md
-                  WHERE md.periodo = ms.periodo
-                    AND md.id_usuario = ms.id_usuario
-                    AND md.documento_id = ms.documento_id
-                    AND md.r_cod = ms.r_cod
-                    AND md.r_serie = ms.r_serie
-                    AND md.r_numero = ms.r_numero
-                    AND md.elemento = ms.elemento
-                    AND md.servicio = ms.servicio
-               ) det ON TRUE
-               WHERE ms.periodo = mv.periodo
-                 AND ms.id_usuario = mv.id_usuario
-                 AND ms.documento_id = mv.documento_id
-                 AND ms.r_cod = mv.r_cod
-                 AND ms.r_serie = mv.r_serie
-                 AND ms.r_numero = mv.r_numero
-                 AND ms.elemento = mv.elemento
-             ), '[]'::json) AS servicios
+             (
+               SELECT COUNT(*)::integer
+                 FROM mve_ventaserv ms
+                WHERE ms.periodo = mv.periodo
+                  AND ms.id_usuario = mv.id_usuario
+                  AND ms.documento_id = mv.documento_id
+                  AND ms.r_cod = mv.r_cod
+                  AND ms.r_serie = mv.r_serie
+                  AND ms.r_numero = mv.r_numero
+                  AND ms.elemento = mv.elemento
+             ) AS servicios_count
         FROM mve_venta mv
        WHERE mv.periodo = $1
          AND mv.id_usuario = $2
