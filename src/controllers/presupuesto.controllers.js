@@ -154,9 +154,8 @@ const obtenerPresupuestos = async (req, res) => {
                    'descripcion', ms.descripcion,
                    'especificacion', ms.especificacion,
                    'cantidad', ms.cantidad,
-                   'precio_unitario', ms.precio_unitario,
-                   'precio_neto', ms.precio_neto,
                    'utilidad', ms.utilidad,
+                   'origen', ms.origen,
                    'r_monto_total', ms.r_monto_total,
                    'detalles_count', COALESCE(det.detalles_count, 0)
                  )
@@ -668,6 +667,7 @@ const actualizarServiciosDatos = async (req, res) => {
     precio_neto,
     porc_igv,
     utilidad,
+    r_monto_total,
     r_fecemi,
     r_fecvcto,
     r_moneda,
@@ -703,12 +703,21 @@ const actualizarServiciosDatos = async (req, res) => {
              precio_neto = COALESCE($15::numeric, precio_neto),
              porc_igv = COALESCE($16::numeric, porc_igv),
              utilidad = COALESCE($17::numeric, utilidad),
-             r_fecemi = COALESCE(NULLIF($18, '')::date, r_fecemi),
-             r_fecvcto = COALESCE(NULLIF($19, '')::date, NULLIF($18, '')::date, r_fecvcto, r_fecemi),
-             r_moneda = COALESCE($20, r_moneda, 'PEN'),
-             r_tc = COALESCE($21::numeric, r_tc, 1),
+             r_monto_total = COALESCE($18::numeric, r_monto_total),
+             r_base002 = CASE
+               WHEN $18::numeric IS NOT NULL THEN ROUND($18::numeric / (1 + (COALESCE($16::numeric, porc_igv, 18) / 100)), 2)
+               ELSE r_base002
+             END,
+             r_igv002 = CASE
+               WHEN $18::numeric IS NOT NULL THEN ROUND($18::numeric - ROUND($18::numeric / (1 + (COALESCE($16::numeric, porc_igv, 18) / 100)), 2), 2)
+               ELSE r_igv002
+             END,
+             r_fecemi = COALESCE(NULLIF($19, '')::date, r_fecemi),
+             r_fecvcto = COALESCE(NULLIF($20, '')::date, NULLIF($19, '')::date, r_fecvcto, r_fecemi),
+             r_moneda = COALESCE($21, r_moneda, 'PEN'),
+             r_tc = COALESCE($22::numeric, r_tc, 1),
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = COALESCE($22, ctrl_mod_us)
+             ctrl_mod_us = COALESCE($23, ctrl_mod_us)
        WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -764,6 +773,7 @@ const actualizarServiciosDatos = async (req, res) => {
       precio_neto,
       porc_igv,
       utilidad,
+      r_monto_total,
       r_fecemi,
       r_fecvcto,
       r_moneda,
@@ -779,6 +789,18 @@ const actualizarServiciosDatos = async (req, res) => {
         message: 'Servicio no encontrado'
       });
     }
+
+    await pool.query(`
+      SELECT fve_ventaserv_rtotales($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      id_anfitrion,
+      documento_id,
+      periodo,
+      r_cod,
+      r_serie,
+      r_numero,
+      elemento
+    ]);
 
     return res.status(200).json({
       success: true,
