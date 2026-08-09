@@ -607,7 +607,7 @@ const crearServicioPresupuesto = async (req, res) => {
 
   try {
     const query = `
-      SELECT servicio, descripcion, precio_neto
+      SELECT servicio, descripcion, r_monto_total
       FROM fve_crear_servicio(
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9
