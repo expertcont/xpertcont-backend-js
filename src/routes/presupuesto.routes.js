@@ -7,6 +7,7 @@ const {
   obtenerPresupuesto,
   obtenerPresupuestoFull,
   actualizarPresupuesto,
+  eliminarPresupuesto,
   obtenerServiciosPresupuesto,
   crearServicioPresupuesto,
   actualizarServiciosDatos,
@@ -22,6 +23,7 @@ router.get('/ad_presupuesto/:periodo/:id_anfitrion/:documento_id/:dia', obtenerP
 router.get('/ad_presupuesto/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerPresupuesto);
 router.get('/ad_presupuesto/full/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerPresupuestoFull);
 router.put('/ad_presupuesto', actualizarPresupuesto);
+router.delete('/ad_presupuesto/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', eliminarPresupuesto);
 
 router.get('/ad_presupuestoserv/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerServiciosPresupuesto);
 router.post('/ad_presupuestoserv', crearServicioPresupuesto);

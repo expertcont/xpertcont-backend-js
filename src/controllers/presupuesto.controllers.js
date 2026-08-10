@@ -1205,6 +1205,100 @@ const eliminarDetalleServicio = async (req, res) => {
   }
 };
 
+const eliminarPresupuesto = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, cod, serie, num, elem } = req.params;
+
+  if (!periodo || !id_anfitrion || !documento_id || !cod || !serie || !num || elem === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para eliminar presupuesto'
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const presupuestoResult = await client.query(`
+      SELECT estado
+        FROM mve_venta
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem]);
+
+    if (presupuestoResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'Presupuesto no encontrado'
+      });
+    }
+
+    if ((presupuestoResult.rows[0].estado || 'P') !== 'P') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        success: false,
+        message: 'Solo se pueden eliminar presupuestos pendientes'
+      });
+    }
+
+    await client.query(`
+      DELETE FROM mve_ventaservdet
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem]);
+
+    await client.query(`
+      DELETE FROM mve_ventaserv
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem]);
+
+    await client.query(`
+      DELETE FROM mve_venta
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+    `, [periodo, id_anfitrion, documento_id, cod, serie, num, elem]);
+
+    await client.query('COMMIT');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Presupuesto eliminado correctamente'
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al eliminar presupuesto:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  } finally {
+    client.release();
+  }
+};
+
 const eliminarServicioPresupuesto = async (req, res) => {
   const { periodo, id_anfitrion, documento_id, cod, serie, num, elem, servicio } = req.params;
 
@@ -1294,6 +1388,7 @@ module.exports = {
   obtenerPresupuesto,
   obtenerPresupuestoFull,
   actualizarPresupuesto,
+  eliminarPresupuesto,
   obtenerServiciosPresupuesto,
   crearServicioPresupuesto,
   actualizarServiciosDatos,
