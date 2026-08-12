@@ -15,7 +15,8 @@ const {
   obtenerDetallesServicio,
   insertarDetalleServicio,
   actualizarDetalleServicio,
-  eliminarDetalleServicio
+  eliminarDetalleServicio,
+  clonarServicioPresupuesto
 } = require('../controllers/presupuesto.controllers');
 
 router.post('/ad_presupuesto', crearPresupuesto);
@@ -27,6 +28,7 @@ router.delete('/ad_presupuesto/:periodo/:id_anfitrion/:documento_id/:cod/:serie/
 
 router.get('/ad_presupuestoserv/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerServiciosPresupuesto);
 router.post('/ad_presupuestoserv', crearServicioPresupuesto);
+router.post('/ad_presupuestoserv/clonar', clonarServicioPresupuesto);
 router.put('/ad_presupuestoserv', actualizarServiciosDatos);
 router.delete('/ad_presupuestoserv/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem/:servicio', eliminarServicioPresupuesto);
 

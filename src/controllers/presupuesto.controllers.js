@@ -1382,6 +1382,88 @@ const eliminarServicioPresupuesto = async (req, res) => {
   }
 };
 
+const clonarServicioPresupuesto = async (req, res) => {
+  const {
+    id_anfitrion,
+    id_invitado,
+    origen,
+    destino
+  } = req.body;
+
+  if (
+    !id_anfitrion ||
+    !id_invitado ||
+    !origen ||
+    !destino ||
+    !origen.documento_id ||
+    !origen.periodo ||
+    !origen.r_cod ||
+    !origen.r_serie ||
+    !origen.r_numero ||
+    origen.elemento === undefined ||
+    origen.servicio === undefined ||
+    !destino.documento_id ||
+    !destino.periodo ||
+    !destino.r_cod ||
+    !destino.r_serie ||
+    !destino.r_numero ||
+    destino.elemento === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para clonar servicio'
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT success, nuevo_servicio, mensaje
+        FROM fve_presupuesto_clonar_trabajo(
+          $1,
+          $2, $3, $4, $5, $6, $7, $8,
+          $9, $10, $11, $12, $13, $14,
+          $15
+        )
+    `, [
+      id_anfitrion,
+      origen.documento_id,
+      origen.periodo,
+      origen.r_cod,
+      origen.r_serie,
+      origen.r_numero,
+      origen.elemento,
+      origen.servicio,
+      destino.documento_id,
+      destino.periodo,
+      destino.r_cod,
+      destino.r_serie,
+      destino.r_numero,
+      destino.elemento,
+      id_invitado
+    ]);
+
+    const clonado = result.rows[0];
+
+    if (!clonado?.success) {
+      return res.status(400).json({
+        success: false,
+        message: clonado?.mensaje || 'No se pudo clonar el servicio'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: clonado
+    });
+  } catch (error) {
+    console.error('Error al clonar servicio de presupuesto:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   crearPresupuesto,
   obtenerPresupuestos,
@@ -1396,5 +1478,6 @@ module.exports = {
   obtenerDetallesServicio,
   insertarDetalleServicio,
   actualizarDetalleServicio,
-  eliminarDetalleServicio
+  eliminarDetalleServicio,
+  clonarServicioPresupuesto
 };
