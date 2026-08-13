@@ -23,6 +23,9 @@ const presupuestoCabeceraColumnas = `
   r_moneda,
   r_tc,
   r_forma_pago_id,
+  fact_cod,
+  fact_serie,
+  fact_num,
   estado,
   registrado,
   ctrl_crea_us,
@@ -145,8 +148,53 @@ const obtenerPresupuestos = async (req, res) => {
 
   try {
     let query = `
-      SELECT ${presupuestoCabeceraColumnas},
+      SELECT CAST(mv.r_fecemi AS VARCHAR(50)) AS r_fecemi,
+             CAST(mv.r_fecvcto AS VARCHAR(50)) AS r_fecvcto,
+             mv.r_cod,
+             mv.r_serie,
+             mv.r_numero,
+             mv.elemento,
+             mv.r_id_doc,
+             mv.r_documento_id,
+             mv.r_razon_social,
+             mv.r_direccion,
+             mv.contacto_nombre,
+             mv.contacto_celular,
+             mv.glosa,
+             mv.r_base001,
+             mv.r_base002,
+             mv.r_base003,
+             mv.r_base004,
+             mv.r_igv002,
+             mv.r_monto_total,
+             mv.r_moneda,
+             mv.r_tc,
+             mv.r_forma_pago_id,
+             COALESCE(mv.fact_cod, mvff.r_cod) AS fact_cod,
+             COALESCE(mv.fact_serie, mvff.r_serie) AS fact_serie,
+             COALESCE(mv.fact_num, mvff.r_numero) AS fact_num,
+             mv.estado,
+             mv.registrado,
+             mv.ctrl_crea_us,
+             mv.ctrl_crea,
+             mv.ctrl_mod_us,
+             mv.ctrl_mod,
              (mv.r_cod || '-' || mv.r_serie || '-' || mv.r_numero || '-' || mv.elemento)::varchar AS comprobante_key,
+             (
+               COALESCE(mv.fact_cod, mvff.r_cod) || '-' ||
+               COALESCE(mv.fact_serie, mvff.r_serie) || '-' ||
+               COALESCE(mv.fact_num, mvff.r_numero) || '-' ||
+               COALESCE(mvf.elemento, mvff.elemento, 1)
+             )::varchar AS fact_comprobante_key,
+             (
+               COALESCE(mv.fact_cod, mvff.r_cod) || '-' ||
+               COALESCE(mv.fact_serie, mvff.r_serie) || '-' ||
+               COALESCE(mv.fact_num, mvff.r_numero)
+             )::varchar AS fact_comprobante,
+             COALESCE(mvf.elemento, mvff.elemento) AS fact_elemento,
+             COALESCE(mvf.r_vfirmado, mvff.r_vfirmado) AS fact_r_vfirmado,
+             COALESCE(mvf.cdr_pendiente, mvff.cdr_pendiente) AS fact_cdr_pendiente,
+             COALESCE(mvf.cdr_nivel, mvff.cdr_nivel) AS fact_cdr_nivel,
              (
                SELECT COUNT(*)::integer
                  FROM mve_ventaserv ms
@@ -155,10 +203,45 @@ const obtenerPresupuestos = async (req, res) => {
                   AND ms.documento_id = mv.documento_id
                   AND ms.r_cod = mv.r_cod
                   AND ms.r_serie = mv.r_serie
-                  AND ms.r_numero = mv.r_numero
+                 AND ms.r_numero = mv.r_numero
                   AND ms.elemento = mv.elemento
              ) AS servicios_count
         FROM mve_venta mv
+        LEFT JOIN mve_venta mvf
+          ON mvf.periodo = mv.periodo
+         AND mvf.id_usuario = mv.id_usuario
+         AND mvf.documento_id = mv.documento_id
+         AND mvf.r_cod = mv.fact_cod
+         AND mvf.r_serie = mv.fact_serie
+         AND mvf.r_numero = mv.fact_num
+         AND COALESCE(mvf.registrado, 1) = 1
+        LEFT JOIN LATERAL (
+          SELECT mvfb.r_cod,
+                 mvfb.r_serie,
+                 mvfb.r_numero,
+                 mvfb.elemento,
+                 mvfb.r_vfirmado,
+                 mvfb.cdr_pendiente,
+                 mvfb.cdr_nivel
+            FROM mve_venta mvfb
+           WHERE mv.fact_cod IS NULL
+             AND mv.fact_serie IS NULL
+             AND mv.fact_num IS NULL
+             AND mvfb.periodo = mv.periodo
+             AND mvfb.id_usuario = mv.id_usuario
+             AND mvfb.documento_id = mv.documento_id
+             AND mvfb.r_cod <> 'NV'
+             AND COALESCE(mvfb.registrado, 1) = 1
+             AND COALESCE(mvfb.r_documento_id, '') = COALESCE(mv.r_documento_id, '')
+             AND COALESCE(mvfb.r_monto_total, 0)::numeric(14,2) = COALESCE(mv.r_monto_total, 0)::numeric(14,2)
+             AND (
+               mv.ctrl_mod IS NULL
+               OR mvfb.ctrl_crea IS NULL
+               OR ABS(EXTRACT(EPOCH FROM (mvfb.ctrl_crea - mv.ctrl_mod))) <= 5
+             )
+           ORDER BY mvfb.ctrl_crea DESC
+           LIMIT 1
+        ) mvff ON true
        WHERE mv.periodo = $1
          AND mv.id_usuario = $2
          AND mv.documento_id = $3
