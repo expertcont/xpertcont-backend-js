@@ -16,10 +16,12 @@ const {
   insertarDetalleServicio,
   actualizarDetalleServicio,
   eliminarDetalleServicio,
-  clonarServicioPresupuesto
+  clonarServicioPresupuesto,
+  generarComprobantePresupuesto
 } = require('../controllers/presupuesto.controllers');
 
 router.post('/ad_presupuesto', crearPresupuesto);
+router.post('/ad_presupuesto/comprobante', generarComprobantePresupuesto);
 router.get('/ad_presupuesto/:periodo/:id_anfitrion/:documento_id/:dia', obtenerPresupuestos);
 router.get('/ad_presupuesto/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerPresupuesto);
 router.get('/ad_presupuesto/full/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem', obtenerPresupuestoFull);

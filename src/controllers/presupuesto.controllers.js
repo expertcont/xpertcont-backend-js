@@ -1464,6 +1464,123 @@ const clonarServicioPresupuesto = async (req, res) => {
   }
 };
 
+const generarComprobantePresupuesto = async (req, res) => {
+  const {
+    id_anfitrion,
+    documento_id,
+    periodo,
+    id_invitado,
+    fecha,
+    origen = {},
+    destino = {},
+    cliente = {},
+    pago = {},
+    r_cod,
+    r_serie,
+    r_numero,
+    elemento,
+    r_cod_emitir,
+    r_serie_emitir,
+    r_id_doc,
+    r_documento_id,
+    r_razon_social,
+    r_direccion,
+    efectivo,
+    vuelto,
+    forma_pago2,
+    efectivo2,
+    r_moneda,
+    r_forma_pago_id,
+    dias_credito,
+    id_producto,
+    cont_und_default
+  } = req.body;
+
+  const origenCod = origen.r_cod || r_cod || 'NV';
+  const origenSerie = origen.r_serie || r_serie || '0001';
+  const origenNumero = origen.r_numero || r_numero;
+  const origenElemento = origen.elemento ?? elemento ?? 1;
+  const destinoCod = destino.r_cod_emitir || r_cod_emitir;
+  const destinoSerie = destino.r_serie_emitir || r_serie_emitir;
+
+  if (
+    !id_anfitrion ||
+    !documento_id ||
+    !periodo ||
+    !id_invitado ||
+    !origenCod ||
+    !origenSerie ||
+    !origenNumero ||
+    origenElemento === undefined ||
+    !destinoCod ||
+    !destinoSerie
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para generar comprobante desde presupuesto'
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT r_cod, r_serie, r_numero, elemento, r_fecemi, r_monto_total
+        FROM fve_presupuesto_generar_comprobante(
+          $1, $2, $3, $4, $5,
+          $6, $7, $8, $9,
+          $10, $11,
+          $12, $13, $14, $15,
+          $16, $17, $18, $19,
+          $20, $21, $22,
+          $23, $24
+        )
+    `, [
+      id_anfitrion,
+      documento_id,
+      periodo,
+      id_invitado,
+      normalizarVacio(fecha),
+      origenCod,
+      origenSerie,
+      origenNumero,
+      origenElemento,
+      destinoCod,
+      destinoSerie,
+      normalizarVacio(cliente.r_id_doc || r_id_doc),
+      normalizarVacio(cliente.r_documento_id || r_documento_id),
+      normalizarVacio(cliente.r_razon_social || r_razon_social),
+      normalizarVacio(cliente.r_direccion || r_direccion),
+      normalizarVacio(pago.efectivo ?? efectivo),
+      normalizarVacio(pago.vuelto ?? vuelto ?? 0),
+      normalizarVacio(pago.forma_pago2 || forma_pago2),
+      normalizarVacio(pago.efectivo2 ?? efectivo2 ?? 0),
+      normalizarVacio(pago.r_moneda || r_moneda || 'PEN'),
+      normalizarVacio(pago.r_forma_pago_id || r_forma_pago_id || 'Contado'),
+      normalizarVacio(pago.dias_credito ?? dias_credito ?? 0),
+      normalizarVacio(id_producto || '0000'),
+      normalizarVacio(cont_und_default || 'ZZ')
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se pudo generar el comprobante desde el presupuesto.'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0],
+      ...result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al generar comprobante desde presupuesto:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
 module.exports = {
   crearPresupuesto,
   obtenerPresupuestos,
@@ -1479,5 +1596,6 @@ module.exports = {
   insertarDetalleServicio,
   actualizarDetalleServicio,
   eliminarDetalleServicio,
-  clonarServicioPresupuesto
+  clonarServicioPresupuesto,
+  generarComprobantePresupuesto
 };

@@ -1,5 +1,7 @@
 # Contexto avanzado - Backend Presupuestos / Servicios
 
+> Nota: este documento queda como resumen historico de arranque. Para reglas vigentes del modulo usar `docs/presupuestos-spec.md`.
+
 ## Proyecto
 
 Backend Node/Express desplegado en Railway:

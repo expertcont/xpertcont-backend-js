@@ -1,5 +1,7 @@
 # Contexto backend - Modulo de Presupuestos / Servicios
 
+> Nota: este documento queda como contexto historico inicial. Para reglas vigentes del modulo usar `docs/presupuestos-spec.md`.
+
 ## Objetivo
 
 Se creo un modulo backend separado para presupuestos porque `venta.controllers.js` ya esta muy grande.
