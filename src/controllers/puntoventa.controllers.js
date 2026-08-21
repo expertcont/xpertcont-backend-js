@@ -67,7 +67,60 @@ const listarPuntosVentaUsuario = async (req, res) => {
          AND pvu.documento_id = $2
          AND pvu.id_invitado = $3
          AND pvu.activo = TRUE
-         AND pvu.sin_restriccion = TRUE
+         AND (
+           pvu.sin_restriccion = TRUE
+           OR (
+             pvu.turno1_inicio IS NOT NULL
+             AND pvu.turno1_fin IS NOT NULL
+             AND (
+               (
+                 pvu.turno1_inicio <= pvu.turno1_fin
+                 AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno1_inicio AND pvu.turno1_fin
+               )
+               OR (
+                 pvu.turno1_inicio > pvu.turno1_fin
+                 AND (
+                   (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno1_inicio
+                   OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno1_fin
+                 )
+               )
+             )
+           )
+           OR (
+             pvu.turno2_inicio IS NOT NULL
+             AND pvu.turno2_fin IS NOT NULL
+             AND (
+               (
+                 pvu.turno2_inicio <= pvu.turno2_fin
+                 AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno2_inicio AND pvu.turno2_fin
+               )
+               OR (
+                 pvu.turno2_inicio > pvu.turno2_fin
+                 AND (
+                   (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno2_inicio
+                   OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno2_fin
+                 )
+               )
+             )
+           )
+           OR (
+             pvu.turno3_inicio IS NOT NULL
+             AND pvu.turno3_fin IS NOT NULL
+             AND (
+               (
+                 pvu.turno3_inicio <= pvu.turno3_fin
+                 AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno3_inicio AND pvu.turno3_fin
+               )
+               OR (
+                 pvu.turno3_inicio > pvu.turno3_fin
+                 AND (
+                   (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno3_inicio
+                   OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno3_fin
+                 )
+               )
+             )
+           )
+         )
        ORDER BY pv.nombre, pv.id_punto_venta
     `, [id_anfitrion, documento_id, id_invitado]);
 
