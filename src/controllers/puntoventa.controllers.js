@@ -44,6 +44,85 @@ const listarPuntosVenta = async (req, res) => {
   }
 };
 
+const listarPuntosVentaUsuario = async (req, res) => {
+  const { id_anfitrion, documento_id, id_invitado } = req.params;
+
+  if (!id_anfitrion || !documento_id || !id_invitado) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para obtener puntos de venta del usuario'
+    });
+  }
+
+  try {
+    const accesoLibre = await pool.query(`
+      SELECT 1
+        FROM mad_punto_venta_usuario
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND id_invitado = $3
+         AND activo = TRUE
+         AND sin_restriccion = TRUE
+       LIMIT 1
+    `, [id_anfitrion, documento_id, id_invitado]);
+
+    if (accesoLibre.rows.length > 0) {
+      const result = await pool.query(`
+        SELECT ${columnasPuntoVenta},
+               TRUE AS sin_restriccion
+          FROM mad_punto_venta
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND activo = TRUE
+         ORDER BY nombre, id_punto_venta
+      `, [id_anfitrion, documento_id]);
+
+      return res.status(200).json({ success: true, data: result.rows });
+    }
+
+    const result = await pool.query(`
+      SELECT pv.id_usuario,
+             pv.documento_id,
+             pv.id_punto_venta,
+             pv.nombre,
+             pv.direccion,
+             pv.ubigeo,
+             pv.pais,
+             pv.activo,
+             pv.ctrl_crea,
+             pv.ctrl_crea_us,
+             pv.ctrl_mod,
+             pv.ctrl_mod_us,
+             pvu.sin_restriccion,
+             pvu.turno1_inicio,
+             pvu.turno1_fin,
+             pvu.turno2_inicio,
+             pvu.turno2_fin,
+             pvu.turno3_inicio,
+             pvu.turno3_fin
+        FROM mad_punto_venta_usuario pvu
+        INNER JOIN mad_punto_venta pv
+          ON pv.id_usuario = pvu.id_usuario
+         AND pv.documento_id = pvu.documento_id
+         AND pv.id_punto_venta = pvu.id_punto_venta
+       WHERE pvu.id_usuario = $1
+         AND pvu.documento_id = $2
+         AND pvu.id_invitado = $3
+         AND pvu.activo = TRUE
+         AND pv.activo = TRUE
+       ORDER BY pv.nombre, pv.id_punto_venta
+    `, [id_anfitrion, documento_id, id_invitado]);
+
+    return res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Error al obtener puntos de venta del usuario:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
 const crearPuntoVenta = async (req, res) => {
   const {
     id_anfitrion,
@@ -200,6 +279,7 @@ const eliminarPuntoVenta = async (req, res) => {
 
 module.exports = {
   listarPuntosVenta,
+  listarPuntosVentaUsuario,
   crearPuntoVenta,
   actualizarPuntoVenta,
   eliminarPuntoVenta

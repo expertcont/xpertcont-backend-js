@@ -3,6 +3,7 @@ const router = Router();
 
 const {
   listarPuntosVenta,
+  listarPuntosVentaUsuario,
   crearPuntoVenta,
   actualizarPuntoVenta,
   eliminarPuntoVenta
@@ -17,6 +18,7 @@ const {
 } = require('../controllers/transruta.controllers');
 
 router.get('/mad_punto_venta/:id_anfitrion/:documento_id', listarPuntosVenta);
+router.get('/mad_punto_venta_usuario/:id_anfitrion/:documento_id/:id_invitado', listarPuntosVentaUsuario);
 router.post('/mad_punto_venta', crearPuntoVenta);
 router.put('/mad_punto_venta', actualizarPuntoVenta);
 router.delete('/mad_punto_venta/:id_anfitrion/:documento_id/:id_punto_venta', eliminarPuntoVenta);
