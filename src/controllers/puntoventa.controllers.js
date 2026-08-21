@@ -81,14 +81,14 @@ const listarPuntosVentaUsuario = async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT pv.id_usuario,
-             pv.documento_id,
-             pv.id_punto_venta,
-             pv.nombre,
+      SELECT pvu.id_usuario,
+             COALESCE(pv.documento_id, pvu.documento_id, $2) AS documento_id,
+             pvu.id_punto_venta,
+             COALESCE(pv.nombre, pvu.id_punto_venta) AS nombre,
              pv.direccion,
              pv.ubigeo,
              pv.pais,
-             pv.activo,
+             COALESCE(pv.activo, pvu.activo) AS activo,
              pv.ctrl_crea,
              pv.ctrl_crea_us,
              pv.ctrl_mod,
@@ -101,7 +101,7 @@ const listarPuntosVentaUsuario = async (req, res) => {
              pvu.turno3_inicio,
              pvu.turno3_fin
         FROM mad_punto_venta_usuario pvu
-        INNER JOIN mad_punto_venta pv
+        LEFT JOIN mad_punto_venta pv
           ON pv.id_usuario = pvu.id_usuario
          AND pv.documento_id = $2
          AND pv.id_punto_venta = pvu.id_punto_venta
@@ -109,7 +109,7 @@ const listarPuntosVentaUsuario = async (req, res) => {
          AND (pvu.documento_id = $2 OR pvu.documento_id IS NULL OR pvu.documento_id = '')
          AND pvu.id_invitado = $3
          AND pvu.activo = TRUE
-         AND pv.activo = TRUE
+         AND COALESCE(pv.activo, TRUE) = TRUE
        ORDER BY pv.nombre, pv.id_punto_venta
     `, [id_anfitrion, documento_id, id_invitado]);
 
