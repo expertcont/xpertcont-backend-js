@@ -15,6 +15,95 @@ Este documento es la guia backend vigente para el modulo de presupuestos de Xper
 
 ## Tablas
 
+### Estructura real resumida
+
+Las cuatro tablas relevantes estan particionadas por rango de `periodo`.
+
+`mve_venta` es cabecera para presupuestos, facturas y boletas. PK:
+
+```text
+id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento
+```
+
+Columnas reales relevantes:
+
+```text
+id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento,
+r_fecemi, r_fecvcto, glosa,
+debe, haber, debe_me, haber_me,
+ctrl_crea, ctrl_crea_us, ctrl_mod, ctrl_mod_us,
+r_id_doc, r_documento_id, r_razon_social, r_direccion,
+r_vfirmado,
+r_cod_ref, r_serie_ref, r_numero_ref, r_fecemi_ref, r_fecvcto_ref,
+r_base001, r_base002, r_base003, r_base004,
+r_base_desc, r_base_ivap, r_igv002, r_igv_desc, r_igv_ivap,
+r_monto_isc, r_monto_icbp, r_monto_otros, r_monto_total,
+r_moneda, r_tc, r_idmotivo_ref,
+efectivo, vuelto, forma_pago2, efectivo2,
+r_base_gratuita,
+gre_vfirmado, gre_cod, gre_serie, gre_numero,
+cdr_descripcion, id_almacen, cdr_pendiente, registrado,
+r_forma_pago_id,
+fact_cod, fact_serie, fact_num,
+dias_credito, r_total_gratuito,
+cdr_codigo, cdr_nivel,
+contacto_nombre, contacto_celular,
+estado
+```
+
+`mve_ventadet` es detalle facturable para factura/boleta comercial. PK:
+
+```text
+id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, item
+```
+
+Columnas reales relevantes:
+
+```text
+id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, item,
+id_producto, r_fecemi, fecha_descarga, id_almacen,
+descripcion, cont_und, cantidad, peso_neto,
+precio_unitario, monto_base, igv, precio_neto, porc_igv,
+no_kardex, registrado, estado, moneda, tipo_igv_codigo,
+pp_descripcion2, pp_largo, pp_ancho, pp_utilidad, pp_horas, pp_dias
+```
+
+`mve_ventaserv` es detalle de trabajos/servicios del presupuesto. PK:
+
+```text
+id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, servicio
+```
+
+Columnas reales relevantes:
+
+```text
+id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, servicio,
+r_fecemi, r_fecvcto, origen,
+id_producto, descripcion, especificacion, cont_und,
+cantidad, precio_unitario, monto_base, igv, precio_neto, porc_igv,
+ctrl_crea, ctrl_crea_us, ctrl_mod, ctrl_mod_us,
+r_base001, r_base002, r_base003, r_base004, r_igv002,
+r_monto_total, r_moneda, r_tc,
+r_base_gratuita, r_total_gratuito,
+registrado, utilidad
+```
+
+`mve_ventaservdet` es costeo interno por trabajo. PK:
+
+```text
+id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, servicio, item
+```
+
+Columnas reales relevantes:
+
+```text
+id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, servicio, item,
+r_fecemi, id_producto, descripcion, cont_und,
+cantidad, peso_neto, precio_unitario, monto_base, igv, precio_neto, porc_igv,
+no_kardex, registrado, estado, moneda, tipo_igv_codigo,
+largo, ancho, utilidad, horas, dias
+```
+
 ### Factura o boleta comercial
 
 ```text
@@ -110,6 +199,38 @@ Funcion:
 fve_presupuesto_generar_comprobante(...)
 ```
 
+Firma vigente:
+
+```sql
+fve_presupuesto_generar_comprobante(
+  p_id_usuario varchar,
+  p_documento_id varchar,
+  p_periodo varchar,
+  p_id_invitado varchar,
+  p_fecha date,
+  p_origen_r_cod varchar,
+  p_origen_r_serie varchar,
+  p_origen_r_numero varchar,
+  p_origen_elemento integer,
+  p_r_cod_emitir varchar,
+  p_r_serie_emitir varchar,
+  p_r_id_doc varchar,
+  p_r_documento_id varchar,
+  p_r_razon_social varchar,
+  p_r_direccion varchar,
+  p_efectivo numeric DEFAULT NULL,
+  p_vuelto numeric DEFAULT 0,
+  p_forma_pago2 varchar DEFAULT NULL,
+  p_efectivo2 numeric DEFAULT 0,
+  p_r_moneda varchar DEFAULT 'PEN',
+  p_r_forma_pago_id varchar DEFAULT 'Contado',
+  p_dias_credito integer DEFAULT 0,
+  p_id_producto varchar DEFAULT '0000',
+  p_cont_und_default varchar DEFAULT 'ZZ'
+)
+RETURNS TABLE (r_cod varchar, r_serie varchar, r_numero varchar, elemento integer, r_fecemi date, r_monto_total numeric)
+```
+
 Responsabilidad:
 
 1. Validar que el origen sea `NV`.
@@ -128,6 +249,54 @@ Responsabilidad:
 La funcion no envia a SUNAT.
 
 Importante: no usa `fve_crear_comprobante`, porque esa funcion comercial cambia la PK del documento origen. En presupuestos de servicios el `NV` debe quedar intacto.
+
+### Funciones relacionadas
+
+`fve_crear_comprobante(...)` existe, pero no se usa para presupuestos de servicios. Su comportamiento comercial es:
+
+- Valida serie en `mad_seguridad_serie`.
+- Genera correlativo con `fve_genera01_correl`.
+- Actualiza `mve_ventadet` cambiando `r_cod`, `r_serie`, `r_numero`.
+- Actualiza `mve_venta` cambiando la PK del documento origen.
+- Confirma correlativo con `fve_genera02_correl`.
+
+Por eso es correcta para convertir un pedido comercial con productos, pero no para presupuestos de servicios.
+
+`fve_ventadetinserta(...)` se reutiliza para insertar items facturables y recalcular totales:
+
+```sql
+fve_ventadetinserta(
+  p_id_usuario varchar,
+  p_documento_id varchar,
+  p_periodo varchar,
+  p_r_cod varchar,
+  p_r_serie varchar,
+  p_r_numero varchar,
+  p_elemento numeric,
+  p_r_fecemi varchar,
+  p_id_producto varchar,
+  p_descripcion varchar,
+  p_cantidad numeric,
+  p_precio_unitario numeric,
+  p_precio_neto numeric,
+  p_porc_igv numeric,
+  p_cont_und varchar
+)
+RETURNS boolean
+```
+
+Detalles importantes de `fve_ventadetinserta`:
+
+- `p_r_fecemi` debe enviarse como `varchar` formato `YYYY-MM-DD`.
+- `p_elemento` debe enviarse como `numeric`.
+- Calcula `monto_base` unitario e `igv` unitario.
+- Inserta en `mve_ventadet`.
+- Llama a `fve_ventadet_rtotales(...)`.
+
+Ultimas correcciones aplicadas al SQL:
+
+- Alias explicitos en `mve_venta` para evitar ambiguedad con columnas de `RETURNS TABLE`.
+- Casts explicitos al llamar `fve_ventadetinserta`: `elemento::numeric`, `TO_CHAR(r_fecemi, 'YYYY-MM-DD')::varchar`, `id_producto::varchar`, `descripcion::varchar`, `cont_und::varchar`.
 
 ## Endpoints Node
 
@@ -241,9 +410,35 @@ AdminSunatIcon
 
 ## Pendientes tecnicos
 
-- Ejecutar `docs/sql/fve_presupuesto_generar_comprobante.sql` en PostgreSQL real.
+- Probar `fve_presupuesto_generar_comprobante(...)` contra un presupuesto real en PostgreSQL.
 - Confirmar que existe el producto comodin `0000` o definir otro `id_producto` valido.
 - Probar `POST /ad_presupuesto/comprobante` con un presupuesto real.
 - Validar que `fact_cod/fact_serie/fact_num` quede grabado en el `NV`.
 - Validar que el documento generado abra en el flujo normal de ventas.
 - Luego conectar el boton frontend `Generar CPE` a este endpoint.
+
+## Handoff inmediato
+
+Estado al cierre de esta etapa:
+
+- Backend Node ya tiene endpoint `POST /ad_presupuesto/comprobante`.
+- La funcion PSQL fuente esta en `docs/sql/fve_presupuesto_generar_comprobante.sql`.
+- La funcion PSQL fue ajustada para no usar `fve_crear_comprobante`.
+- La funcion PSQL inserta una cabecera nueva `01/03` y deja intacto el `NV`.
+- Se corrigio la ambiguedad de columnas causada por `RETURNS TABLE`.
+- Se corrigio la llamada a `fve_ventadetinserta` usando casts explicitos.
+- Backend fue pusheado antes del ultimo ajuste de contexto en commit `0ceb2fd Agregar generacion comercial desde presupuestos`.
+
+Siguiente paso tecnico:
+
+1. Probar la funcion PSQL en PostgreSQL con `BEGIN` y `ROLLBACK`.
+2. Si genera correctamente `mve_venta 01/03 + mve_ventadet`, probar el endpoint.
+3. Si el endpoint responde bien, implementar UI en frontend.
+
+Siguiente paso UI:
+
+- Crear modal de emision desde presupuesto.
+- Elegir `01` factura o `03` boleta.
+- Elegir serie autorizada.
+- Enviar payload a `POST /ad_presupuesto/comprobante`.
+- Navegar al comprobante generado en `/ad_venta/...`.

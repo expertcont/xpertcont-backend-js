@@ -3,7 +3,7 @@ const pool = require('../db');
 const obtenerTodosUsuarios = async (req,res,next)=> {
     //console.log("select nombre,email,dni,telefono,vendedor,supervisor,activo from mad_usuario order by nombre");
     try {
-        const todosReg = await pool.query("select id_usuario,nombre,email,dni,telefono,vendedor,supervisor,activo from mad_usuario order by nombre");
+        const todosReg = await pool.query("select id_usuario,nombre,email,dni,telefono,vendedor,supervisor,activo,rubro from mad_usuario order by nombre");
         res.json(todosReg.rows);
     }
     catch(error){
@@ -18,7 +18,7 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         
         //Acceso a tu propio estudio contable, si eres anfitrion claro
         strSQL = " select * from (";
-        strSQL = strSQL + "SELECT id_usuario, razon_social from mad_usuario";
+        strSQL = strSQL + "SELECT id_usuario, razon_social, rubro from mad_usuario";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
         strSQL = strSQL + " AND anfitrion = '1'";
 
@@ -26,7 +26,8 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         strSQL = strSQL + " UNION ALL";
         //ahora es tabla mad_seguridad_contabilidad
         strSQL = strSQL + " SELECT consulta.*,";
-        strSQL = strSQL + " mad_usuario.razon_social";
+        strSQL = strSQL + " mad_usuario.razon_social,";
+        strSQL = strSQL + " mad_usuario.rubro";
         strSQL = strSQL + " FROM (";
         strSQL = strSQL + " select";
         strSQL = strSQL + " mad_seguridad_contabilidad.id_usuario";
@@ -41,7 +42,7 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         //Acceso para el rico administrador o moderador
         strSQL = strSQL + " UNION ALL";
         //new para los admin super (moderadores en un futuro :P), el resto de estudios, para monitoreo
-        strSQL = strSQL + " SELECT id_usuario, razon_social";
+        strSQL = strSQL + " SELECT id_usuario, razon_social, rubro";
         strSQL = strSQL + " FROM mad_usuario";
         strSQL = strSQL + " WHERE id_usuario <> '" + id_usuario + "'";
         strSQL = strSQL + " AND EXISTS (";

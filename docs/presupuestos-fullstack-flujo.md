@@ -29,6 +29,76 @@ fact_serie
 fact_num
 ```
 
+## Estado implementado hasta la fecha
+
+Backend:
+
+- Existe `POST /ad_presupuesto/comprobante`.
+- Existe `generarComprobantePresupuesto()` en `src/controllers/presupuesto.controllers.js`.
+- Existe la ruta en `src/routes/presupuesto.routes.js`.
+- Existe SQL de referencia en `docs/sql/fve_presupuesto_generar_comprobante.sql`.
+- La funcion PSQL ya no usa `fve_crear_comprobante`; inserta una cabecera nueva en `mve_venta`.
+- El backend fue pusheado a `origin/master` en el commit `0ceb2fd Agregar generacion comercial desde presupuestos`.
+
+PostgreSQL:
+
+- La funcion genera `01/03` desde `NV`.
+- Valida serie autorizada en `mad_seguridad_serie`.
+- Usa `fve_genera01_correl` y `fve_genera02_correl`.
+- Inserta items con `fve_ventadetinserta`.
+- `fve_ventadetinserta` requiere `elemento numeric` y `r_fecemi varchar`, por eso la funcion hace casts explicitos.
+
+Frontend:
+
+- El boton/flujo visual `Generar CPE` existe como espacio reservado.
+- Falta conectar el modal/accion frontend a `POST /ad_presupuesto/comprobante`.
+- Luego debe navegar al comprobante comercial generado.
+
+## Estructura de tablas
+
+Cabecera compartida:
+
+```text
+mve_venta
+PK: id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento
+Campos principales: r_fecemi, r_fecvcto, glosa, debe, haber, r_id_doc,
+r_documento_id, r_razon_social, r_direccion, r_base002, r_igv002,
+r_monto_total, r_moneda, r_tc, efectivo, vuelto, forma_pago2, efectivo2,
+registrado, r_forma_pago_id, fact_cod, fact_serie, fact_num,
+dias_credito, contacto_nombre, contacto_celular, estado, cdr_*.
+```
+
+Detalle comercial:
+
+```text
+mve_ventadet
+PK: id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, item
+Campos principales: id_producto, r_fecemi, descripcion, cont_und, cantidad,
+precio_unitario, monto_base, igv, precio_neto, porc_igv, no_kardex,
+registrado, moneda, tipo_igv_codigo, pp_descripcion2, pp_largo,
+pp_ancho, pp_utilidad, pp_horas, pp_dias.
+```
+
+Trabajos del presupuesto:
+
+```text
+mve_ventaserv
+PK: id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, servicio
+Campos principales: id_producto, descripcion, especificacion, cont_und,
+cantidad, precio_unitario, monto_base, igv, precio_neto, porc_igv,
+r_base002, r_igv002, r_monto_total, r_moneda, registrado, utilidad.
+```
+
+Costeo interno:
+
+```text
+mve_ventaservdet
+PK: id_usuario, documento_id, periodo, r_cod, r_serie, r_numero, elemento, servicio, item
+Campos principales: id_producto, descripcion, cont_und, cantidad,
+precio_unitario, monto_base, igv, precio_neto, porc_igv, tipo_igv_codigo,
+largo, ancho, utilidad, horas, dias, registrado.
+```
+
 ## Flujo operativo
 
 ### 1. Abrir listado de presupuestos
@@ -321,9 +391,56 @@ xpertcont-backend-js/docs/sql/fve_presupuesto_generar_comprobante.sql
 
 ## Pendientes de integracion
 
-- Ejecutar la funcion SQL en PostgreSQL.
 - Probar `POST /ad_presupuesto/comprobante` contra un presupuesto real.
 - Confirmar producto comodin para `mve_ventadet.id_producto`.
 - Implementar UI/modal de emision desde presupuesto: elegir `01/03`, serie, fecha y forma de pago.
 - Navegar al comprobante generado.
 - Desde el comprobante generado, usar `AdminSunatIcon`.
+
+## Prueba recomendada
+
+1. Probar primero en PostgreSQL con `BEGIN` y `ROLLBACK`.
+2. Confirmar que aparece una cabecera nueva `01/03` en `mve_venta`.
+3. Confirmar que aparecen items en `mve_ventadet`.
+4. Confirmar que el `NV` queda con `fact_cod/fact_serie/fact_num`.
+5. Repetir con `COMMIT`.
+6. Probar `POST /ad_presupuesto/comprobante`.
+7. Abrir el comprobante generado en `/ad_venta/...`.
+
+## Handoff inmediato para continuar
+
+No empezar por UI hasta confirmar que el endpoint responde correctamente.
+
+Orden recomendado:
+
+```text
+1. Probar fve_presupuesto_generar_comprobante en PostgreSQL.
+2. Probar POST /ad_presupuesto/comprobante.
+3. Implementar modal frontend de emision.
+4. Navegar al documento comercial generado.
+5. Usar AdminSunatIcon desde el documento comercial.
+```
+
+Datos que debe tener el frontend para emitir:
+
+```text
+id_anfitrion
+documento_id
+periodo
+id_invitado
+fecha
+origen: NV, 0001, r_numero, elemento 1
+destino: r_cod_emitir 01/03, r_serie_emitir
+cliente: r_id_doc, r_documento_id, r_razon_social, r_direccion
+pago: r_moneda, r_forma_pago_id, dias_credito, efectivo, vuelto, forma_pago2, efectivo2
+id_producto default o real para servicios
+cont_und_default
+```
+
+Regla que no debe romperse:
+
+```text
+El presupuesto NV no cambia de PK.
+El comprobante comercial nace como documento nuevo 01/03.
+mve_ventaservdet nunca pasa como linea facturable.
+```
