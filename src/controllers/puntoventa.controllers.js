@@ -59,7 +59,7 @@ const listarPuntosVentaUsuario = async (req, res) => {
       SELECT 1
         FROM mad_punto_venta_usuario
        WHERE id_usuario = $1
-         AND documento_id = $2
+         AND (documento_id = $2 OR documento_id IS NULL OR documento_id = '')
          AND id_invitado = $3
          AND activo = TRUE
          AND sin_restriccion = TRUE
@@ -103,10 +103,10 @@ const listarPuntosVentaUsuario = async (req, res) => {
         FROM mad_punto_venta_usuario pvu
         INNER JOIN mad_punto_venta pv
           ON pv.id_usuario = pvu.id_usuario
-         AND pv.documento_id = pvu.documento_id
+         AND pv.documento_id = $2
          AND pv.id_punto_venta = pvu.id_punto_venta
        WHERE pvu.id_usuario = $1
-         AND pvu.documento_id = $2
+         AND (pvu.documento_id = $2 OR pvu.documento_id IS NULL OR pvu.documento_id = '')
          AND pvu.id_invitado = $3
          AND pvu.activo = TRUE
          AND pv.activo = TRUE
