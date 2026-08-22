@@ -15,6 +15,26 @@ const columnasPuntoVenta = `
   ctrl_mod_us
 `;
 
+const columnasPuntoVentaUsuario = `
+  pvu.id_usuario,
+  pvu.documento_id,
+  pvu.id_punto_venta,
+  pv.nombre AS punto_venta_nombre,
+  pvu.id_invitado,
+  pvu.fecha_ingreso,
+  pvu.activo,
+  pvu.sin_restriccion,
+  pvu.turno1_inicio,
+  pvu.turno1_fin,
+  pvu.turno2_inicio,
+  pvu.turno2_fin,
+  pvu.turno3_inicio,
+  pvu.turno3_fin,
+  pvu.ultimo_login
+`;
+
+const normalizarTiempo = (value) => value || null;
+
 const listarPuntosVenta = async (req, res) => {
   const { id_anfitrion, documento_id } = req.params;
 
@@ -59,66 +79,80 @@ const listarPuntosVentaUsuario = async (req, res) => {
       SELECT pv.id_punto_venta,
              pv.nombre
         FROM mad_punto_venta pv
-        LEFT JOIN mad_punto_venta_usuario pvu
-          ON pv.id_usuario = pvu.id_usuario
-         AND pv.documento_id = pvu.documento_id
-         AND pv.id_punto_venta = pvu.id_punto_venta
-       WHERE pvu.id_usuario = $1
-         AND pvu.documento_id = $2
-         AND pvu.id_invitado = $3
-         AND pvu.activo = TRUE
+       WHERE pv.id_usuario = $1
+         AND pv.documento_id = $2
+         AND pv.activo = TRUE
          AND (
-           pvu.sin_restriccion = TRUE
-           OR (
-             pvu.turno1_inicio IS NOT NULL
-             AND pvu.turno1_fin IS NOT NULL
-             AND (
-               (
-                 pvu.turno1_inicio <= pvu.turno1_fin
-                 AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno1_inicio AND pvu.turno1_fin
-               )
-               OR (
-                 pvu.turno1_inicio > pvu.turno1_fin
-                 AND (
-                   (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno1_inicio
-                   OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno1_fin
-                 )
-               )
-             )
+           EXISTS (
+             SELECT 1
+               FROM mad_punto_venta_usuario pvu
+              WHERE pvu.id_usuario = pv.id_usuario
+                AND pvu.documento_id = pv.documento_id
+                AND pvu.id_invitado = $3
+                AND pvu.activo = TRUE
+                AND pvu.sin_restriccion = TRUE
            )
-           OR (
-             pvu.turno2_inicio IS NOT NULL
-             AND pvu.turno2_fin IS NOT NULL
-             AND (
-               (
-                 pvu.turno2_inicio <= pvu.turno2_fin
-                 AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno2_inicio AND pvu.turno2_fin
-               )
-               OR (
-                 pvu.turno2_inicio > pvu.turno2_fin
-                 AND (
-                   (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno2_inicio
-                   OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno2_fin
-                 )
-               )
-             )
-           )
-           OR (
-             pvu.turno3_inicio IS NOT NULL
-             AND pvu.turno3_fin IS NOT NULL
-             AND (
-               (
-                 pvu.turno3_inicio <= pvu.turno3_fin
-                 AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno3_inicio AND pvu.turno3_fin
-               )
-               OR (
-                 pvu.turno3_inicio > pvu.turno3_fin
-                 AND (
-                   (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno3_inicio
-                   OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno3_fin
-                 )
-               )
-             )
+           OR EXISTS (
+             SELECT 1
+               FROM mad_punto_venta_usuario pvu
+              WHERE pvu.id_usuario = pv.id_usuario
+                AND pvu.documento_id = pv.documento_id
+                AND pvu.id_punto_venta = pv.id_punto_venta
+                AND pvu.id_invitado = $3
+                AND pvu.activo = TRUE
+                AND (
+                  (
+                    pvu.turno1_inicio IS NOT NULL
+                    AND pvu.turno1_fin IS NOT NULL
+                    AND (
+                      (
+                        pvu.turno1_inicio <= pvu.turno1_fin
+                        AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno1_inicio AND pvu.turno1_fin
+                      )
+                      OR (
+                        pvu.turno1_inicio > pvu.turno1_fin
+                        AND (
+                          (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno1_inicio
+                          OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno1_fin
+                        )
+                      )
+                    )
+                  )
+                  OR (
+                    pvu.turno2_inicio IS NOT NULL
+                    AND pvu.turno2_fin IS NOT NULL
+                    AND (
+                      (
+                        pvu.turno2_inicio <= pvu.turno2_fin
+                        AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno2_inicio AND pvu.turno2_fin
+                      )
+                      OR (
+                        pvu.turno2_inicio > pvu.turno2_fin
+                        AND (
+                          (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno2_inicio
+                          OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno2_fin
+                        )
+                      )
+                    )
+                  )
+                  OR (
+                    pvu.turno3_inicio IS NOT NULL
+                    AND pvu.turno3_fin IS NOT NULL
+                    AND (
+                      (
+                        pvu.turno3_inicio <= pvu.turno3_fin
+                        AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno3_inicio AND pvu.turno3_fin
+                      )
+                      OR (
+                        pvu.turno3_inicio > pvu.turno3_fin
+                        AND (
+                          (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno3_inicio
+                          OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno3_fin
+                        )
+                      )
+                    )
+                  )
+                )
            )
          )
        ORDER BY pv.nombre, pv.id_punto_venta
@@ -127,6 +161,270 @@ const listarPuntosVentaUsuario = async (req, res) => {
     return res.status(200).json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Error al obtener puntos de venta del usuario:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const listarPuntosVentaUsuarios = async (req, res) => {
+  const { id_anfitrion, documento_id } = req.params;
+
+  if (!id_anfitrion || !documento_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para listar usuarios por punto de venta'
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT ${columnasPuntoVentaUsuario}
+        FROM mad_punto_venta_usuario pvu
+        LEFT JOIN mad_punto_venta pv
+          ON pv.id_usuario = pvu.id_usuario
+         AND pv.documento_id = pvu.documento_id
+         AND pv.id_punto_venta = pvu.id_punto_venta
+       WHERE pvu.id_usuario = $1
+         AND pvu.documento_id = $2
+       ORDER BY pvu.activo DESC, pvu.id_invitado, pv.nombre, pvu.id_punto_venta
+    `, [id_anfitrion, documento_id]);
+
+    return res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Error al listar usuarios por punto de venta:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const obtenerPuntoVentaUsuario = async (req, res) => {
+  const { id_anfitrion, documento_id, id_punto_venta, id_invitado } = req.params;
+
+  if (!id_anfitrion || !documento_id || !id_punto_venta || !id_invitado) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para obtener usuario por punto de venta'
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT ${columnasPuntoVentaUsuario}
+        FROM mad_punto_venta_usuario pvu
+        LEFT JOIN mad_punto_venta pv
+          ON pv.id_usuario = pvu.id_usuario
+         AND pv.documento_id = pvu.documento_id
+         AND pv.id_punto_venta = pvu.id_punto_venta
+       WHERE pvu.id_usuario = $1
+         AND pvu.documento_id = $2
+         AND pvu.id_punto_venta = $3
+         AND pvu.id_invitado = $4
+    `, [id_anfitrion, documento_id, id_punto_venta, id_invitado]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario por punto de venta no encontrado'
+      });
+    }
+
+    return res.status(200).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Error al obtener usuario por punto de venta:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const crearPuntoVentaUsuario = async (req, res) => {
+  const {
+    id_anfitrion,
+    documento_id,
+    id_punto_venta,
+    id_invitado,
+    fecha_ingreso,
+    activo = true,
+    sin_restriccion = false,
+    turno1_inicio,
+    turno1_fin,
+    turno2_inicio,
+    turno2_fin,
+    turno3_inicio,
+    turno3_fin,
+    ultimo_login
+  } = req.body;
+
+  if (!id_anfitrion || !documento_id || !id_punto_venta || !id_invitado) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para crear usuario por punto de venta'
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      INSERT INTO mad_punto_venta_usuario (
+        id_usuario, documento_id, id_punto_venta, id_invitado,
+        fecha_ingreso, activo, sin_restriccion,
+        turno1_inicio, turno1_fin,
+        turno2_inicio, turno2_fin,
+        turno3_inicio, turno3_fin,
+        ultimo_login
+      )
+      VALUES (
+        $1,$2,$3,$4,
+        COALESCE(NULLIF($5, '')::timestamp, CURRENT_TIMESTAMP),
+        $6,$7,
+        NULLIF($8, '')::time, NULLIF($9, '')::time,
+        NULLIF($10, '')::time, NULLIF($11, '')::time,
+        NULLIF($12, '')::time, NULLIF($13, '')::time,
+        NULLIF($14, '')::timestamp
+      )
+      RETURNING *
+    `, [
+      id_anfitrion,
+      documento_id,
+      id_punto_venta,
+      id_invitado,
+      fecha_ingreso || null,
+      activo !== false,
+      sin_restriccion === true,
+      normalizarTiempo(turno1_inicio),
+      normalizarTiempo(turno1_fin),
+      normalizarTiempo(turno2_inicio),
+      normalizarTiempo(turno2_fin),
+      normalizarTiempo(turno3_inicio),
+      normalizarTiempo(turno3_fin),
+      ultimo_login || null
+    ]);
+
+    return res.status(200).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Error al crear usuario por punto de venta:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const actualizarPuntoVentaUsuario = async (req, res) => {
+  const {
+    id_anfitrion,
+    documento_id,
+    id_punto_venta,
+    id_invitado,
+    fecha_ingreso,
+    activo,
+    sin_restriccion,
+    turno1_inicio,
+    turno1_fin,
+    turno2_inicio,
+    turno2_fin,
+    turno3_inicio,
+    turno3_fin,
+    ultimo_login
+  } = req.body;
+
+  if (!id_anfitrion || !documento_id || !id_punto_venta || !id_invitado) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para actualizar usuario por punto de venta'
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      UPDATE mad_punto_venta_usuario
+         SET fecha_ingreso = COALESCE(NULLIF($5, '')::timestamp, fecha_ingreso),
+             activo = COALESCE($6::boolean, activo),
+             sin_restriccion = COALESCE($7::boolean, sin_restriccion),
+             turno1_inicio = NULLIF($8, '')::time,
+             turno1_fin = NULLIF($9, '')::time,
+             turno2_inicio = NULLIF($10, '')::time,
+             turno2_fin = NULLIF($11, '')::time,
+             turno3_inicio = NULLIF($12, '')::time,
+             turno3_fin = NULLIF($13, '')::time,
+             ultimo_login = COALESCE(NULLIF($14, '')::timestamp, ultimo_login)
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND id_punto_venta = $3
+         AND id_invitado = $4
+       RETURNING *
+    `, [
+      id_anfitrion,
+      documento_id,
+      id_punto_venta,
+      id_invitado,
+      fecha_ingreso || null,
+      activo,
+      sin_restriccion,
+      normalizarTiempo(turno1_inicio),
+      normalizarTiempo(turno1_fin),
+      normalizarTiempo(turno2_inicio),
+      normalizarTiempo(turno2_fin),
+      normalizarTiempo(turno3_inicio),
+      normalizarTiempo(turno3_fin),
+      ultimo_login || null
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario por punto de venta no encontrado'
+      });
+    }
+
+    return res.status(200).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Error al actualizar usuario por punto de venta:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const eliminarPuntoVentaUsuario = async (req, res) => {
+  const { id_anfitrion, documento_id, id_punto_venta, id_invitado } = req.params;
+
+  if (!id_anfitrion || !documento_id || !id_punto_venta || !id_invitado) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para eliminar usuario por punto de venta'
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      DELETE FROM mad_punto_venta_usuario
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND id_punto_venta = $3
+         AND id_invitado = $4
+       RETURNING id_usuario, documento_id, id_punto_venta, id_invitado
+    `, [id_anfitrion, documento_id, id_punto_venta, id_invitado]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario por punto de venta no encontrado'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Usuario por punto de venta eliminado correctamente',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al eliminar usuario por punto de venta:', error);
     return res.status(500).json({
       success: false,
       message: error.message || 'Error interno del servidor'
@@ -291,6 +589,11 @@ const eliminarPuntoVenta = async (req, res) => {
 module.exports = {
   listarPuntosVenta,
   listarPuntosVentaUsuario,
+  listarPuntosVentaUsuarios,
+  obtenerPuntoVentaUsuario,
+  crearPuntoVentaUsuario,
+  actualizarPuntoVentaUsuario,
+  eliminarPuntoVentaUsuario,
   crearPuntoVenta,
   actualizarPuntoVenta,
   eliminarPuntoVenta
