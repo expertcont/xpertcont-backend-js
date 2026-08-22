@@ -52,6 +52,19 @@ const columnasVentaTrans = `
   ctrl_mod_us
 `;
 
+const joinNombreRuta = `
+  LEFT JOIN (
+    SELECT id_usuario AS ruta_id_usuario,
+           documento_id AS ruta_documento_id,
+           id_ruta AS ruta_id_ruta,
+           nombre AS nombre_ruta
+      FROM mve_transruta
+  ) ruta
+    ON ruta.ruta_id_usuario = id_usuario
+   AND ruta.ruta_documento_id = documento_id
+   AND ruta.ruta_id_ruta = id_ruta
+`;
+
 const validarTipoOperacion = (tipoOperacion) => ['B', 'E'].includes(tipoOperacion);
 
 const generarNumeroVentaTrans = async ({
@@ -345,8 +358,10 @@ const obtenerVentasTrans = async (req, res) => {
 
   try {
     let query = `
-      SELECT ${columnasVentaTrans}
+      SELECT ${columnasVentaTrans},
+             ruta.nombre_ruta
         FROM mve_transventa
+        ${joinNombreRuta}
        WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -397,8 +412,10 @@ const obtenerVentaTrans = async (req, res) => {
 
   try {
     const query = `
-      SELECT ${columnasVentaTrans}
+      SELECT ${columnasVentaTrans},
+             ruta.nombre_ruta
         FROM mve_transventa
+        ${joinNombreRuta}
        WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3

@@ -18,7 +18,11 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         
         //Acceso a tu propio estudio contable, si eres anfitrion claro
         strSQL = " select * from (";
-        strSQL = strSQL + "SELECT id_usuario, razon_social, rubro from mad_usuario";
+        const superColumn = " CASE WHEN EXISTS (SELECT 1 FROM mad_usuario ms WHERE ms.id_usuario = '" + id_usuario + "' AND ms.super = '1') THEN '1' ELSE '0' END AS super";
+
+        strSQL = strSQL + "SELECT id_usuario, razon_social, rubro,";
+        strSQL = strSQL + superColumn;
+        strSQL = strSQL + " from mad_usuario";
         strSQL = strSQL + " WHERE id_usuario = '" + id_usuario + "'";
         strSQL = strSQL + " AND anfitrion = '1'";
 
@@ -27,7 +31,8 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         //ahora es tabla mad_seguridad_contabilidad
         strSQL = strSQL + " SELECT consulta.*,";
         strSQL = strSQL + " mad_usuario.razon_social,";
-        strSQL = strSQL + " mad_usuario.rubro";
+        strSQL = strSQL + " mad_usuario.rubro,";
+        strSQL = strSQL + superColumn;
         strSQL = strSQL + " FROM (";
         strSQL = strSQL + " select";
         strSQL = strSQL + " mad_seguridad_contabilidad.id_usuario";
@@ -42,7 +47,8 @@ const obtenerTodosEstudios = async (req,res,next)=> {
         //Acceso para el rico administrador o moderador
         strSQL = strSQL + " UNION ALL";
         //new para los admin super (moderadores en un futuro :P), el resto de estudios, para monitoreo
-        strSQL = strSQL + " SELECT id_usuario, razon_social, rubro";
+        strSQL = strSQL + " SELECT id_usuario, razon_social, rubro,";
+        strSQL = strSQL + superColumn;
         strSQL = strSQL + " FROM mad_usuario";
         strSQL = strSQL + " WHERE id_usuario <> '" + id_usuario + "'";
         strSQL = strSQL + " AND EXISTS (";
