@@ -25,6 +25,7 @@ const columnasPuntoVentaUsuario = `
   pvu.id_punto_venta,
   pv.nombre AS punto_venta_nombre,
   pvu.id_invitado,
+  pvu.nombres,
   pvu.fecha_ingreso,
   pvu.activo,
   pvu.sin_restriccion,
@@ -252,6 +253,7 @@ const crearPuntoVentaUsuario = async (req, res) => {
     documento_id,
     id_punto_venta,
     id_invitado,
+    nombres,
     fecha_ingreso,
     activo = true,
     sin_restriccion = false,
@@ -275,7 +277,7 @@ const crearPuntoVentaUsuario = async (req, res) => {
     const result = await pool.query(`
       WITH registro AS (
         INSERT INTO mad_punto_venta_usuario (
-          id_usuario, documento_id, id_punto_venta, id_invitado,
+          id_usuario, documento_id, id_punto_venta, id_invitado, nombres,
           fecha_ingreso, activo, sin_restriccion,
           turno1_inicio, turno1_fin,
           turno2_inicio, turno2_fin,
@@ -283,13 +285,13 @@ const crearPuntoVentaUsuario = async (req, res) => {
           ultimo_login
         )
         VALUES (
-          $1,$2,$3,$4,
-          COALESCE(NULLIF($5, '')::timestamp, CURRENT_TIMESTAMP),
-          $6,$7,
-          NULLIF($8, '')::time, NULLIF($9, '')::time,
-          NULLIF($10, '')::time, NULLIF($11, '')::time,
-          NULLIF($12, '')::time, NULLIF($13, '')::time,
-          NULLIF($14, '')::timestamp
+          $1,$2,$3,$4,$5,
+          COALESCE(NULLIF($6, '')::timestamp, CURRENT_TIMESTAMP),
+          $7,$8,
+          NULLIF($9, '')::time, NULLIF($10, '')::time,
+          NULLIF($11, '')::time, NULLIF($12, '')::time,
+          NULLIF($13, '')::time, NULLIF($14, '')::time,
+          NULLIF($15, '')::timestamp
         )
         RETURNING *
       )
@@ -298,6 +300,7 @@ const crearPuntoVentaUsuario = async (req, res) => {
              registro.id_punto_venta,
              pv.nombre AS punto_venta_nombre,
              registro.id_invitado,
+             registro.nombres,
              registro.fecha_ingreso,
              registro.activo,
              registro.sin_restriccion,
@@ -318,6 +321,7 @@ const crearPuntoVentaUsuario = async (req, res) => {
       documento_id,
       id_punto_venta,
       id_invitado,
+      nombres || null,
       fecha_ingreso || null,
       activo !== false,
       sin_restriccion === true,
@@ -346,6 +350,7 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
     documento_id,
     id_punto_venta,
     id_invitado,
+    nombres,
     fecha_ingreso,
     activo,
     sin_restriccion,
@@ -370,15 +375,16 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
       WITH registro AS (
         UPDATE mad_punto_venta_usuario
            SET fecha_ingreso = COALESCE(NULLIF($5, '')::timestamp, fecha_ingreso),
-               activo = COALESCE($6::boolean, activo),
-               sin_restriccion = COALESCE($7::boolean, sin_restriccion),
-               turno1_inicio = NULLIF($8, '')::time,
-               turno1_fin = NULLIF($9, '')::time,
-               turno2_inicio = NULLIF($10, '')::time,
-               turno2_fin = NULLIF($11, '')::time,
-               turno3_inicio = NULLIF($12, '')::time,
-               turno3_fin = NULLIF($13, '')::time,
-               ultimo_login = COALESCE(NULLIF($14, '')::timestamp, ultimo_login)
+               nombres = COALESCE($6, nombres),
+               activo = COALESCE($7::boolean, activo),
+               sin_restriccion = COALESCE($8::boolean, sin_restriccion),
+               turno1_inicio = NULLIF($9, '')::time,
+               turno1_fin = NULLIF($10, '')::time,
+               turno2_inicio = NULLIF($11, '')::time,
+               turno2_fin = NULLIF($12, '')::time,
+               turno3_inicio = NULLIF($13, '')::time,
+               turno3_fin = NULLIF($14, '')::time,
+               ultimo_login = COALESCE(NULLIF($15, '')::timestamp, ultimo_login)
          WHERE id_usuario = $1
            AND documento_id = $2
            AND id_punto_venta = $3
@@ -390,6 +396,7 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
              registro.id_punto_venta,
              pv.nombre AS punto_venta_nombre,
              registro.id_invitado,
+             registro.nombres,
              registro.fecha_ingreso,
              registro.activo,
              registro.sin_restriccion,
@@ -411,6 +418,7 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
       id_punto_venta,
       id_invitado,
       fecha_ingreso || null,
+      nombres || null,
       activo,
       sin_restriccion,
       normalizarTiempo(turno1_inicio),
