@@ -6,13 +6,17 @@ const columnasPuntoVenta = `
   id_punto_venta,
   nombre,
   direccion,
-  ubigeo,
-  pais,
+  id_ubigeo,
+  id_ubigeo AS ubigeo,
+  id_pais,
+  id_pais AS pais,
+  telefono,
   activo,
   ctrl_crea,
   ctrl_crea_us,
   ctrl_mod,
-  ctrl_mod_us
+  ctrl_mod_us,
+  serie
 `;
 
 const columnasPuntoVentaUsuario = `
@@ -269,24 +273,46 @@ const crearPuntoVentaUsuario = async (req, res) => {
 
   try {
     const result = await pool.query(`
-      INSERT INTO mad_punto_venta_usuario (
-        id_usuario, documento_id, id_punto_venta, id_invitado,
-        fecha_ingreso, activo, sin_restriccion,
-        turno1_inicio, turno1_fin,
-        turno2_inicio, turno2_fin,
-        turno3_inicio, turno3_fin,
-        ultimo_login
+      WITH registro AS (
+        INSERT INTO mad_punto_venta_usuario (
+          id_usuario, documento_id, id_punto_venta, id_invitado,
+          fecha_ingreso, activo, sin_restriccion,
+          turno1_inicio, turno1_fin,
+          turno2_inicio, turno2_fin,
+          turno3_inicio, turno3_fin,
+          ultimo_login
+        )
+        VALUES (
+          $1,$2,$3,$4,
+          COALESCE(NULLIF($5, '')::timestamp, CURRENT_TIMESTAMP),
+          $6,$7,
+          NULLIF($8, '')::time, NULLIF($9, '')::time,
+          NULLIF($10, '')::time, NULLIF($11, '')::time,
+          NULLIF($12, '')::time, NULLIF($13, '')::time,
+          NULLIF($14, '')::timestamp
+        )
+        RETURNING *
       )
-      VALUES (
-        $1,$2,$3,$4,
-        COALESCE(NULLIF($5, '')::timestamp, CURRENT_TIMESTAMP),
-        $6,$7,
-        NULLIF($8, '')::time, NULLIF($9, '')::time,
-        NULLIF($10, '')::time, NULLIF($11, '')::time,
-        NULLIF($12, '')::time, NULLIF($13, '')::time,
-        NULLIF($14, '')::timestamp
-      )
-      RETURNING *
+      SELECT registro.id_usuario,
+             registro.documento_id,
+             registro.id_punto_venta,
+             pv.nombre AS punto_venta_nombre,
+             registro.id_invitado,
+             registro.fecha_ingreso,
+             registro.activo,
+             registro.sin_restriccion,
+             registro.turno1_inicio,
+             registro.turno1_fin,
+             registro.turno2_inicio,
+             registro.turno2_fin,
+             registro.turno3_inicio,
+             registro.turno3_fin,
+             registro.ultimo_login
+        FROM registro
+        LEFT JOIN mad_punto_venta pv
+          ON pv.id_usuario = registro.id_usuario
+         AND pv.documento_id = registro.documento_id
+         AND pv.id_punto_venta = registro.id_punto_venta
     `, [
       id_anfitrion,
       documento_id,
@@ -341,22 +367,44 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
 
   try {
     const result = await pool.query(`
-      UPDATE mad_punto_venta_usuario
-         SET fecha_ingreso = COALESCE(NULLIF($5, '')::timestamp, fecha_ingreso),
-             activo = COALESCE($6::boolean, activo),
-             sin_restriccion = COALESCE($7::boolean, sin_restriccion),
-             turno1_inicio = NULLIF($8, '')::time,
-             turno1_fin = NULLIF($9, '')::time,
-             turno2_inicio = NULLIF($10, '')::time,
-             turno2_fin = NULLIF($11, '')::time,
-             turno3_inicio = NULLIF($12, '')::time,
-             turno3_fin = NULLIF($13, '')::time,
-             ultimo_login = COALESCE(NULLIF($14, '')::timestamp, ultimo_login)
-       WHERE id_usuario = $1
-         AND documento_id = $2
-         AND id_punto_venta = $3
-         AND id_invitado = $4
-       RETURNING *
+      WITH registro AS (
+        UPDATE mad_punto_venta_usuario
+           SET fecha_ingreso = COALESCE(NULLIF($5, '')::timestamp, fecha_ingreso),
+               activo = COALESCE($6::boolean, activo),
+               sin_restriccion = COALESCE($7::boolean, sin_restriccion),
+               turno1_inicio = NULLIF($8, '')::time,
+               turno1_fin = NULLIF($9, '')::time,
+               turno2_inicio = NULLIF($10, '')::time,
+               turno2_fin = NULLIF($11, '')::time,
+               turno3_inicio = NULLIF($12, '')::time,
+               turno3_fin = NULLIF($13, '')::time,
+               ultimo_login = COALESCE(NULLIF($14, '')::timestamp, ultimo_login)
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND id_punto_venta = $3
+           AND id_invitado = $4
+         RETURNING *
+      )
+      SELECT registro.id_usuario,
+             registro.documento_id,
+             registro.id_punto_venta,
+             pv.nombre AS punto_venta_nombre,
+             registro.id_invitado,
+             registro.fecha_ingreso,
+             registro.activo,
+             registro.sin_restriccion,
+             registro.turno1_inicio,
+             registro.turno1_fin,
+             registro.turno2_inicio,
+             registro.turno2_fin,
+             registro.turno3_inicio,
+             registro.turno3_fin,
+             registro.ultimo_login
+        FROM registro
+        LEFT JOIN mad_punto_venta pv
+          ON pv.id_usuario = registro.id_usuario
+         AND pv.documento_id = registro.documento_id
+         AND pv.id_punto_venta = registro.id_punto_venta
     `, [
       id_anfitrion,
       documento_id,
@@ -440,7 +488,11 @@ const crearPuntoVenta = async (req, res) => {
     nombre,
     direccion,
     ubigeo,
+    id_ubigeo,
     pais,
+    id_pais,
+    telefono,
+    serie,
     activo = true,
     ctrl_crea_us
   } = req.body;
@@ -456,10 +508,11 @@ const crearPuntoVenta = async (req, res) => {
     const result = await pool.query(`
       INSERT INTO mad_punto_venta (
         id_usuario, documento_id, id_punto_venta,
-        nombre, direccion, ubigeo, pais, activo,
-        ctrl_crea, ctrl_crea_us
+        nombre, direccion, id_ubigeo, id_pais,
+        telefono, activo, ctrl_crea, ctrl_crea_us,
+        serie
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_TIMESTAMP,$9)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_TIMESTAMP,$9,$10)
       RETURNING ${columnasPuntoVenta}
     `, [
       id_anfitrion,
@@ -467,10 +520,12 @@ const crearPuntoVenta = async (req, res) => {
       id_punto_venta,
       nombre,
       direccion || null,
-      ubigeo || null,
-      pais || 'PE',
+      id_ubigeo || ubigeo || null,
+      id_pais || pais || 'PE',
+      telefono || null,
       activo !== false,
-      ctrl_crea_us || null
+      ctrl_crea_us || null,
+      serie || null
     ]);
 
     return res.status(200).json({ success: true, data: result.rows[0] });
@@ -491,9 +546,13 @@ const actualizarPuntoVenta = async (req, res) => {
     nombre,
     direccion,
     ubigeo,
+    id_ubigeo,
     pais,
+    id_pais,
+    telefono,
     activo,
-    ctrl_mod_us
+    ctrl_mod_us,
+    serie
   } = req.body;
 
   if (!id_anfitrion || !documento_id || !id_punto_venta) {
@@ -508,11 +567,13 @@ const actualizarPuntoVenta = async (req, res) => {
       UPDATE mad_punto_venta
          SET nombre = COALESCE($4, nombre),
              direccion = COALESCE($5, direccion),
-             ubigeo = COALESCE($6, ubigeo),
-             pais = COALESCE($7, pais),
-             activo = COALESCE($8::boolean, activo),
+             id_ubigeo = COALESCE($6, id_ubigeo),
+             id_pais = COALESCE($7, id_pais),
+             telefono = COALESCE($8, telefono),
+             activo = COALESCE($9::boolean, activo),
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = COALESCE($9, ctrl_mod_us)
+             ctrl_mod_us = COALESCE($10, ctrl_mod_us),
+             serie = COALESCE($11, serie)
        WHERE id_usuario = $1
          AND documento_id = $2
          AND id_punto_venta = $3
@@ -523,10 +584,12 @@ const actualizarPuntoVenta = async (req, res) => {
       id_punto_venta,
       nombre || null,
       direccion || null,
-      ubigeo || null,
-      pais || null,
+      id_ubigeo || ubigeo || null,
+      id_pais || pais || null,
+      telefono || null,
       activo,
-      ctrl_mod_us || null
+      ctrl_mod_us || null,
+      serie || null
     ]);
 
     if (result.rows.length === 0) {
