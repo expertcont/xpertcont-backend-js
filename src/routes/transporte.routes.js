@@ -22,6 +22,13 @@ const {
   eliminarRutaTransporte
 } = require('../controllers/transruta.controllers');
 
+const {
+  listarPlacasTransporte,
+  crearPlacaTransporte,
+  actualizarPlacaTransporte,
+  eliminarPlacaTransporte
+} = require('../controllers/transplaca.controllers');
+
 router.get('/mad_punto_venta/:id_anfitrion/:documento_id', listarPuntosVenta);
 router.get('/mad_punto_venta_usuario/:id_anfitrion/:documento_id', listarPuntosVentaUsuarios);
 router.get('/mad_punto_venta_usuario/:id_anfitrion/:documento_id/:id_punto_venta/:id_invitado', obtenerPuntoVentaUsuario);
@@ -38,5 +45,10 @@ router.get('/mve_transruta/:id_anfitrion/:documento_id', listarRutasTransporte);
 router.post('/mve_transruta', crearRutaTransporte);
 router.put('/mve_transruta', actualizarRutaTransporte);
 router.delete('/mve_transruta/:id_anfitrion/:documento_id/:id_ruta', eliminarRutaTransporte);
+
+router.get('/mve_transplaca/:id_anfitrion/:documento_id', listarPlacasTransporte);
+router.post('/mve_transplaca', crearPlacaTransporte);
+router.put('/mve_transplaca', actualizarPlacaTransporte);
+router.delete('/mve_transplaca/:id_anfitrion/:documento_id/:placa', eliminarPlacaTransporte);
 
 module.exports = router;
