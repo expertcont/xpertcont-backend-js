@@ -36,6 +36,13 @@ const {
   eliminarLicenciaTransporte
 } = require('../controllers/translicencia.controllers');
 
+const {
+  listarZonasTransporte,
+  crearZonaTransporte,
+  actualizarZonaTransporte,
+  eliminarZonaTransporte
+} = require('../controllers/transzona.controllers');
+
 router.get('/mad_punto_venta/:id_anfitrion/:documento_id', listarPuntosVenta);
 router.get('/mad_punto_venta_usuario/:id_anfitrion/:documento_id', listarPuntosVentaUsuarios);
 router.get('/mad_punto_venta_usuario/:id_anfitrion/:documento_id/:id_punto_venta/:id_invitado', obtenerPuntoVentaUsuario);
@@ -62,5 +69,10 @@ router.get('/mve_translicencia/:id_anfitrion/:documento_id', listarLicenciasTran
 router.post('/mve_translicencia', crearLicenciaTransporte);
 router.put('/mve_translicencia', actualizarLicenciaTransporte);
 router.delete('/mve_translicencia/:id_anfitrion/:documento_id/:licencia', eliminarLicenciaTransporte);
+
+router.get('/mve_transzona/:id_anfitrion/:documento_id', listarZonasTransporte);
+router.post('/mve_transzona', crearZonaTransporte);
+router.put('/mve_transzona', actualizarZonaTransporte);
+router.delete('/mve_transzona/:id_anfitrion/:documento_id/:id_punto_venta/:id_zona', eliminarZonaTransporte);
 
 module.exports = router;
