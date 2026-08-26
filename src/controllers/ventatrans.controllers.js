@@ -35,7 +35,7 @@ const columnasVentaTrans = `
   destinatario_documento_id,
   destinatario_telefono,
   id_punto_venta_dest,
-  NULL::varchar AS destinatario_zona,
+  destinatario_zona,
   destinatario_direccion,
   CAST(entrega_fecha AS VARCHAR(50)) AS entrega_fecha,
   entrega_documento_id AS entrega_documento,
@@ -387,6 +387,36 @@ const actualizarVentaTrans = async (req, res) => {
     const clienteZonaFinal = cliente_zona ?? remitente_zona ?? null;
     const clienteDireccionFinal = cliente_direccion ?? remitente_direccion ?? null;
     const destinatarioDocumentoIdFinal = destinatario_documento_id || destinatario_documento || null;
+    const debeActualizarTributos = [
+      cantidad,
+      precio_unitario,
+      precio_neto,
+      r_gravado,
+      r_exonerado,
+      r_igv,
+      r_monto_total,
+      porc_igv,
+    ].some((value) => value !== undefined && value !== null && value !== '');
+    const tributosFinales = debeActualizarTributos
+      ? calcularTributosTransporte({
+        tipo_operacion,
+        cantidad,
+        precio_unitario,
+        precio_neto,
+        r_gravado,
+        r_exonerado,
+        r_igv,
+        r_monto_total,
+        porc_igv,
+      })
+      : {
+        precio_neto,
+        r_gravado,
+        r_exonerado,
+        r_igv,
+        r_monto_total,
+        porc_igv,
+      };
 
     const query = `
       UPDATE mve_transventa
@@ -415,19 +445,20 @@ const actualizarVentaTrans = async (req, res) => {
              destinatario_documento_id = COALESCE($30, destinatario_documento_id),
              destinatario_telefono = COALESCE($31, destinatario_telefono),
              id_punto_venta_dest = COALESCE($32, id_punto_venta_dest),
-             destinatario_direccion = COALESCE($33, destinatario_direccion),
-             precio_neto = COALESCE($34::numeric, precio_neto),
-             r_gravado = COALESCE($35::numeric, r_gravado),
-             r_exonerado = COALESCE($36::numeric, r_exonerado),
-             r_igv = COALESCE($37::numeric, r_igv),
-             r_monto_total = COALESCE($38::numeric, r_monto_total),
-             porc_igv = COALESCE($39::numeric, porc_igv),
-             condicion_pago = COALESCE($40, condicion_pago),
-             llegada_aprox = COALESCE(NULLIF($41, '')::time, llegada_aprox),
-             numero_rdi = COALESCE($42, numero_rdi),
-             estado_sunat = COALESCE($43, estado_sunat),
+             destinatario_zona = COALESCE($33, destinatario_zona),
+             destinatario_direccion = COALESCE($34, destinatario_direccion),
+             precio_neto = COALESCE($35::numeric, precio_neto),
+             r_gravado = COALESCE($36::numeric, r_gravado),
+             r_exonerado = COALESCE($37::numeric, r_exonerado),
+             r_igv = COALESCE($38::numeric, r_igv),
+             r_monto_total = COALESCE($39::numeric, r_monto_total),
+             porc_igv = COALESCE($40::numeric, porc_igv),
+             condicion_pago = COALESCE($41, condicion_pago),
+             llegada_aprox = COALESCE(NULLIF($42, '')::time, llegada_aprox),
+             numero_rdi = COALESCE($43, numero_rdi),
+             estado_sunat = COALESCE($44, estado_sunat),
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = COALESCE($44, ctrl_mod_us)
+             ctrl_mod_us = COALESCE($45, ctrl_mod_us)
       WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -451,9 +482,13 @@ const actualizarVentaTrans = async (req, res) => {
       asiento, pasajero_edad,
       destinatario_id_doc, destinatario, destinatarioDocumentoIdFinal,
       destinatario_telefono, idPuntoVentaDestFinal,
-      destinatario_direccion,
-      precio_neto,
-      r_gravado, r_exonerado, r_igv, r_monto_total, porc_igv,
+      destinatario_zona, destinatario_direccion,
+      tributosFinales.precio_neto,
+      tributosFinales.r_gravado,
+      tributosFinales.r_exonerado,
+      tributosFinales.r_igv,
+      tributosFinales.r_monto_total,
+      tributosFinales.porc_igv,
       condicion_pago, llegada_aprox, numero_rdi, estado_sunat, ctrlModUsFinal
     ];
 
@@ -625,4 +660,3 @@ module.exports = {
   eliminarVentaTrans,
   registrarEntregaEncomienda
 };
-
