@@ -11,31 +11,39 @@ const columnasVentaTrans = `
   r_serie_ref,
   r_numero_ref,
   CAST(r_fecemi_ref AS VARCHAR(50)) AS r_fecemi_ref,
-  id_documento,
+  cliente_id_doc AS id_documento,
+  cliente_id_doc,
   cliente,
-  cliente_documento,
+  cliente_documento_id AS cliente_documento,
+  cliente_documento_id,
   cliente_telefono,
+  cliente_direccion_fact,
   id_punto_venta,
-  remitente_zona,
-  remitente_direccion,
+  cliente_zona AS remitente_zona,
+  cliente_zona,
+  cliente_direccion AS remitente_direccion,
+  cliente_direccion,
   id_ruta,
   descripcion,
   placa,
   licencia,
   asiento,
   pasajero_edad,
+  destinatario_id_doc,
   destinatario,
-  destinatario_documento,
+  destinatario_documento_id AS destinatario_documento,
+  destinatario_documento_id,
   destinatario_telefono,
   id_punto_venta_dest,
-  destinatario_zona,
+  NULL::varchar AS destinatario_zona,
   destinatario_direccion,
   CAST(entrega_fecha AS VARCHAR(50)) AS entrega_fecha,
-  entrega_documento,
+  entrega_documento_id AS entrega_documento,
+  entrega_documento_id,
   entrega_nombres,
   entrega_ctrl_us,
-  cantidad,
-  precio_unitario,
+  1 AS cantidad,
+  precio_neto AS precio_unitario,
   precio_neto,
   r_gravado,
   r_exonerado,
@@ -172,178 +180,41 @@ const calcularTributosTransporte = ({
 };
 
 const crearVentaTrans = async (req, res) => {
-  const {
-    id_anfitrion, documento_id, periodo,
-    r_cod, r_serie, r_numero, elemento, r_fecemi,
-    tipo_operacion,
-    r_cod_ref, r_serie_ref, r_numero_ref, r_fecemi_ref,
-    id_documento, cliente, cliente_documento, cliente_telefono,
-    id_punto_venta, remitente_zona, remitente_direccion,
-    id_ruta, descripcion,
-    placa, licencia,
-    asiento, pasajero_edad,
-    destinatario, destinatario_documento,
-    destinatario_telefono, id_punto_venta_dest,
-    destinatario_zona, destinatario_direccion,
-    cantidad, precio_unitario, precio_neto,
-    r_gravado, r_exonerado, r_igv, r_monto_total, porc_igv,
-    condicion_pago, llegada_aprox, numero_rdi, estado_sunat,
-    ctrl_crea_us
-  } = req.body;
+  const tipoOperacionBody = req.body?.tipo_operacion;
 
-  const rCodFinal = r_cod || '03';
-  const rSerieFinal = r_serie || 'B001';
-  const elementoFinal = elemento ?? 1;
-
-  if (
-    !id_anfitrion || !documento_id || !periodo ||
-    !rCodFinal || !rSerieFinal ||
-    elementoFinal === undefined || !r_fecemi || !tipo_operacion
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: 'Faltan parametros requeridos para crear operacion de transporte'
-    });
-  }
-
-  if (!validarTipoOperacion(tipo_operacion)) {
+  if (!validarTipoOperacion(tipoOperacionBody)) {
     return res.status(400).json({
       success: false,
       message: 'Tipo de operacion no valido. Use B=Boleto o E=Encomienda'
     });
   }
 
-  if (tipo_operacion === 'B' && !asiento) {
-    return res.status(400).json({
-      success: false,
-      message: 'El asiento es requerido para un boleto'
-    });
-  }
+  if (tipoOperacionBody === 'E') {
+    try {
+      const result = await pool.query(
+        'SELECT public.fve_transventa_grabar_encomienda($1::jsonb) AS data',
+        [req.body]
+      );
 
-  if (tipo_operacion === 'E' && !destinatario) {
-    return res.status(400).json({
-      success: false,
-      message: 'El destinatario es requerido para una encomienda'
-    });
-  }
+      return res.status(200).json({
+        success: true,
+        data: result.rows[0]?.data || null
+      });
+    } catch (error) {
+      console.error('Error al crear encomienda de transporte:', error);
 
-  if (!id_ruta) {
-    return res.status(400).json({
-      success: false,
-      message: 'La ruta es requerida para la operacion de transporte'
-    });
-  }
-
-  const tributos = calcularTributosTransporte({
-    tipo_operacion,
-    cantidad,
-    precio_unitario,
-    precio_neto,
-    r_gravado,
-    r_exonerado,
-    r_igv,
-    r_monto_total,
-    porc_igv,
-  });
-
-  try {
-    const rutaTransporte = await obtenerRutaTransporte({
-      id_anfitrion,
-      documento_id,
-      id_ruta,
-    });
-
-    if (!rutaTransporte) {
-      return res.status(400).json({
+      return res.status(500).json({
         success: false,
-        message: 'La ruta indicada no existe para la empresa seleccionada'
+        message: error.message || 'Error interno del servidor'
       });
     }
-
-    const idPuntoVentaFinal = id_punto_venta || rutaTransporte.id_punto_venta;
-    const idPuntoVentaDestFinal = id_punto_venta_dest || rutaTransporte.id_punto_venta_dest;
-
-    const rNumeroFinal = r_numero || await generarNumeroVentaTrans({
-      id_anfitrion,
-      documento_id,
-      periodo,
-      r_cod: rCodFinal,
-      r_serie: rSerieFinal,
-    });
-
-    const query = `
-      INSERT INTO mve_transventa (
-        id_usuario, documento_id, periodo,
-        r_cod, r_serie, r_numero, elemento, r_fecemi,
-        tipo_operacion,
-        r_cod_ref, r_serie_ref, r_numero_ref, r_fecemi_ref,
-        id_documento, cliente, cliente_documento, cliente_telefono,
-        id_punto_venta, remitente_zona, remitente_direccion,
-        id_ruta, descripcion,
-        placa, licencia,
-        asiento, pasajero_edad,
-        destinatario, destinatario_documento,
-        destinatario_telefono, id_punto_venta_dest,
-        destinatario_zona, destinatario_direccion,
-        cantidad, precio_unitario, precio_neto,
-        r_gravado, r_exonerado, r_igv, r_monto_total, porc_igv,
-        condicion_pago, llegada_aprox, numero_rdi, estado_sunat,
-        ctrl_crea, ctrl_crea_us
-      )
-      VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,
-        $10,$11,$12,$13,
-        $14,$15,$16,$17,
-        $18,$19,$20,
-        $21,$22,
-        $23,$24,
-        $25,$26,
-        $27,$28,$29,$30,$31,$32,
-        $33,$34,$35,
-        $36,$37,$38,$39,$40,
-        $41,$42,$43,$44,
-        CURRENT_TIMESTAMP,$45
-      )
-      RETURNING ${columnasVentaTrans}
-    `;
-
-    const params = [
-      id_anfitrion, documento_id, periodo,
-      rCodFinal, rSerieFinal, rNumeroFinal, elementoFinal, r_fecemi,
-      tipo_operacion,
-      r_cod_ref || null, r_serie_ref || null,
-      r_numero_ref || null, r_fecemi_ref || null,
-      id_documento || null, cliente || null,
-      cliente_documento || null, cliente_telefono || null,
-      idPuntoVentaFinal || null, remitente_zona || null, remitente_direccion || null,
-      id_ruta || null, descripcion || null,
-      placa || null, licencia || null,
-      asiento || null, pasajero_edad ?? null,
-      destinatario || null, destinatario_documento || null,
-      destinatario_telefono || null, idPuntoVentaDestFinal || null,
-      destinatario_zona || null, destinatario_direccion || null,
-      cantidad ?? 1, precio_unitario ?? 0, tributos.precio_neto,
-      tributos.r_gravado, tributos.r_exonerado, tributos.r_igv,
-      tributos.r_monto_total, tributos.porc_igv,
-      condicion_pago || null, llegada_aprox || null,
-      numero_rdi || null, estado_sunat || null,
-      ctrl_crea_us || null
-    ];
-
-    const result = await pool.query(query, params);
-
-    return res.status(200).json({
-      success: true,
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Error al crear operacion de transporte:', error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error interno del servidor'
-    });
   }
+
+  // Boletos se conectaran a su propia funcion PostgreSQL.
+  return res.status(501).json({
+    success: false,
+    message: 'La funcion PostgreSQL para boletos aun no esta conectada'
+  });
 };
 
 const obtenerVentasTrans = async (req, res) => {
@@ -396,7 +267,7 @@ const obtenerVentasTrans = async (req, res) => {
 
 const obtenerVentaTrans = async (req, res) => {
   const {
-    periodo, id_anfitrion, documento_id,
+    periodo, id_usuario, id_anfitrion, id_invitado, documento_id,
     cod, serie, num, elem
   } = req.params;
 
@@ -453,16 +324,20 @@ const obtenerVentaTrans = async (req, res) => {
 
 const actualizarVentaTrans = async (req, res) => {
   const {
-    periodo, id_anfitrion, documento_id,
+    periodo, id_usuario, id_anfitrion, id_invitado, documento_id,
     r_cod, r_serie, r_numero, elemento,
     r_fecemi, tipo_operacion,
     r_cod_ref, r_serie_ref, r_numero_ref, r_fecemi_ref,
-    id_documento, cliente, cliente_documento, cliente_telefono,
+    id_documento, cliente_id_doc,
+    cliente, cliente_documento, cliente_documento_id,
+    cliente_telefono, cliente_direccion_fact,
+    cliente_zona, cliente_direccion,
     id_punto_venta, remitente_zona, remitente_direccion,
     id_ruta, descripcion,
     placa, licencia,
     asiento, pasajero_edad,
-    destinatario, destinatario_documento,
+    destinatario_id_doc,
+    destinatario, destinatario_documento, destinatario_documento_id,
     destinatario_telefono, id_punto_venta_dest,
     destinatario_zona, destinatario_direccion,
     cantidad, precio_unitario, precio_neto,
@@ -470,9 +345,11 @@ const actualizarVentaTrans = async (req, res) => {
     condicion_pago, llegada_aprox, numero_rdi, estado_sunat,
     ctrl_mod_us
   } = req.body;
+  const idUsuarioFinal = id_usuario || id_anfitrion;
+  const ctrlModUsFinal = ctrl_mod_us || id_invitado || null;
 
   if (
-    !periodo || !id_anfitrion || !documento_id ||
+    !periodo || !idUsuarioFinal || !documento_id ||
     !r_cod || !r_serie || !r_numero ||
     elemento === undefined
   ) {
@@ -491,7 +368,7 @@ const actualizarVentaTrans = async (req, res) => {
 
   try {
     const rutaTransporte = id_ruta ? await obtenerRutaTransporte({
-      id_anfitrion,
+      id_anfitrion: idUsuarioFinal,
       documento_id,
       id_ruta,
     }) : null;
@@ -505,6 +382,11 @@ const actualizarVentaTrans = async (req, res) => {
 
     const idPuntoVentaFinal = id_punto_venta || rutaTransporte?.id_punto_venta || null;
     const idPuntoVentaDestFinal = id_punto_venta_dest || rutaTransporte?.id_punto_venta_dest || null;
+    const clienteIdDocFinal = cliente_id_doc || id_documento || null;
+    const clienteDocumentoIdFinal = cliente_documento_id || cliente_documento || null;
+    const clienteZonaFinal = cliente_zona ?? remitente_zona ?? null;
+    const clienteDireccionFinal = cliente_direccion ?? remitente_direccion ?? null;
+    const destinatarioDocumentoIdFinal = destinatario_documento_id || destinatario_documento || null;
 
     const query = `
       UPDATE mve_transventa
@@ -514,40 +396,39 @@ const actualizarVentaTrans = async (req, res) => {
              r_serie_ref = COALESCE($11, r_serie_ref),
              r_numero_ref = COALESCE($12, r_numero_ref),
              r_fecemi_ref = COALESCE(NULLIF($13, '')::date, r_fecemi_ref),
-             id_documento = COALESCE($14, id_documento),
+             cliente_id_doc = COALESCE($14, cliente_id_doc),
              cliente = COALESCE($15, cliente),
-             cliente_documento = COALESCE($16, cliente_documento),
+             cliente_documento_id = COALESCE($16, cliente_documento_id),
              cliente_telefono = COALESCE($17, cliente_telefono),
-             id_punto_venta = COALESCE($18, id_punto_venta),
-             remitente_zona = COALESCE($19, remitente_zona),
-             remitente_direccion = COALESCE($20, remitente_direccion),
-             id_ruta = COALESCE($21, id_ruta),
-             descripcion = COALESCE($22, descripcion),
-             placa = COALESCE($23, placa),
-             licencia = COALESCE($24, licencia),
-             asiento = COALESCE($25, asiento),
-             pasajero_edad = COALESCE($26::integer, pasajero_edad),
-             destinatario = COALESCE($27, destinatario),
-             destinatario_documento = COALESCE($28, destinatario_documento),
-             destinatario_telefono = COALESCE($29, destinatario_telefono),
-             id_punto_venta_dest = COALESCE($30, id_punto_venta_dest),
-             destinatario_zona = COALESCE($31, destinatario_zona),
-             destinatario_direccion = COALESCE($32, destinatario_direccion),
-             cantidad = COALESCE($33::numeric, cantidad),
-             precio_unitario = COALESCE($34::numeric, precio_unitario),
-             precio_neto = COALESCE($35::numeric, precio_neto),
-             r_gravado = COALESCE($36::numeric, r_gravado),
-             r_exonerado = COALESCE($37::numeric, r_exonerado),
-             r_igv = COALESCE($38::numeric, r_igv),
-             r_monto_total = COALESCE($39::numeric, r_monto_total),
-             porc_igv = COALESCE($40::numeric, porc_igv),
-             condicion_pago = COALESCE($41, condicion_pago),
-             llegada_aprox = COALESCE(NULLIF($42, '')::time, llegada_aprox),
-             numero_rdi = COALESCE($43, numero_rdi),
-             estado_sunat = COALESCE($44, estado_sunat),
+             cliente_direccion_fact = COALESCE($18, cliente_direccion_fact),
+             id_punto_venta = COALESCE($19, id_punto_venta),
+             cliente_zona = COALESCE($20, cliente_zona),
+             cliente_direccion = COALESCE($21, cliente_direccion),
+             id_ruta = COALESCE($22, id_ruta),
+             descripcion = COALESCE($23, descripcion),
+             placa = COALESCE($24, placa),
+             licencia = COALESCE($25, licencia),
+             asiento = COALESCE($26, asiento),
+             pasajero_edad = COALESCE($27::integer, pasajero_edad),
+             destinatario_id_doc = COALESCE($28, destinatario_id_doc),
+             destinatario = COALESCE($29, destinatario),
+             destinatario_documento_id = COALESCE($30, destinatario_documento_id),
+             destinatario_telefono = COALESCE($31, destinatario_telefono),
+             id_punto_venta_dest = COALESCE($32, id_punto_venta_dest),
+             destinatario_direccion = COALESCE($33, destinatario_direccion),
+             precio_neto = COALESCE($34::numeric, precio_neto),
+             r_gravado = COALESCE($35::numeric, r_gravado),
+             r_exonerado = COALESCE($36::numeric, r_exonerado),
+             r_igv = COALESCE($37::numeric, r_igv),
+             r_monto_total = COALESCE($38::numeric, r_monto_total),
+             porc_igv = COALESCE($39::numeric, porc_igv),
+             condicion_pago = COALESCE($40, condicion_pago),
+             llegada_aprox = COALESCE(NULLIF($41, '')::time, llegada_aprox),
+             numero_rdi = COALESCE($42, numero_rdi),
+             estado_sunat = COALESCE($43, estado_sunat),
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = COALESCE($45, ctrl_mod_us)
-       WHERE periodo = $1
+             ctrl_mod_us = COALESCE($44, ctrl_mod_us)
+      WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
          AND r_cod = $4
@@ -558,21 +439,22 @@ const actualizarVentaTrans = async (req, res) => {
     `;
 
     const params = [
-      periodo, id_anfitrion, documento_id,
+      periodo, idUsuarioFinal, documento_id,
       r_cod, r_serie, r_numero, elemento,
       r_fecemi, tipo_operacion,
       r_cod_ref, r_serie_ref, r_numero_ref, r_fecemi_ref,
-      id_documento, cliente, cliente_documento, cliente_telefono,
-      idPuntoVentaFinal, remitente_zona, remitente_direccion,
+      clienteIdDocFinal, cliente, clienteDocumentoIdFinal, cliente_telefono,
+      cliente_direccion_fact,
+      idPuntoVentaFinal, clienteZonaFinal, clienteDireccionFinal,
       id_ruta, descripcion,
       placa, licencia,
       asiento, pasajero_edad,
-      destinatario, destinatario_documento,
+      destinatario_id_doc, destinatario, destinatarioDocumentoIdFinal,
       destinatario_telefono, idPuntoVentaDestFinal,
-      destinatario_zona, destinatario_direccion,
-      cantidad, precio_unitario, precio_neto,
+      destinatario_direccion,
+      precio_neto,
       r_gravado, r_exonerado, r_igv, r_monto_total, porc_igv,
-      condicion_pago, llegada_aprox, numero_rdi, estado_sunat, ctrl_mod_us
+      condicion_pago, llegada_aprox, numero_rdi, estado_sunat, ctrlModUsFinal
     ];
 
     const result = await pool.query(query, params);
@@ -657,23 +539,29 @@ const eliminarVentaTrans = async (req, res) => {
 const registrarEntregaEncomienda = async (req, res) => {
   const {
     periodo,
+    id_usuario,
     id_anfitrion,
+    id_invitado,
     documento_id,
     r_cod,
     r_serie,
     r_numero,
     elemento,
     entrega_fecha,
+    entrega_documento_id,
     entrega_documento,
     entrega_nombres,
     entrega_ctrl_us
   } = req.body;
+  const idUsuarioFinal = id_usuario || id_anfitrion;
+  const entregaDocumentoIdFinal = entrega_documento_id || entrega_documento;
+  const entregaCtrlUsFinal = entrega_ctrl_us || id_invitado || null;
 
   if (
-    !periodo || !id_anfitrion || !documento_id ||
+    !periodo || !idUsuarioFinal || !documento_id ||
     !r_cod || !r_serie || !r_numero ||
     elemento === undefined ||
-    !entrega_fecha || !entrega_documento || !entrega_nombres
+    !entrega_fecha || !entregaDocumentoIdFinal || !entrega_nombres
   ) {
     return res.status(400).json({
       success: false,
@@ -685,7 +573,7 @@ const registrarEntregaEncomienda = async (req, res) => {
     const query = `
       UPDATE mve_transventa
          SET entrega_fecha = $8::date,
-             entrega_documento = $9,
+             entrega_documento_id = $9,
              entrega_nombres = $10,
              entrega_ctrl_us = $11,
              ctrl_mod = CURRENT_TIMESTAMP,
@@ -702,10 +590,10 @@ const registrarEntregaEncomienda = async (req, res) => {
     `;
 
     const result = await pool.query(query, [
-      periodo, id_anfitrion, documento_id,
+      periodo, idUsuarioFinal, documento_id,
       r_cod, r_serie, r_numero, elemento,
-      entrega_fecha, entrega_documento,
-      entrega_nombres, entrega_ctrl_us
+      entrega_fecha, entregaDocumentoIdFinal,
+      entrega_nombres, entregaCtrlUsFinal
     ]);
 
     if (result.rows.length === 0) {
