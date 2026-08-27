@@ -5,12 +5,18 @@ const {
   crearVentaTrans,
   obtenerVentasTrans,
   obtenerVentaTrans,
+  clonarEncomienda,
   actualizarVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda
 } = require('../controllers/ventatrans.controllers');
 
 router.post('/mve_transventa', crearVentaTrans);
+
+router.get(
+  '/mve_transventa/encomienda/clonar/:periodo/:id_anfitrion/:documento_id',
+  clonarEncomienda
+);
 
 router.get(
   '/mve_transventa/:periodo/:id_anfitrion/:documento_id/:dia',

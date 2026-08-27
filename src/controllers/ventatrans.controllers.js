@@ -75,6 +75,26 @@ const joinNombreRuta = `
 
 const validarTipoOperacion = (tipoOperacion) => ['B', 'E'].includes(tipoOperacion);
 
+const obtenerUltimosPeriodos = (periodo, cantidad = 3) => {
+  const match = String(periodo || '').match(/^(\d{4})-(\d{2})$/);
+
+  if (!match) {
+    return [periodo].filter(Boolean);
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const date = new Date(Date.UTC(year, month - 1, 1));
+
+  return Array.from({ length: cantidad }, (_, index) => {
+    const periodoDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - index, 1));
+    return [
+      periodoDate.getUTCFullYear(),
+      String(periodoDate.getUTCMonth() + 1).padStart(2, '0')
+    ].join('-');
+  });
+};
+
 const generarNumeroVentaTrans = async ({
   id_anfitrion,
   documento_id,
@@ -314,6 +334,86 @@ const obtenerVentaTrans = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener operacion de transporte:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const clonarEncomienda = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id } = req.params;
+  const { id_punto_venta, limit } = req.query;
+  const limite = Math.min(Math.max(Number(limit || 80), 1), 150);
+
+  if (!periodo || !id_anfitrion || !documento_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para buscar encomiendas clonables'
+    });
+  }
+
+  try {
+    const periodos = obtenerUltimosPeriodos(periodo, 3);
+    const params = [
+      ...periodos,
+      id_anfitrion,
+      documento_id,
+      limite
+    ];
+    const idUsuarioParam = periodos.length + 1;
+    const documentoParam = periodos.length + 2;
+    const limiteParam = periodos.length + 3;
+    let puntoVentaParam = null;
+
+    if (id_punto_venta) {
+      params.push(id_punto_venta);
+      puntoVentaParam = params.length;
+    }
+
+    const joinRutaClonar = `
+      LEFT JOIN (
+        SELECT id_usuario AS ruta_id_usuario,
+               documento_id AS ruta_documento_id,
+               id_ruta AS ruta_id_ruta,
+               nombre AS nombre_ruta
+          FROM mve_transruta
+      ) ruta
+        ON ruta.ruta_id_usuario = venta.id_usuario
+       AND ruta.ruta_documento_id = venta.documento_id
+       AND ruta.ruta_id_ruta = venta.id_ruta
+    `;
+    const selectsPorPeriodo = periodos.map((_, index) => `
+      SELECT ${columnasVentaTrans},
+             ruta.nombre_ruta,
+             venta.periodo AS periodo_origen
+        FROM mve_transventa venta
+        ${joinRutaClonar}
+       WHERE venta.periodo = $${index + 1}
+         AND venta.id_usuario = $${idUsuarioParam}
+         AND venta.documento_id = $${documentoParam}
+         AND venta.tipo_operacion = 'E'
+         ${puntoVentaParam ? `AND venta.id_punto_venta = $${puntoVentaParam}` : ''}
+    `).join(' UNION ALL ');
+
+    const query = `
+      SELECT *
+        FROM (
+          ${selectsPorPeriodo}
+        ) encomiendas
+       ORDER BY r_fecemi DESC, r_serie, r_numero DESC, elemento
+       LIMIT $${limiteParam}
+    `;
+
+    const result = await pool.query(query, params);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error al buscar encomiendas para clonar:', error);
 
     return res.status(500).json({
       success: false,
@@ -656,6 +756,7 @@ module.exports = {
   crearVentaTrans,
   obtenerVentasTrans,
   obtenerVentaTrans,
+  clonarEncomienda,
   actualizarVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda
