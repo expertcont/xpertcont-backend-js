@@ -6,6 +6,7 @@ const {
   obtenerVentasTrans,
   obtenerVentaTrans,
   clonarEncomienda,
+  listarEncomiendasPorEntregar,
   actualizarVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda
@@ -16,6 +17,11 @@ router.post('/mve_transventa', crearVentaTrans);
 router.get(
   '/mve_transventa/encomienda/clonar/:periodo/:id_anfitrion/:documento_id',
   clonarEncomienda
+);
+
+router.get(
+  '/mve_transventa/encomienda/por-entregar/:periodo/:id_anfitrion/:documento_id/:id_punto_venta_dest',
+  listarEncomiendasPorEntregar
 );
 
 router.get(

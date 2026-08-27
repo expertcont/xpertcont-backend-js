@@ -422,6 +422,87 @@ const clonarEncomienda = async (req, res) => {
   }
 };
 
+const listarEncomiendasPorEntregar = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id, id_punto_venta_dest } = req.params;
+  const { limit, periodos } = req.query;
+  const limite = Math.min(Math.max(Number(limit || 150), 1), 300);
+  const cantidadPeriodos = Math.min(Math.max(Number(periodos || 3), 1), 12);
+
+  if (!periodo || !id_anfitrion || !documento_id || !id_punto_venta_dest) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para listar encomiendas por entregar'
+    });
+  }
+
+  try {
+    const periodosBusqueda = obtenerUltimosPeriodos(periodo, cantidadPeriodos);
+    const params = [
+      ...periodosBusqueda,
+      id_anfitrion,
+      documento_id,
+      id_punto_venta_dest,
+      limite
+    ];
+    const idUsuarioParam = periodosBusqueda.length + 1;
+    const documentoParam = periodosBusqueda.length + 2;
+    const puntoVentaDestParam = periodosBusqueda.length + 3;
+    const limiteParam = periodosBusqueda.length + 4;
+    const joinRutaEntrega = `
+      LEFT JOIN (
+        SELECT id_usuario AS ruta_id_usuario,
+               documento_id AS ruta_documento_id,
+               id_ruta AS ruta_id_ruta,
+               nombre AS nombre_ruta
+          FROM mve_transruta
+      ) ruta
+        ON ruta.ruta_id_usuario = venta.id_usuario
+       AND ruta.ruta_documento_id = venta.documento_id
+       AND ruta.ruta_id_ruta = venta.id_ruta
+    `;
+    const selectsPorPeriodo = periodosBusqueda.map((_, index) => `
+      SELECT ${columnasVentaTrans},
+             ruta.nombre_ruta,
+             venta.periodo AS periodo_origen
+        FROM mve_transventa venta
+        ${joinRutaEntrega}
+       WHERE venta.periodo = $${index + 1}
+         AND venta.id_usuario = $${idUsuarioParam}
+         AND venta.documento_id = $${documentoParam}
+         AND venta.id_punto_venta_dest = $${puntoVentaDestParam}
+         AND venta.tipo_operacion = 'E'
+         AND venta.entrega_fecha IS NULL
+    `).join(' UNION ALL ');
+
+    const query = `
+      SELECT *
+        FROM (
+          ${selectsPorPeriodo}
+        ) encomiendas
+       ORDER BY r_fecemi DESC, r_serie, r_numero DESC, elemento
+       LIMIT $${limiteParam}
+    `;
+
+    const result = await pool.query(query, params);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+      meta: {
+        periodos: periodosBusqueda,
+        cantidad_periodos: cantidadPeriodos
+      }
+    });
+  } catch (error) {
+    console.error('Error al listar encomiendas por entregar:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
 const actualizarVentaTrans = async (req, res) => {
   const {
     periodo, id_usuario, id_anfitrion, id_invitado, documento_id,
@@ -696,7 +777,7 @@ const registrarEntregaEncomienda = async (req, res) => {
     !periodo || !idUsuarioFinal || !documento_id ||
     !r_cod || !r_serie || !r_numero ||
     elemento === undefined ||
-    !entrega_fecha || !entregaDocumentoIdFinal || !entrega_nombres
+    !entrega_fecha
   ) {
     return res.status(400).json({
       success: false,
@@ -707,9 +788,9 @@ const registrarEntregaEncomienda = async (req, res) => {
   try {
     const query = `
       UPDATE mve_transventa
-         SET entrega_fecha = $8::date,
-             entrega_documento_id = $9,
-             entrega_nombres = $10,
+         SET entrega_fecha = $8::timestamp(5),
+             entrega_documento_id = COALESCE($9, entrega_documento_id),
+             entrega_nombres = COALESCE($10, entrega_nombres),
              entrega_ctrl_us = $11,
              ctrl_mod = CURRENT_TIMESTAMP,
              ctrl_mod_us = $11
@@ -757,6 +838,7 @@ module.exports = {
   obtenerVentasTrans,
   obtenerVentaTrans,
   clonarEncomienda,
+  listarEncomiendasPorEntregar,
   actualizarVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda
