@@ -236,41 +236,39 @@ const eliminarVentaDet = async (req,res,next)=> {
 
 const actualizarVentaDet = async (req,res,next)=> {
     const values = [
-        req.params.id_anfitrion,    //01
-        req.params.documento_id,    //02
-        req.params.periodo,         //03
-        req.params.cod,             //04
-        req.params.serie,           //05
-        req.params.num,             //06
-        req.params.elem,            //07
-        req.params.item,            //08
-        
-        req.body.descripcion,       //09
-        req.body.cantidad,          //10
-        req.body.precio_unitario,   //11
-        req.body.precio_neto        //12
+        req.params.id_anfitrion,       //01
+        req.params.documento_id,       //02
+        req.params.periodo,            //03
+        req.params.cod,                //04
+        req.params.serie,              //05
+        req.params.num,                //06
+        req.params.elem,               //07
+        req.body.r_fecemi || null,     //08
+
+        req.body.cantidad,             //09
+        req.body.precio_unitario,      //10
+        req.body.precio_neto,          //11
+        req.params.item,               //12
+        req.body.porc_igv              //13
     ];
-        
+
     const strSQL = `
         SELECT public.fve_ventadetactualiza(
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
         ) AS resultado;
         `;
 
     try {
-        // Ejecuta la consulta a la función de PostgreSQL
         const result = await pool.query(strSQL, values);
         const resultado = result.rows[0].resultado;
 
-        // Si la operación fue exitosa, devolver true
         if (resultado) {
             return res.status(200).json({ success: true });
         } else{
             return res.status(400).json({ success: false });
         }
     } catch (error) {
-        console.error('Error ejecutando la función:', error);
-        // Si hay un error en la base de datos o backend, devuelve false
+        console.error('Error ejecutando la funcion:', error);
         return res.status(500).json({ success: false });
     }
 };
