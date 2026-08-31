@@ -61,6 +61,28 @@ const obtenerCorrentistaPopUp = async (req,res,next)=> {
     }
 };
 
+const obtenerCorrentistaHabitual = async (req,res,next)=> {
+    try {
+        const {id_usuario} = req.params;
+        const strSQL = `
+            SELECT
+                id_usuario,
+                documento_id,
+                razon_social,
+                id_doc,
+                direccion
+            FROM mad_correntista_habitual
+            WHERE id_usuario = $1
+            ORDER BY razon_social, documento_id
+        `;
+
+        const result = await pool.query(strSQL,[id_usuario]);
+        res.json(result.rows);
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 const generarCorrentistaFetchFromAPI = async (documento_id, apiToken) => {
     //tipo = 'ruc' o 'dni'
@@ -280,6 +302,7 @@ module.exports = {
     obtenerTodosCorrentista,
     obtenerCorrentista,
     obtenerCorrentistaPopUp,
+    obtenerCorrentistaHabitual,
     crearCorrentista,
     eliminarCorrentista,
     actualizarCorrentista,
