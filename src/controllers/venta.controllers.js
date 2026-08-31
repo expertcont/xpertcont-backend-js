@@ -1143,6 +1143,54 @@ const generarCPEexpertcont = async (req, res, next) => {
         p_elemento,
     } = req.body;
 
+    const leerRespuestaSunat = async (apiResponse) => {
+        const raw = await apiResponse.text();
+        if (!raw) return {};
+
+        try {
+            return JSON.parse(raw);
+        }
+        catch (error) {
+            return { message: raw };
+        }
+    };
+
+    const normalizarErrorSunat = (responseData, fallbackMessage = "Error en la API SUNAT") => {
+        const data = responseData?.error || responseData?.data || responseData || {};
+        const nivel = data.nivel || "ERROR";
+        const descripcion = data.respuesta_sunat_descripcion || data.mensaje || data.message || fallbackMessage;
+
+        const tituloPorNivel = {
+            RECHAZADO: "Comprobante rechazado",
+            PENDIENTE: "CDR pendiente",
+            ERROR: "No se pudo enviar a SUNAT"
+        };
+
+        const mensajePorNivel = {
+            RECHAZADO: "SUNAT rechazo el comprobante. Revise el motivo antes de emitir otro.",
+            PENDIENTE: "SUNAT recibio el comprobante, pero aun no entrega el CDR.",
+            ERROR: "No pudimos procesar el comprobante con SUNAT."
+        };
+
+        return {
+            success: false,
+            estado: data.estado === true,
+            nivel,
+            codigo: data.codigo || "ERROR_SUNAT",
+            titulo_usuario: data.titulo_usuario || tituloPorNivel[nivel] || tituloPorNivel.ERROR,
+            mensaje_usuario: data.mensaje_usuario || mensajePorNivel[nivel] || mensajePorNivel.ERROR,
+            respuesta_sunat_descripcion: descripcion,
+            detalle_tecnico: data.detalle_sunat || data.detalleSunat || descripcion,
+            permite_reintento: data.permite_reintento ?? data.permiteReintento ?? true,
+            cdr_pendiente: data.cdr_pendiente || "0",
+            consumio_correlativo: data.consumio_correlativo ?? data.consumioCorrelativo ?? false,
+            ruta_xml: data.ruta_xml || "error",
+            ruta_cdr: data.ruta_cdr || "error",
+            ruta_pdf: data.ruta_pdf || "error",
+            codigo_hash: data.codigo_hash || null
+        };
+    };
+
     try {
 
         //----------------------------------------------------------
@@ -1169,26 +1217,27 @@ const generarCPEexpertcont = async (req, res, next) => {
                 "Content-Type": "application/json"
             }
         });
-        const responseData = await apiResponse.json();
+        const responseData = await leerRespuestaSunat(apiResponse);
 
         console.log("Respuesta API SUNAT:", responseData);
 
         //vemos qu
 
         if (!apiResponse.ok) {
-            return res.status(apiResponse.status).json({
-                error: responseData || "Error en la API SUNAT"
-            });
+            return res.status(apiResponse.status).json(normalizarErrorSunat(responseData));
         }
         
         //----------------------------------------------------------
         // 3. Extraer respuesta
         //----------------------------------------------------------
+        const dataSunat = responseData?.data || responseData;
+
         const {
             estado,
             codigo,
             nivel,
             consumioCorrelativo,
+            permiteReintento,
             cdr_pendiente,
             respuesta_sunat_descripcion,
             
@@ -1196,7 +1245,7 @@ const generarCPEexpertcont = async (req, res, next) => {
             ruta_cdr,
             ruta_pdf,
             codigo_hash,
-        } = responseData;
+        } = dataSunat;
 
         const descripcionCorta = (respuesta_sunat_descripcion || "").substring(0, 100);
 
@@ -1296,11 +1345,16 @@ const generarCPEexpertcont = async (req, res, next) => {
         // 5. Respuesta al Frontend
         //----------------------------------------------------------
         return res.json({
+            success: estado === true,
             estado,
             codigo,
             nivel,
             consumioCorrelativo,
+            consumio_correlativo: consumioCorrelativo,
+            permite_reintento: permiteReintento ?? true,
             cdr_pendiente,
+            titulo_usuario: nivel === "ACEPTADO" ? "Comprobante aceptado" : undefined,
+            mensaje_usuario: nivel === "ACEPTADO" ? "Comprobante aceptado por SUNAT." : respuesta_sunat_descripcion,
             respuesta_sunat_descripcion,
             ruta_xml,
             ruta_cdr,
@@ -1312,7 +1366,10 @@ const generarCPEexpertcont = async (req, res, next) => {
     catch (error) {
 
         console.log(error);
-        next(error);
+        return res.status(500).json(normalizarErrorSunat(
+            { message: error.message },
+            "Error interno procesando envio SUNAT"
+        ));
 
     }
 
