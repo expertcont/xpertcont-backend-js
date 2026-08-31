@@ -63,21 +63,158 @@ const obtenerCorrentistaPopUp = async (req,res,next)=> {
 
 const obtenerCorrentistaHabitual = async (req,res,next)=> {
     try {
-        const {id_usuario} = req.params;
+        const {id_usuario, documento_id} = req.params;
         const strSQL = `
             SELECT
                 id_usuario,
-                documento_id,
-                razon_social,
-                id_doc,
-                direccion
+                documento_id AS empresa_documento_id,
+                hab_documento_id AS documento_id,
+                hab_razon_social AS razon_social,
+                hab_id_doc AS id_doc,
+                hab_direccion AS direccion
             FROM mad_correntista_habitual
             WHERE id_usuario = $1
-            ORDER BY razon_social, documento_id
+              AND documento_id = $2
+            ORDER BY hab_razon_social, hab_documento_id
         `;
 
-        const result = await pool.query(strSQL,[id_usuario]);
+        const result = await pool.query(strSQL,[id_usuario,documento_id]);
         res.json(result.rows);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const obtenerCorrentistaHabitualItem = async (req,res,next)=> {
+    try {
+        const {id_usuario, documento_id, hab_documento_id} = req.params;
+        const strSQL = `
+            SELECT
+                id_usuario,
+                documento_id AS empresa_documento_id,
+                hab_documento_id AS documento_id,
+                hab_razon_social AS razon_social,
+                hab_id_doc AS id_doc,
+                hab_direccion AS direccion
+            FROM mad_correntista_habitual
+            WHERE id_usuario = $1
+              AND documento_id = $2
+              AND hab_documento_id = $3
+        `;
+
+        const result = await pool.query(strSQL,[id_usuario,documento_id,hab_documento_id]);
+
+        if (result.rows.length === 0)
+            return res.status(404).json({
+                message:"Correntista habitual no encontrado"
+            });
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const crearCorrentistaHabitual = async (req,res,next)=> {
+    try {
+        const {
+            id_usuario,
+            documento_id,
+            hab_documento_id,
+            hab_razon_social,
+            hab_id_doc,
+            hab_direccion
+        } = req.body;
+
+        const strSQL = `
+            INSERT INTO mad_correntista_habitual (
+                id_usuario,
+                documento_id,
+                hab_documento_id,
+                hab_razon_social,
+                hab_id_doc,
+                hab_direccion
+            )
+            VALUES ($1,$2,$3,$4,$5,$6)
+            RETURNING *
+        `;
+
+        const result = await pool.query(strSQL,[
+            id_usuario,
+            documento_id,
+            hab_documento_id,
+            hab_razon_social,
+            hab_id_doc,
+            hab_direccion
+        ]);
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const actualizarCorrentistaHabitual = async (req,res,next)=> {
+    try {
+        const {id_usuario, documento_id, hab_documento_id} = req.params;
+        const {
+            hab_documento_id: hab_documento_id_nuevo,
+            hab_razon_social,
+            hab_id_doc,
+            hab_direccion
+        } = req.body;
+
+        const strSQL = `
+            UPDATE mad_correntista_habitual
+               SET hab_documento_id = COALESCE($4, hab_documento_id),
+                   hab_razon_social = COALESCE($5, hab_razon_social),
+                   hab_id_doc = COALESCE($6, hab_id_doc),
+                   hab_direccion = COALESCE($7, hab_direccion)
+             WHERE id_usuario = $1
+               AND documento_id = $2
+               AND hab_documento_id = $3
+            RETURNING *
+        `;
+
+        const result = await pool.query(strSQL,[
+            id_usuario,
+            documento_id,
+            hab_documento_id,
+            hab_documento_id_nuevo,
+            hab_razon_social,
+            hab_id_doc,
+            hab_direccion
+        ]);
+
+        if (result.rows.length === 0)
+            return res.status(404).json({
+                message:"Correntista habitual no encontrado"
+            });
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const eliminarCorrentistaHabitual = async (req,res,next)=> {
+    try {
+        const {id_usuario, documento_id, hab_documento_id} = req.params;
+        const strSQL = `
+            DELETE FROM mad_correntista_habitual
+             WHERE id_usuario = $1
+               AND documento_id = $2
+               AND hab_documento_id = $3
+        `;
+
+        const result = await pool.query(strSQL,[id_usuario,documento_id,hab_documento_id]);
+
+        if (result.rowCount === 0)
+            return res.status(404).json({
+                message:"Correntista habitual no encontrado"
+            });
+
+        return res.sendStatus(204);
     } catch (error) {
         next(error);
     }
@@ -303,6 +440,10 @@ module.exports = {
     obtenerCorrentista,
     obtenerCorrentistaPopUp,
     obtenerCorrentistaHabitual,
+    obtenerCorrentistaHabitualItem,
+    crearCorrentistaHabitual,
+    actualizarCorrentistaHabitual,
+    eliminarCorrentistaHabitual,
     crearCorrentista,
     eliminarCorrentista,
     actualizarCorrentista,
