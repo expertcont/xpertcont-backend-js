@@ -69,7 +69,10 @@ const obtenerMotivos = async (req, res, next) => {
   //console.log(periodo, id_anfitrion, documento_id, dia);
 
   const sQuery = `
-    SELECT (id_motivo || '-' || coalesce(sa_transf,'0') || '-' || coalesce(sa_trasl,'0'))::varchar(20) as id_motivo, nombre
+    SELECT (id_motivo || '-' || coalesce(sa_transf,'0') || '-' || coalesce(sa_trasl,'0'))::varchar(20) as id_motivo,
+           nombre,
+           sa_id_almacen,
+           ia_id_almacen
     FROM mst_movimiento_motivo
     WHERE cod = $1
     ORDER BY id_motivo ASC
