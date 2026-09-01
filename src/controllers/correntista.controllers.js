@@ -2,6 +2,30 @@ const pool = require('../db');
 require('dotenv').config();
 const fetch = require('node-fetch');
 
+const normalizarTexto = (valor) => (valor || '').toString().trim();
+const normalizarDocumento = (valor) => normalizarTexto(valor).replace(/\D/g, '');
+const normalizarTipoDocumento = (valor, documento) => normalizarTexto(valor) || (documento.length === 11 ? '6' : '1');
+
+const validarCorrentistaHabitual = ({id_usuario, documento_id, hab_documento_id, hab_razon_social, hab_id_doc}) => {
+    if (!normalizarTexto(id_usuario) || !normalizarTexto(documento_id)) {
+        return 'No se identifico la empresa del cliente habitual.';
+    }
+
+    if (!hab_documento_id || !hab_razon_social || !hab_id_doc) {
+        return 'Completa documento, tipo y razon social.';
+    }
+
+    if (hab_id_doc === '6' && hab_documento_id.length !== 11) {
+        return 'El RUC debe tener 11 digitos.';
+    }
+
+    if (hab_id_doc === '1' && hab_documento_id.length !== 8) {
+        return 'El DNI debe tener 8 digitos.';
+    }
+
+    return null;
+};
+
 const obtenerTodosCorrentista = async (req,res,next)=> {
     //console.log("select documento_id, razon_social, telefono from mad_correntista order by razon_social");
     try {
@@ -67,11 +91,10 @@ const obtenerCorrentistaHabitual = async (req,res,next)=> {
         const strSQL = `
             SELECT
                 id_usuario,
-                documento_id AS empresa_documento_id,
-                hab_documento_id AS documento_id,
-                hab_razon_social AS razon_social,
-                hab_id_doc AS id_doc,
-                hab_direccion AS direccion
+                hab_documento_id,
+                hab_razon_social,
+                hab_id_doc,
+                hab_direccion
             FROM mad_correntista_habitual
             WHERE id_usuario = $1
               AND documento_id = $2
@@ -91,11 +114,10 @@ const obtenerCorrentistaHabitualItem = async (req,res,next)=> {
         const strSQL = `
             SELECT
                 id_usuario,
-                documento_id AS empresa_documento_id,
-                hab_documento_id AS documento_id,
-                hab_razon_social AS razon_social,
-                hab_id_doc AS id_doc,
-                hab_direccion AS direccion
+                hab_documento_id,
+                hab_razon_social,
+                hab_id_doc,
+                hab_direccion
             FROM mad_correntista_habitual
             WHERE id_usuario = $1
               AND documento_id = $2
@@ -117,14 +139,24 @@ const obtenerCorrentistaHabitualItem = async (req,res,next)=> {
 
 const crearCorrentistaHabitual = async (req,res,next)=> {
     try {
-        const {
+        const id_usuario = normalizarTexto(req.body.id_usuario);
+        const documento_id = normalizarTexto(req.body.documento_id);
+        const hab_documento_id = normalizarDocumento(req.body.hab_documento_id);
+        const hab_razon_social = normalizarTexto(req.body.hab_razon_social).toUpperCase();
+        const hab_id_doc = normalizarTipoDocumento(req.body.hab_id_doc, hab_documento_id);
+        const hab_direccion = normalizarTexto(req.body.hab_direccion);
+
+        const mensajeValidacion = validarCorrentistaHabitual({
             id_usuario,
             documento_id,
             hab_documento_id,
             hab_razon_social,
-            hab_id_doc,
-            hab_direccion
-        } = req.body;
+            hab_id_doc
+        });
+
+        if (mensajeValidacion) {
+            return res.status(400).json({message: mensajeValidacion});
+        }
 
         const strSQL = `
             INSERT INTO mad_correntista_habitual (
@@ -150,6 +182,9 @@ const crearCorrentistaHabitual = async (req,res,next)=> {
 
         res.json(result.rows[0]);
     } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({message: 'Este cliente habitual ya esta registrado.'});
+        }
         next(error);
     }
 };
@@ -157,12 +192,22 @@ const crearCorrentistaHabitual = async (req,res,next)=> {
 const actualizarCorrentistaHabitual = async (req,res,next)=> {
     try {
         const {id_usuario, documento_id, hab_documento_id} = req.params;
-        const {
+        const hab_documento_id_nuevo = normalizarDocumento(req.body.hab_documento_id || hab_documento_id);
+        const hab_razon_social = normalizarTexto(req.body.hab_razon_social).toUpperCase();
+        const hab_id_doc = normalizarTipoDocumento(req.body.hab_id_doc, hab_documento_id_nuevo);
+        const hab_direccion = normalizarTexto(req.body.hab_direccion);
+
+        const mensajeValidacion = validarCorrentistaHabitual({
+            id_usuario,
+            documento_id,
             hab_documento_id: hab_documento_id_nuevo,
             hab_razon_social,
-            hab_id_doc,
-            hab_direccion
-        } = req.body;
+            hab_id_doc
+        });
+
+        if (mensajeValidacion) {
+            return res.status(400).json({message: mensajeValidacion});
+        }
 
         const strSQL = `
             UPDATE mad_correntista_habitual
@@ -193,6 +238,9 @@ const actualizarCorrentistaHabitual = async (req,res,next)=> {
 
         res.json(result.rows[0]);
     } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({message: 'Ya existe otro cliente habitual con ese documento.'});
+        }
         next(error);
     }
 };
