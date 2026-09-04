@@ -1,4 +1,5 @@
 const pool = require('../db');
+const fetch = require('node-fetch');
 
 const columnasVentaTrans = `
   CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
@@ -74,6 +75,84 @@ const joinNombreRuta = `
 `;
 
 const validarTipoOperacion = (tipoOperacion) => ['B', 'E'].includes(tipoOperacion);
+
+const toIsoDate = (value) => {
+  if (!value) return '';
+  if (value instanceof Date) {
+    return value.toISOString().split('T')[0];
+  }
+  return String(value).split('T')[0].split(' ')[0];
+};
+
+const toIsoTime = (value) => {
+  if (!value) return new Date().toISOString().split('T')[1].split('.')[0];
+  if (value instanceof Date) {
+    return value.toISOString().split('T')[1].split('.')[0];
+  }
+  const text = String(value);
+  if (text.includes('T')) return text.split('T')[1].split('.')[0];
+  if (text.includes(' ')) return text.split(' ')[1].split('.')[0];
+  return text.split('.')[0];
+};
+
+const toNumber = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const normalizarErrorSunatTransporte = (responseData, fallbackMessage = 'Error en la API SUNAT') => {
+  const data = responseData?.error || responseData?.data || responseData || {};
+  const nivel = data.nivel || 'ERROR';
+  const descripcion = data.respuesta_sunat_descripcion || data.mensaje || data.message || fallbackMessage;
+
+  const tituloPorNivel = {
+    RECHAZADO: 'Comprobante rechazado',
+    PENDIENTE: 'CDR pendiente',
+    ERROR: 'No se pudo enviar a SUNAT'
+  };
+
+  const mensajePorNivel = {
+    RECHAZADO: 'SUNAT rechazo el comprobante. Revise el motivo antes de emitir otro.',
+    PENDIENTE: 'SUNAT recibio el comprobante, pero aun no entrega el CDR.',
+    ERROR: 'No pudimos procesar el comprobante con SUNAT.'
+  };
+
+  return {
+    success: false,
+    estado: data.estado === true,
+    nivel,
+    codigo: data.codigo || 'ERROR_SUNAT',
+    titulo_usuario: data.titulo_usuario || tituloPorNivel[nivel] || tituloPorNivel.ERROR,
+    mensaje_usuario: data.mensaje_usuario || mensajePorNivel[nivel] || mensajePorNivel.ERROR,
+    respuesta_sunat_descripcion: descripcion,
+    detalle_tecnico: data.detalle_sunat || data.detalleSunat || descripcion,
+    permite_reintento: data.permite_reintento ?? data.permiteReintento ?? true,
+    cdr_pendiente: data.cdr_pendiente || '0',
+    consumio_correlativo: data.consumio_correlativo ?? data.consumioCorrelativo ?? false,
+    ruta_xml: data.ruta_xml || 'error',
+    ruta_cdr: data.ruta_cdr || 'error',
+    ruta_pdf: data.ruta_pdf || 'error',
+    codigo_hash: data.codigo_hash || null
+  };
+};
+
+const leerRespuestaSunat = async (apiResponse) => {
+  const raw = await apiResponse.text();
+  if (!raw) return {};
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return { message: raw };
+  }
+};
+
+const estadoSunatTransportePorNivel = (nivel) => {
+  if (nivel === 'ACEPTADO') return 'A';
+  if (nivel === 'PENDIENTE') return 'P';
+  if (nivel === 'RECHAZADO') return 'R';
+  return 'E';
+};
 
 const obtenerUltimosPeriodos = (periodo, cantidad = 3) => {
   const match = String(periodo || '').match(/^(\d{4})-(\d{2})$/);
@@ -196,6 +275,626 @@ const calcularTributosTransporte = ({
     r_igv: 0,
     r_monto_total: total,
     porc_igv: 0,
+  };
+};
+
+// Lee los parametros comunes del dashboard.
+// Se permite consultar todo el periodo o un dia puntual con ?fecha=YYYY-MM-DD.
+const resolverFiltroDashboardTransporte = (req) => {
+  const { periodo, id_anfitrion, documento_id, dia } = req.params;
+  const fecha = req.query.fecha || (dia && dia !== '*' ? `${periodo}-${String(dia).padStart(2, '0')}` : null);
+  const idPuntoVenta = req.query.id_punto_venta || null;
+
+  return {
+    periodo,
+    id_anfitrion,
+    documento_id,
+    fecha,
+    id_punto_venta: idPuntoVenta,
+  };
+};
+
+// Valida lo minimo para que todas las consultas apunten a una empresa/periodo real.
+const validarFiltroDashboardTransporte = ({ periodo, id_anfitrion, documento_id }) => (
+  periodo && id_anfitrion && documento_id
+);
+
+// Agrega filtros opcionales reutilizables sin duplicar SQL en cada indicador.
+const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta }) => {
+  const filtros = [];
+
+  if (fecha) {
+    params.push(fecha);
+    filtros.push(`AND tv.r_fecemi = $${params.length}::date`);
+  }
+
+  if (id_punto_venta) {
+    params.push(id_punto_venta);
+    filtros.push(`AND tv.id_punto_venta = $${params.length}`);
+  }
+
+  return filtros.join('\n');
+};
+
+// Calcula los KPI principales: encomiendas, boletos, entregas, SUNAT y ventas.
+const obtenerResumenDashboardTransporteData = async (filtro) => {
+  const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
+  const filtros = agregarFiltroDashboardTransporte({
+    params,
+    fecha: filtro.fecha,
+    id_punto_venta: filtro.id_punto_venta,
+  });
+
+  const result = await pool.query(`
+    SELECT
+      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E')::integer AS encomiendas,
+      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'B')::integer AS boletos,
+      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E' AND tv.entrega_fecha IS NULL)::integer AS encomiendas_por_entregar,
+      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E' AND tv.entrega_fecha IS NOT NULL)::integer AS encomiendas_entregadas,
+      COUNT(*) FILTER (
+        WHERE tv.tipo_operacion IN ('B', 'E')
+          AND COALESCE(tv.estado_sunat, '') NOT IN ('A', 'P', 'R')
+          AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
+      )::integer AS sunat_pendientes,
+      COALESCE(SUM(tv.r_monto_total) FILTER (WHERE tv.tipo_operacion = 'E'), 0)::numeric AS monto_encomiendas,
+      COALESCE(SUM(tv.r_monto_total) FILTER (WHERE tv.tipo_operacion = 'B'), 0)::numeric AS monto_boletos,
+      COALESCE(SUM(tv.r_monto_total), 0)::numeric AS monto_total
+    FROM mve_transventa tv
+    WHERE tv.periodo = $1
+      AND tv.id_usuario = $2
+      AND tv.documento_id = $3
+      AND tv.tipo_operacion IN ('B', 'E')
+      ${filtros}
+  `, params);
+
+  const row = result.rows[0] || {};
+  const encomiendas = Number(row.encomiendas || 0);
+  const entregadas = Number(row.encomiendas_entregadas || 0);
+
+  return {
+    encomiendas,
+    boletos: Number(row.boletos || 0),
+    encomiendas_por_entregar: Number(row.encomiendas_por_entregar || 0),
+    encomiendas_entregadas: entregadas,
+    entrega_efectiva: encomiendas > 0 ? Number(((entregadas / encomiendas) * 100).toFixed(2)) : 0,
+    sunat_pendientes: Number(row.sunat_pendientes || 0),
+    monto_encomiendas: Number(row.monto_encomiendas || 0),
+    monto_boletos: Number(row.monto_boletos || 0),
+    monto_total: Number(row.monto_total || 0),
+  };
+};
+
+// Agrupa documentos por franjas de 2 horas para medir productividad del turno.
+const obtenerProductividadDashboardTransporteData = async (filtro) => {
+  const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
+  const filtros = agregarFiltroDashboardTransporte({
+    params,
+    fecha: filtro.fecha,
+    id_punto_venta: filtro.id_punto_venta,
+  });
+
+  const result = await pool.query(`
+    SELECT
+      CONCAT(LPAD((FLOOR(EXTRACT(HOUR FROM COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp)) / 2) * 2)::text, 2, '0'), '-',
+             LPAD(((FLOOR(EXTRACT(HOUR FROM COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp)) / 2) * 2) + 2)::text, 2, '0')) AS hora,
+      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E')::integer AS encomiendas,
+      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'B')::integer AS boletos,
+      COALESCE(SUM(tv.r_monto_total), 0)::numeric AS monto_total
+    FROM mve_transventa tv
+    WHERE tv.periodo = $1
+      AND tv.id_usuario = $2
+      AND tv.documento_id = $3
+      AND tv.tipo_operacion IN ('B', 'E')
+      ${filtros}
+    GROUP BY 1
+    ORDER BY 1
+  `, params);
+
+  const mayorTotal = result.rows.reduce((max, item) => {
+    const total = Number(item.encomiendas || 0) + Number(item.boletos || 0);
+    return Math.max(max, total);
+  }, 0);
+
+  return result.rows.map((item) => {
+    const encomiendas = Number(item.encomiendas || 0);
+    const boletos = Number(item.boletos || 0);
+    const total = encomiendas + boletos;
+
+    return {
+      hora: item.hora,
+      encomiendas,
+      boletos,
+      documentos: total,
+      monto_total: Number(item.monto_total || 0),
+      avance: mayorTotal > 0 ? Number(((total / mayorTotal) * 100).toFixed(2)) : 0,
+    };
+  });
+};
+
+// Resume el estado tributario de boletas de transporte listas o pendientes para SUNAT.
+const obtenerSunatDashboardTransporteData = async (filtro) => {
+  const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
+  const filtros = agregarFiltroDashboardTransporte({
+    params,
+    fecha: filtro.fecha,
+    id_punto_venta: filtro.id_punto_venta,
+  });
+
+  const result = await pool.query(`
+    SELECT
+      tv.tipo_operacion,
+      COALESCE(tv.estado_sunat, '') AS estado_sunat,
+      COUNT(*)::integer AS documentos,
+      COALESCE(SUM(tv.r_gravado), 0)::numeric AS base_gravada,
+      COALESCE(SUM(tv.r_exonerado), 0)::numeric AS base_exonerada,
+      COALESCE(SUM(tv.r_igv), 0)::numeric AS igv,
+      COALESCE(SUM(tv.r_monto_total), 0)::numeric AS monto_total
+    FROM mve_transventa tv
+    WHERE tv.periodo = $1
+      AND tv.id_usuario = $2
+      AND tv.documento_id = $3
+      AND tv.tipo_operacion IN ('B', 'E')
+      AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
+      ${filtros}
+    GROUP BY tv.tipo_operacion, COALESCE(tv.estado_sunat, '')
+    ORDER BY tv.tipo_operacion, COALESCE(tv.estado_sunat, '')
+  `, params);
+
+  return result.rows.map((item) => ({
+    tipo_operacion: item.tipo_operacion,
+    estado_sunat: item.estado_sunat,
+    documentos: Number(item.documentos || 0),
+    base_gravada: Number(item.base_gravada || 0),
+    base_exonerada: Number(item.base_exonerada || 0),
+    igv: Number(item.igv || 0),
+    monto_total: Number(item.monto_total || 0),
+  }));
+};
+
+// Muestra las rutas con mas movimiento, combinando boletos y encomiendas.
+const obtenerRutasDashboardTransporteData = async (filtro) => {
+  const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
+  const filtros = agregarFiltroDashboardTransporte({
+    params,
+    fecha: filtro.fecha,
+    id_punto_venta: filtro.id_punto_venta,
+  });
+
+  const result = await pool.query(`
+    SELECT
+      COALESCE(ruta.nombre, 'Sin ruta') AS ruta,
+      tv.id_ruta,
+      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'B')::integer AS boletos,
+      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E')::integer AS encomiendas,
+      COALESCE(SUM(tv.r_monto_total), 0)::numeric AS monto_total
+    FROM mve_transventa tv
+    LEFT JOIN mve_transruta ruta
+      ON ruta.id_usuario = tv.id_usuario
+     AND ruta.documento_id = tv.documento_id
+     AND ruta.id_ruta = tv.id_ruta
+    WHERE tv.periodo = $1
+      AND tv.id_usuario = $2
+      AND tv.documento_id = $3
+      AND tv.tipo_operacion IN ('B', 'E')
+      ${filtros}
+    GROUP BY tv.id_ruta, COALESCE(ruta.nombre, 'Sin ruta')
+    ORDER BY monto_total DESC, ruta
+    LIMIT 8
+  `, params);
+
+  const mayorDocumentos = result.rows.reduce((max, item) => {
+    const total = Number(item.boletos || 0) + Number(item.encomiendas || 0);
+    return Math.max(max, total);
+  }, 0);
+
+  return result.rows.map((item) => {
+    const boletos = Number(item.boletos || 0);
+    const encomiendas = Number(item.encomiendas || 0);
+    const documentos = boletos + encomiendas;
+
+    return {
+      id_ruta: item.id_ruta,
+      ruta: item.ruta,
+      boletos,
+      encomiendas,
+      documentos,
+      monto_total: Number(item.monto_total || 0),
+      ocupacion: mayorDocumentos > 0 ? Number(((documentos / mayorDocumentos) * 100).toFixed(2)) : 0,
+    };
+  });
+};
+
+// Endpoint para probar solo la fila superior de KPI del dashboard.
+const obtenerResumenDashboardTransporte = async (req, res) => {
+  const filtro = resolverFiltroDashboardTransporte(req);
+
+  if (!validarFiltroDashboardTransporte(filtro)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para el resumen del dashboard'
+    });
+  }
+
+  try {
+    const data = await obtenerResumenDashboardTransporteData(filtro);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error al obtener resumen del dashboard de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+// Endpoint para probar solo el bloque de productividad por hora.
+const obtenerProductividadDashboardTransporte = async (req, res) => {
+  const filtro = resolverFiltroDashboardTransporte(req);
+
+  if (!validarFiltroDashboardTransporte(filtro)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para la productividad del dashboard'
+    });
+  }
+
+  try {
+    const data = await obtenerProductividadDashboardTransporteData(filtro);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error al obtener productividad del dashboard de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+// Endpoint para probar solo el bloque de resumen SUNAT.
+const obtenerSunatDashboardTransporte = async (req, res) => {
+  const filtro = resolverFiltroDashboardTransporte(req);
+
+  if (!validarFiltroDashboardTransporte(filtro)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para SUNAT del dashboard'
+    });
+  }
+
+  try {
+    const data = await obtenerSunatDashboardTransporteData(filtro);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error al obtener SUNAT del dashboard de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+// Endpoint para probar solo el bloque de rendimiento por ruta.
+const obtenerRutasDashboardTransporte = async (req, res) => {
+  const filtro = resolverFiltroDashboardTransporte(req);
+
+  if (!validarFiltroDashboardTransporte(filtro)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para rutas del dashboard'
+    });
+  }
+
+  try {
+    const data = await obtenerRutasDashboardTransporteData(filtro);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error al obtener rutas del dashboard de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+// Endpoint principal: devuelve todos los datos que necesita el dashboard en una sola llamada.
+const obtenerDashboardTransporte = async (req, res) => {
+  const filtro = resolverFiltroDashboardTransporte(req);
+
+  if (!validarFiltroDashboardTransporte(filtro)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para el dashboard de transporte'
+    });
+  }
+
+  try {
+    const [resumen, productividad, sunat, rutas] = await Promise.all([
+      obtenerResumenDashboardTransporteData(filtro),
+      obtenerProductividadDashboardTransporteData(filtro),
+      obtenerSunatDashboardTransporteData(filtro),
+      obtenerRutasDashboardTransporteData(filtro),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        filtros: filtro,
+        resumen,
+        productividad,
+        sunat,
+        rutas,
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener dashboard de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const generaJsonPrevioCPEexpertcontTransporte = async (
+  p_periodo,
+  p_id_usuario,
+  p_documento_id,
+  p_r_cod,
+  p_r_serie,
+  p_r_numero,
+  p_elemento
+) => {
+  const datosQuery = await pool.query(
+    `
+    SELECT *
+      FROM mad_usuariocontabilidad
+     WHERE id_usuario = $1
+       AND documento_id = $2
+       AND tipo = 'ADMIN'
+    `,
+    [p_id_usuario, p_documento_id]
+  );
+  const datos = datosQuery.rows[0];
+
+  if (!datos) {
+    throw new Error('CONTABILIDAD NO ENCONTRADA');
+  }
+
+  const ventaQuery = await pool.query(
+    `
+    SELECT tv.*,
+           ruta.nombre AS nombre_ruta
+      FROM mve_transventa tv
+      LEFT JOIN mve_transruta ruta
+        ON ruta.id_usuario = tv.id_usuario
+       AND ruta.documento_id = tv.documento_id
+       AND ruta.id_ruta = tv.id_ruta
+     WHERE tv.periodo = $1
+       AND tv.id_usuario = $2
+       AND tv.documento_id = $3
+       AND tv.r_cod = $4
+       AND tv.r_serie = $5
+       AND tv.r_numero = $6
+       AND tv.elemento = $7
+    `,
+    [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento]
+  );
+  const venta = ventaQuery.rows[0];
+
+  if (!venta) {
+    throw new Error('ENCOMIENDA NO ENCONTRADA');
+  }
+
+  if (String(venta.tipo_operacion || '').trim() !== 'E') {
+    throw new Error('Solo se puede enviar a SUNAT una operacion de encomienda');
+  }
+
+  const baseGravada = toNumber(venta.r_gravado);
+  const baseExonerada = toNumber(venta.r_exonerado);
+  const totalIgv = toNumber(venta.r_igv);
+  const total = toNumber(venta.r_monto_total || venta.precio_neto);
+  const porcIgv = toNumber(venta.porc_igv, baseGravada > 0 ? 18 : 0);
+  const tipoIgvCodigo = baseGravada > 0 ? '10' : '20';
+  const precioBase = baseGravada > 0 ? baseGravada : baseExonerada || total;
+  const descripcion = [
+    venta.descripcion || 'SERVICIO DE TRANSPORTE DE ENCOMIENDA',
+    venta.nombre_ruta ? `Ruta: ${venta.nombre_ruta}` : '',
+    venta.destinatario ? `Destinatario: ${venta.destinatario}` : ''
+  ].filter(Boolean).join(' | ');
+
+  const jsonPayload = {
+    empresa: {
+      ruc: datos.documento_id,
+      razon_social: datos.razon_social,
+      nombre_comercial: datos.razon_social,
+      domicilio_fiscal: datos.direccion,
+      ubigeo: datos.ubigeo,
+      distrito: datos.distrito,
+      provincia: datos.provincia,
+      departamento: datos.departamento,
+      modo: datos.modo,
+    },
+    cliente: {
+      razon_social_nombres: venta.cliente,
+      documento_identidad: venta.cliente_documento_id,
+      tipo_identidad: venta.cliente_id_doc,
+      cliente_direccion: venta.cliente_direccion_fact || venta.cliente_direccion || '',
+    },
+    venta: {
+      codigo: venta.r_cod_ref || venta.r_cod,
+      serie: venta.r_serie_ref || venta.r_serie,
+      numero: venta.r_numero_ref || venta.r_numero,
+      fecha_emision: toIsoDate(venta.r_fecemi),
+      hora_emision: toIsoTime(venta.ctrl_crea),
+      fecha_vencimiento: '',
+      moneda_id: 'PEN',
+      forma_pago_id: venta.condicion_pago || 'Contado',
+      efectivo2: 0,
+      forma_pago2: '',
+      base_gravada: baseGravada,
+      base_exonerada: baseExonerada,
+      base_inafecta: '',
+      base_gratuita: 0,
+      total_igv: totalIgv,
+      vendedor: '',
+      nota: venta.numero_rdi ? `RDI: ${venta.numero_rdi}` : '',
+      ref_codigo: venta.r_cod_ref ? venta.r_cod : '',
+      ref_serie: venta.r_serie_ref ? venta.r_serie : '',
+      ref_numero: venta.r_numero_ref ? venta.r_numero : '',
+      motivo_id: '01',
+      motivo: 'Anulacion de la Operacion',
+      r_vfirmado: ''
+    },
+    items: [
+      {
+        producto: descripcion,
+        cantidad: 1,
+        precio_base: precioBase,
+        precio_neto: total,
+        codigo_sunat: '-',
+        codigo_producto: 'SERV-TRANS',
+        codigo_unidad: 'ZZ',
+        tipo_igv_codigo: tipoIgvCodigo,
+        porc_igv: porcIgv,
+      }
+    ],
+  };
+
+  return JSON.stringify(jsonPayload, null, 2);
+};
+
+const generaJsonResumenCPEexpertcontTransporte = async ({
+  periodo,
+  id_usuario,
+  documento_id,
+  fecha_documentos,
+  correlativo = 1,
+  id_punto_venta,
+  tipo_operacion,
+}) => {
+  // RESUMEN DIARIO SUNAT - VERSION JSON DEL ANTIGUO SFS/TRD
+  // Paso 1: obtener datos del emisor.
+  // Equivale a los datos de empresa/certificado que antes rodeaban al archivo
+  // SFS: RUC, razon social, direccion, ubigeo y modo de envio.
+  const datosQuery = await pool.query(
+    `
+    SELECT *
+      FROM mad_usuariocontabilidad
+     WHERE id_usuario = $1
+       AND documento_id = $2
+       AND tipo = 'ADMIN'
+    `,
+    [id_usuario, documento_id]
+  );
+  const datos = datosQuery.rows[0];
+
+  if (!datos) {
+    throw new Error('CONTABILIDAD NO ENCONTRADA');
+  }
+
+  // Paso 2: seleccionar las boletas del dia que formaran el resumen.
+  // Equivale a elegir los comprobantes que antes se listaban en el TRD.
+  // E = encomienda gravada con IGV.
+  // B = boleto de viaje exonerado.
+  // Se excluyen A/P/R para no volver a resumir comprobantes ya tratados.
+  let query = `
+    SELECT tv.*,
+           CAST(tv.r_fecemi AS VARCHAR(10)) AS fecha_emision
+      FROM mve_transventa tv
+     WHERE tv.periodo = $1
+       AND tv.id_usuario = $2
+       AND tv.documento_id = $3
+       AND tv.r_fecemi = $4::date
+       AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
+       AND tv.tipo_operacion IN ('B', 'E')
+       AND COALESCE(tv.estado_sunat, '') NOT IN ('A', 'P', 'R')
+  `;
+  const params = [periodo, id_usuario, documento_id, fecha_documentos];
+
+  if (id_punto_venta) {
+    params.push(id_punto_venta);
+    query += ` AND tv.id_punto_venta = $${params.length} `;
+  }
+
+  if (tipo_operacion && ['B', 'E'].includes(tipo_operacion)) {
+    params.push(tipo_operacion);
+    query += ` AND tv.tipo_operacion = $${params.length} `;
+  }
+
+  query += `
+     ORDER BY tv.tipo_operacion, tv.r_serie, tv.r_numero, tv.elemento
+  `;
+
+  const ventaQuery = await pool.query(query, params);
+
+  if (ventaQuery.rows.length === 0) {
+    throw new Error('No hay boletas de transporte pendientes para resumir en la fecha indicada.');
+  }
+
+  const comprobantes = ventaQuery.rows.map((venta) => {
+    // Paso 3: convertir cada boleta a una linea tributaria del resumen.
+    // Equivale a las columnas monetarias del TRD:
+    // r_gravado   -> total_gravada   -> InstructionID 01.
+    // r_exonerado -> total_exonerada -> InstructionID 02.
+    // r_igv       -> total_igv       -> TaxTotal 1000 IGV VAT.
+    // Para boletos de viaje el IGV debe viajar como 0.00.
+    const baseGravada = toNumber(venta.r_gravado);
+    const baseExonerada = toNumber(venta.r_exonerado);
+    const baseInafecta = 0;
+    const baseGratuita = 0;
+    const totalIgv = toNumber(venta.r_igv);
+    const total = toNumber(venta.r_monto_total || venta.precio_neto);
+
+    return {
+      tipo_documento: venta.r_cod_ref || venta.r_cod,
+      serie: venta.r_serie_ref || venta.r_serie,
+      numero: venta.r_numero_ref || venta.r_numero,
+      cliente_numero_documento: venta.cliente_documento_id || '-',
+      cliente_tipo_documento: venta.cliente_id_doc || '0',
+      status: '1',
+      moneda_id: 'PEN',
+      total_a_pagar: total,
+      total_gravada: baseGravada,
+      total_exonerada: baseExonerada,
+      total_inafecta: baseInafecta,
+      total_gratuita: baseGratuita,
+      total_igv: totalIgv,
+      tipo_operacion: venta.tipo_operacion,
+      origen: {
+        periodo: venta.periodo,
+        r_cod: venta.r_cod,
+        r_serie: venta.r_serie,
+        r_numero: venta.r_numero,
+        elemento: venta.elemento,
+      }
+    };
+  });
+
+  // Paso 4: armar el payload final que reemplaza al archivo TRD.
+  // El backend API SUNAT lo transformara a XML UBL SummaryDocuments.
+  const payload = {
+    empresa: {
+      ruc: datos.documento_id,
+      razon_social: datos.razon_social,
+      nombre_comercial: datos.razon_social,
+      domicilio_fiscal: datos.direccion,
+      ubigeo: datos.ubigeo,
+      distrito: datos.distrito,
+      provincia: datos.provincia,
+      departamento: datos.departamento,
+      modo: datos.modo,
+    },
+    resumen: {
+      numero: fecha_documentos.replace(/-/g, ''),
+      correlativo: String(correlativo),
+      fecha_documentos,
+      fecha_resumen: toIsoDate(new Date()),
+    },
+    comprobantes,
+  };
+
+  return {
+    payload,
+    operaciones: ventaQuery.rows
   };
 };
 
@@ -833,6 +1532,471 @@ const registrarEntregaEncomienda = async (req, res) => {
   }
 };
 
+const generarCPEexpertcontTransporte = async (req, res) => {
+  const {
+    p_periodo,
+    p_id_usuario,
+    p_documento_id,
+    p_r_cod,
+    p_r_serie,
+    p_r_numero,
+    p_elemento,
+    periodo,
+    id_usuario,
+    id_anfitrion,
+    documento_id,
+    r_cod,
+    r_serie,
+    r_numero,
+    elemento
+  } = req.body;
+
+  const periodoFinal = p_periodo || periodo;
+  const idUsuarioFinal = p_id_usuario || id_usuario || id_anfitrion;
+  const documentoIdFinal = p_documento_id || documento_id;
+  const rCodFinal = p_r_cod || r_cod;
+  const rSerieFinal = p_r_serie || r_serie;
+  const rNumeroFinal = p_r_numero || r_numero;
+  const elementoFinal = p_elemento ?? elemento ?? 1;
+
+  if (
+    !periodoFinal ||
+    !idUsuarioFinal ||
+    !documentoIdFinal ||
+    !rCodFinal ||
+    !rSerieFinal ||
+    !rNumeroFinal ||
+    elementoFinal === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para enviar encomienda a SUNAT'
+    });
+  }
+
+  try {
+    const jsonString = await generaJsonPrevioCPEexpertcontTransporte(
+      periodoFinal,
+      idUsuarioFinal,
+      documentoIdFinal,
+      rCodFinal,
+      rSerieFinal,
+      rNumeroFinal,
+      elementoFinal
+    );
+
+    const strUrlApi = 'https://expertcont-api-sunat.up.railway.app/cpesunat';
+    const apiResponse = await fetch(strUrlApi, {
+      method: 'POST',
+      body: jsonString,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const responseData = await leerRespuestaSunat(apiResponse);
+
+    if (!apiResponse.ok) {
+      const errorNormalizado = normalizarErrorSunatTransporte(responseData);
+      await pool.query(
+        `
+        UPDATE mve_transventa
+           SET estado_sunat = $8,
+               ctrl_mod = CURRENT_TIMESTAMP,
+               ctrl_mod_us = COALESCE($9, ctrl_mod_us)
+         WHERE periodo = $1
+           AND id_usuario = $2
+           AND documento_id = $3
+           AND r_cod = $4
+           AND r_serie = $5
+           AND r_numero = $6
+           AND elemento = $7
+        `,
+        [
+          periodoFinal,
+          idUsuarioFinal,
+          documentoIdFinal,
+          rCodFinal,
+          rSerieFinal,
+          rNumeroFinal,
+          elementoFinal,
+          estadoSunatTransportePorNivel(errorNormalizado.nivel),
+          req.body.id_invitado || req.body.ctrl_mod_us || null
+        ]
+      );
+
+      return res.status(apiResponse.status).json(errorNormalizado);
+    }
+
+    const dataSunat = responseData?.data || responseData;
+    const {
+      estado,
+      codigo,
+      nivel,
+      consumioCorrelativo,
+      permiteReintento,
+      cdr_pendiente,
+      respuesta_sunat_descripcion,
+      ruta_xml,
+      ruta_cdr,
+      ruta_pdf,
+      codigo_hash,
+    } = dataSunat;
+
+    const data = JSON.parse(jsonString);
+    if (String(data.empresa.modo) === '1') {
+      await pool.query(
+        `
+        UPDATE mve_transventa
+           SET estado_sunat = $8,
+               ctrl_mod = CURRENT_TIMESTAMP,
+               ctrl_mod_us = COALESCE($9, ctrl_mod_us)
+         WHERE periodo = $1
+           AND id_usuario = $2
+           AND documento_id = $3
+           AND r_cod = $4
+           AND r_serie = $5
+           AND r_numero = $6
+           AND elemento = $7
+        `,
+        [
+          periodoFinal,
+          idUsuarioFinal,
+          documentoIdFinal,
+          rCodFinal,
+          rSerieFinal,
+          rNumeroFinal,
+          elementoFinal,
+          estadoSunatTransportePorNivel(nivel),
+          req.body.id_invitado || req.body.ctrl_mod_us || null
+        ]
+      );
+    }
+
+    return res.json({
+      success: estado === true,
+      estado,
+      codigo,
+      nivel,
+      consumioCorrelativo,
+      consumio_correlativo: consumioCorrelativo,
+      permite_reintento: permiteReintento ?? true,
+      cdr_pendiente,
+      titulo_usuario: nivel === 'ACEPTADO' ? 'Comprobante aceptado' : undefined,
+      mensaje_usuario: nivel === 'ACEPTADO' ? 'Comprobante aceptado por SUNAT.' : respuesta_sunat_descripcion,
+      respuesta_sunat_descripcion,
+      ruta_xml,
+      ruta_cdr,
+      ruta_pdf,
+      codigo_hash
+    });
+  } catch (error) {
+    console.error('Error procesando envio SUNAT de transporte:', error);
+    return res.status(500).json(normalizarErrorSunatTransporte(
+      { message: error.message },
+      'Error interno procesando envio SUNAT de transporte'
+    ));
+  }
+};
+
+// ORDEN DE EJECUCION - ENDPOINT ADMINISTRATIVO DE RESUMEN
+// Ruta:
+//   POST /mve_transventa/cpe/resumen
+//
+// Paso 1:
+//   generarResumenCPEexpertcontTransporte(req, res)
+//   Lee parametros del request: periodo, empresa, fecha, correlativo y filtros.
+//
+// Paso 2:
+//   generaJsonResumenCPEexpertcontTransporte(...)
+//   Arma el JSON tributario, equivalente moderno del antiguo archivo TRD.
+//
+// Paso 3:
+//   Dentro de generaJsonResumenCPEexpertcontTransporte:
+//   3.1 Consulta mad_usuariocontabilidad para datos del emisor.
+//   3.2 Consulta mve_transventa para boletas pendientes del dia.
+//   3.3 Convierte cada boleta a comprobantes[]:
+//       E encomienda -> gravada + IGV.
+//       B boleto     -> exonerada + IGV 0.00.
+//
+// Paso 4:
+//   Si solo_payload=true, responde el JSON sin enviar a SUNAT.
+//   Sirve para revisar lo que antes se revisaba en el TRD/SFS.
+//
+// Paso 5:
+//   fetch('/cpesunatresumen')
+//   Envia el JSON al backend API SUNAT para generar XML, firmar, comprimir
+//   y ejecutar SOAP sendSummary.
+//
+// Paso 6:
+//   leerRespuestaSunat(apiResponse)
+//   Normaliza la respuesta del backend API SUNAT.
+//
+// Paso 7:
+//   marcarOperacionesResumen(...)
+//   En produccion marca las boletas como pendientes ('P') para evitar reenvio.
+//
+// Paso 8:
+//   Responde al frontend con ticket, nombre_archivo, ruta_xml y payload usado.
+const generarResumenCPEexpertcontTransporte = async (req, res) => {
+  const {
+    p_periodo,
+    p_id_usuario,
+    p_documento_id,
+    p_fecha_documentos,
+    p_correlativo,
+    periodo,
+    id_usuario,
+    id_anfitrion,
+    documento_id,
+    fecha_documentos,
+    correlativo,
+    id_punto_venta,
+    tipo_operacion,
+    solo_payload
+  } = req.body;
+
+  const periodoFinal = p_periodo || periodo;
+  const idUsuarioFinal = p_id_usuario || id_usuario || id_anfitrion;
+  const documentoIdFinal = p_documento_id || documento_id;
+  const fechaDocumentosFinal = p_fecha_documentos || fecha_documentos;
+  const correlativoFinal = p_correlativo || correlativo || 1;
+
+  if (!periodoFinal || !idUsuarioFinal || !documentoIdFinal || !fechaDocumentosFinal) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para enviar resumen de boletas'
+    });
+  }
+
+  try {
+    // Paso 1: armar el JSON tributario desde la base administrativa.
+    // Es la nueva version estructurada del TRD. Con solo_payload=true se
+    // puede auditar sin enviar nada a SUNAT.
+    const { payload, operaciones } = await generaJsonResumenCPEexpertcontTransporte({
+      periodo: periodoFinal,
+      id_usuario: idUsuarioFinal,
+      documento_id: documentoIdFinal,
+      fecha_documentos: fechaDocumentosFinal,
+      correlativo: correlativoFinal,
+      id_punto_venta,
+      tipo_operacion,
+    });
+
+    if (solo_payload === true || solo_payload === '1') {
+      return res.status(200).json({
+        success: true,
+        payload,
+        total_documentos: operaciones.length
+      });
+    }
+
+    // Paso 2: enviar el payload al microservicio SUNAT.
+    // A partir de aqui el backend API hace lo que antes hacia SFS:
+    // generar XML, firmar, comprimir ZIP y ejecutar sendSummary.
+    // SUNAT devuelve ticket, no CDR inmediato.
+    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatresumen', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const responseData = await leerRespuestaSunat(apiResponse);
+
+    if (!apiResponse.ok) {
+      const errorNormalizado = normalizarErrorSunatTransporte(responseData, 'Error en la API SUNAT enviando resumen');
+      return res.status(apiResponse.status).json(errorNormalizado);
+    }
+
+    const dataSunat = responseData?.data || responseData;
+    const nivel = dataSunat.nivel || 'TICKET';
+
+    // Paso 3: marcar operaciones como pendientes en produccion.
+    // Esto reemplaza la espera manual del ticket SFS y bloquea reenvios
+    // mientras SUNAT procesa el resumen.
+    if (String(payload.empresa.modo) === '1') {
+      await marcarOperacionesResumen({
+        operaciones,
+        estado_sunat: 'P',
+        ctrl_mod_us: req.body.id_invitado || req.body.ctrl_mod_us || null
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      estado: dataSunat.estado === true,
+      nivel,
+      ticket: dataSunat.ticket || '',
+      nombre_archivo: dataSunat.nombre_archivo,
+      total_documentos: operaciones.length,
+      respuesta_sunat_descripcion: dataSunat.respuesta_sunat_descripcion,
+      ruta_xml: dataSunat.ruta_xml,
+      codigo_hash: dataSunat.codigo_hash,
+      payload
+    });
+  } catch (error) {
+    console.error('Error procesando resumen SUNAT de transporte:', error);
+    return res.status(500).json(normalizarErrorSunatTransporte(
+      { message: error.message },
+      'Error interno procesando resumen SUNAT de transporte'
+    ));
+  }
+};
+
+// ORDEN DE EJECUCION - CONSULTA ADMINISTRATIVA DE TICKET
+// Ruta:
+//   POST /mve_transventa/cpe/resumen/ticket
+//
+// Paso 1:
+//   consultarResumenCPEexpertcontTransporte(req, res)
+//   Lee ticket, nombre_archivo y datos de empresa.
+//
+// Paso 2:
+//   Si no llega empresa completa, consulta mad_usuariocontabilidad para
+//   recuperar modo de envio y razon social.
+//
+// Paso 3:
+//   fetch('/cpesunatresumen/ticket')
+//   Pide al backend API SUNAT ejecutar SOAP getStatus.
+//
+// Paso 4:
+//   leerRespuestaSunat(apiResponse)
+//   Interpreta respuesta: PENDIENTE, ACEPTADO o RECHAZADO.
+//
+// Paso 5:
+//   Responde al frontend con estado del ticket y ruta_cdr cuando exista.
+const consultarResumenCPEexpertcontTransporte = async (req, res) => {
+  const {
+    documento_id,
+    id_usuario,
+    id_anfitrion,
+    ticket,
+    nombre_archivo,
+    periodo,
+    fecha_documentos,
+    correlativo,
+    empresa
+  } = req.body;
+
+  let empresaFinal = empresa || {
+    ruc: documento_id,
+    modo: req.body.modo
+  };
+
+  if (!empresaFinal?.ruc || !ticket) {
+    return res.status(400).json({
+      success: false,
+      message: 'Debe enviar documento_id o empresa.ruc, y ticket.'
+    });
+  }
+
+  try {
+    // Paso 1: preparar la consulta del ticket recibido por sendSummary.
+    // Equivale al antiguo seguimiento SFS del ticket hasta obtener CDR.
+    // Si SUNAT devuelve 98, sigue pendiente.
+    // Si devuelve content, el backend API extrae el CDR y lo guarda.
+    if (!empresa && (id_usuario || id_anfitrion) && documento_id) {
+      const datosQuery = await pool.query(
+        `
+        SELECT documento_id, razon_social, modo
+          FROM mad_usuariocontabilidad
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND tipo = 'ADMIN'
+        `,
+        [id_usuario || id_anfitrion, documento_id]
+      );
+      const datos = datosQuery.rows[0];
+
+      if (datos) {
+        empresaFinal = {
+          ruc: datos.documento_id,
+          razon_social: datos.razon_social,
+          modo: datos.modo,
+        };
+      }
+    }
+
+    const payload = {
+      empresa: empresaFinal,
+      ticket,
+      nombre_archivo,
+      resumen: fecha_documentos ? {
+        numero: fecha_documentos.replace(/-/g, ''),
+        correlativo: String(correlativo || 1),
+        fecha_documentos,
+      } : undefined
+    };
+
+    // Paso 2: consultar el ticket en el microservicio API SUNAT.
+    // Ese backend ejecuta SOAP getStatus y devuelve PENDIENTE/ACEPTADO/RECHAZADO.
+    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatresumen/ticket', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const responseData = await leerRespuestaSunat(apiResponse);
+
+    if (!apiResponse.ok) {
+      const errorNormalizado = normalizarErrorSunatTransporte(responseData, 'Error consultando ticket de resumen');
+      return res.status(apiResponse.status).json(errorNormalizado);
+    }
+
+    const dataSunat = responseData?.data || responseData;
+
+    return res.status(200).json({
+      success: dataSunat.estado === true || dataSunat.nivel === 'PENDIENTE',
+      estado: dataSunat.estado,
+      nivel: dataSunat.nivel,
+      codigo: dataSunat.codigo,
+      ticket: dataSunat.ticket || ticket,
+      nombre_archivo: dataSunat.nombre_archivo || nombre_archivo,
+      ruta_cdr: dataSunat.ruta_cdr,
+      respuesta_sunat_descripcion: dataSunat.respuesta_sunat_descripcion,
+      mensaje: dataSunat.mensaje
+    });
+  } catch (error) {
+    console.error('Error consultando resumen SUNAT de transporte:', error);
+    return res.status(500).json(normalizarErrorSunatTransporte(
+      { message: error.message },
+      'Error interno consultando resumen SUNAT de transporte'
+    ));
+  }
+};
+
+const marcarOperacionesResumen = async ({ operaciones, estado_sunat, ctrl_mod_us }) => {
+  for (const venta of operaciones) {
+    await pool.query(
+      `
+      UPDATE mve_transventa
+         SET estado_sunat = $8,
+             ctrl_mod = CURRENT_TIMESTAMP,
+             ctrl_mod_us = COALESCE($9, ctrl_mod_us)
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+      `,
+      [
+        venta.periodo,
+        venta.id_usuario,
+        venta.documento_id,
+        venta.r_cod,
+        venta.r_serie,
+        venta.r_numero,
+        venta.elemento,
+        estado_sunat,
+        ctrl_mod_us
+      ]
+    );
+  }
+};
+
 module.exports = {
   crearVentaTrans,
   obtenerVentasTrans,
@@ -841,5 +2005,13 @@ module.exports = {
   listarEncomiendasPorEntregar,
   actualizarVentaTrans,
   eliminarVentaTrans,
-  registrarEntregaEncomienda
+  registrarEntregaEncomienda,
+  obtenerResumenDashboardTransporte,
+  obtenerProductividadDashboardTransporte,
+  obtenerSunatDashboardTransporte,
+  obtenerRutasDashboardTransporte,
+  obtenerDashboardTransporte,
+  generarCPEexpertcontTransporte,
+  generarResumenCPEexpertcontTransporte,
+  consultarResumenCPEexpertcontTransporte
 };
