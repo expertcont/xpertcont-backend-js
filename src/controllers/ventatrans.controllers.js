@@ -319,32 +319,65 @@ const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta }) => 
 // Calcula los KPI principales: encomiendas, boletos, entregas, SUNAT y ventas.
 const obtenerResumenDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
-  const filtros = agregarFiltroDashboardTransporte({
-    params,
-    fecha: filtro.fecha,
-    id_punto_venta: filtro.id_punto_venta,
-  });
+  const filtros = [];
+
+  if (filtro.fecha) {
+    params.push(filtro.fecha);
+    filtros.push(`AND tv.r_fecemi = $${params.length}::date`);
+  }
+
+  let filtroAgenciaOrigen = '';
+  let filtroAgenciaDestino = 'AND FALSE';
+  let filtroMontoTotal = 'TRUE';
+
+  if (filtro.id_punto_venta) {
+    params.push(filtro.id_punto_venta);
+    filtroAgenciaOrigen = `AND tv.id_punto_venta = $${params.length}`;
+    filtroAgenciaDestino = `AND tv.id_punto_venta_dest = $${params.length}`;
+    filtroMontoTotal = `tv.id_punto_venta = $${params.length}`;
+  }
 
   const result = await pool.query(`
+    WITH base AS (
+      SELECT tv.*
+      FROM mve_transventa tv
+      WHERE tv.periodo = $1
+        AND tv.id_usuario = $2
+        AND tv.documento_id = $3
+        AND tv.tipo_operacion IN ('B', 'E')
+        ${filtros.join('\n')}
+    )
     SELECT
-      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E')::integer AS encomiendas,
-      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'B')::integer AS boletos,
-      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E' AND tv.entrega_fecha IS NULL)::integer AS encomiendas_por_entregar,
-      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E' AND tv.entrega_fecha IS NOT NULL)::integer AS encomiendas_entregadas,
-      COUNT(*) FILTER (
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'E' ${filtroAgenciaOrigen}), 0)::integer AS encomiendas,
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'B' ${filtroAgenciaOrigen}), 0)::integer AS boletos,
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'E' AND tv.entrega_fecha IS NULL ${filtroAgenciaOrigen}), 0)::integer AS encomiendas_por_entregar,
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'E' AND tv.entrega_fecha IS NOT NULL ${filtroAgenciaOrigen}), 0)::integer AS encomiendas_entregadas,
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (
         WHERE tv.tipo_operacion IN ('B', 'E')
           AND COALESCE(tv.estado_sunat, '') NOT IN ('A', 'P', 'R')
           AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
-      )::integer AS sunat_pendientes,
-      COALESCE(SUM(tv.r_monto_total) FILTER (WHERE tv.tipo_operacion = 'E'), 0)::numeric AS monto_encomiendas,
-      COALESCE(SUM(tv.r_monto_total) FILTER (WHERE tv.tipo_operacion = 'B'), 0)::numeric AS monto_boletos,
-      COALESCE(SUM(tv.r_monto_total), 0)::numeric AS monto_total
-    FROM mve_transventa tv
-    WHERE tv.periodo = $1
-      AND tv.id_usuario = $2
-      AND tv.documento_id = $3
-      AND tv.tipo_operacion IN ('B', 'E')
-      ${filtros}
+          ${filtroAgenciaOrigen}
+      ), 0)::integer AS sunat_pendientes,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'E' ${filtroAgenciaOrigen}), 0)::numeric AS monto_encomiendas_facturado,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'B' ${filtroAgenciaOrigen}), 0)::numeric AS monto_boletos,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (WHERE ${filtroMontoTotal}), 0)::numeric AS monto_total,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (
+        WHERE tv.tipo_operacion = 'E'
+          ${filtroAgenciaOrigen}
+      ), 0)::numeric AS monto_efectivo_origen_agencia,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (
+        WHERE tv.tipo_operacion = 'E'
+          AND tv.entrega_fecha IS NOT NULL
+          ${filtroAgenciaDestino}
+      ), 0)::numeric AS monto_efectivo_destino_entregado,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (
+        WHERE tv.tipo_operacion = 'E'
+          AND (
+            (TRUE ${filtroAgenciaOrigen})
+            OR (tv.entrega_fecha IS NOT NULL ${filtroAgenciaDestino})
+          )
+      ), 0)::numeric AS monto_efectivo_agencia
+    FROM base tv
   `, params);
 
   const row = result.rows[0] || {};
@@ -358,7 +391,13 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
     encomiendas_entregadas: entregadas,
     entrega_efectiva: encomiendas > 0 ? Number(((entregadas / encomiendas) * 100).toFixed(2)) : 0,
     sunat_pendientes: Number(row.sunat_pendientes || 0),
-    monto_encomiendas: Number(row.monto_encomiendas || 0),
+    monto_encomiendas: Number(row.monto_encomiendas_facturado || 0),
+    monto_encomiendas_facturado: Number(row.monto_encomiendas_facturado || 0),
+    monto_efectivo_origen_agencia: Number(row.monto_efectivo_origen_agencia || 0),
+    monto_efectivo_destino_entregado: Number(row.monto_efectivo_destino_entregado || 0),
+    monto_efectivo_cancelado_agencia: Number(row.monto_efectivo_origen_agencia || 0),
+    monto_efectivo_porpagar_entregado: Number(row.monto_efectivo_destino_entregado || 0),
+    monto_efectivo_agencia: Number(row.monto_efectivo_agencia || 0),
     monto_boletos: Number(row.monto_boletos || 0),
     monto_total: Number(row.monto_total || 0),
   };
@@ -377,9 +416,9 @@ const obtenerProductividadDashboardTransporteData = async (filtro) => {
     SELECT
       CONCAT(LPAD((FLOOR(EXTRACT(HOUR FROM COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp)) / 2) * 2)::text, 2, '0'), '-',
              LPAD(((FLOOR(EXTRACT(HOUR FROM COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp)) / 2) * 2) + 2)::text, 2, '0')) AS hora,
-      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E')::integer AS encomiendas,
-      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'B')::integer AS boletos,
-      COALESCE(SUM(tv.r_monto_total), 0)::numeric AS monto_total
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'E'), 0)::integer AS encomiendas,
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'B'), 0)::integer AS boletos,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto_total
     FROM mve_transventa tv
     WHERE tv.periodo = $1
       AND tv.id_usuario = $2
@@ -424,11 +463,11 @@ const obtenerSunatDashboardTransporteData = async (filtro) => {
     SELECT
       tv.tipo_operacion,
       COALESCE(tv.estado_sunat, '') AS estado_sunat,
-      COUNT(*)::integer AS documentos,
-      COALESCE(SUM(tv.r_gravado), 0)::numeric AS base_gravada,
-      COALESCE(SUM(tv.r_exonerado), 0)::numeric AS base_exonerada,
-      COALESCE(SUM(tv.r_igv), 0)::numeric AS igv,
-      COALESCE(SUM(tv.r_monto_total), 0)::numeric AS monto_total
+      COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS documentos,
+      COALESCE(SUM(tv.r_gravado * COALESCE(tv.registrado, 1)), 0)::numeric AS base_gravada,
+      COALESCE(SUM(tv.r_exonerado * COALESCE(tv.registrado, 1)), 0)::numeric AS base_exonerada,
+      COALESCE(SUM(tv.r_igv * COALESCE(tv.registrado, 1)), 0)::numeric AS igv,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto_total
     FROM mve_transventa tv
     WHERE tv.periodo = $1
       AND tv.id_usuario = $2
@@ -464,9 +503,9 @@ const obtenerRutasDashboardTransporteData = async (filtro) => {
     SELECT
       COALESCE(ruta.nombre, 'Sin ruta') AS ruta,
       tv.id_ruta,
-      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'B')::integer AS boletos,
-      COUNT(*) FILTER (WHERE tv.tipo_operacion = 'E')::integer AS encomiendas,
-      COALESCE(SUM(tv.r_monto_total), 0)::numeric AS monto_total
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'B'), 0)::integer AS boletos,
+      COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'E'), 0)::integer AS encomiendas,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto_total
     FROM mve_transventa tv
     LEFT JOIN mve_transruta ruta
       ON ruta.id_usuario = tv.id_usuario
@@ -502,6 +541,124 @@ const obtenerRutasDashboardTransporteData = async (filtro) => {
       ocupacion: mayorDocumentos > 0 ? Number(((documentos / mayorDocumentos) * 100).toFixed(2)) : 0,
     };
   });
+};
+
+// Compara los 3 ultimos periodos en cantidad de encomiendas.
+// Usa UNION ALL para consultar cada periodo por separado; esto ayuda cuando
+// mve_transventa esta particionada por periodo y el SaaS mueve varias empresas.
+// Este indicador ignora ?fecha porque su objetivo es mensual.
+const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtro) => {
+  const periodos = obtenerUltimosPeriodos(filtro.periodo, 3).reverse();
+  const params = [filtro.id_anfitrion, filtro.documento_id, ...periodos];
+  let puntoVentaParam = null;
+
+  if (filtro.id_punto_venta) {
+    params.push(filtro.id_punto_venta);
+    puntoVentaParam = params.length;
+  }
+
+  const query = periodos.map((_, index) => {
+    const periodoParam = index + 3;
+    const filtroPuntoVenta = puntoVentaParam ? `AND tv.id_punto_venta = $${puntoVentaParam}` : '';
+
+    return `
+      SELECT
+        $${periodoParam}::text AS periodo,
+        COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS encomiendas,
+        COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto_total
+      FROM mve_transventa tv
+      WHERE tv.periodo = $${periodoParam}
+        AND tv.id_usuario = $1
+        AND tv.documento_id = $2
+        AND tv.tipo_operacion = 'E'
+        ${filtroPuntoVenta}
+    `;
+  }).join('\nUNION ALL\n');
+
+  const result = await pool.query(query, params);
+
+  const rowsPorPeriodo = result.rows.reduce((acc, item) => {
+    acc[item.periodo] = item;
+    return acc;
+  }, {});
+
+  const mayor = periodos.reduce((max, periodo) => {
+    const item = rowsPorPeriodo[periodo];
+    return Math.max(max, Number(item?.encomiendas || 0));
+  }, 0);
+
+  return periodos.map((periodo) => {
+    const item = rowsPorPeriodo[periodo] || {};
+    const encomiendas = Number(item.encomiendas || 0);
+
+    return {
+      periodo,
+      encomiendas,
+      monto_total: Number(item.monto_total || 0),
+      avance: mayor > 0 ? Number(((encomiendas / mayor) * 100).toFixed(2)) : 0,
+    };
+  });
+};
+
+// Recaudacion por cada agencia registrada.
+const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
+  const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
+  const filtrosFecha = [];
+
+  if (filtro.fecha) {
+    params.push(filtro.fecha);
+    filtrosFecha.push(`AND tv.r_fecemi = $${params.length}::date`);
+  }
+
+  const result = await pool.query(`
+    WITH ventas AS (
+      SELECT tv.*
+        FROM mve_transventa tv
+       WHERE tv.periodo = $1
+         AND tv.id_usuario = $2
+         AND tv.documento_id = $3
+         AND tv.tipo_operacion = 'E'
+         ${filtrosFecha.join('\n')}
+    )
+    SELECT
+      pv.id_punto_venta,
+      pv.nombre AS agencia,
+      COALESCE(origen.encomiendas, 0)::integer AS encomiendas_facturadas,
+      COALESCE(origen.monto, 0)::numeric AS monto_facturado,
+      COALESCE(destino.encomiendas, 0)::integer AS encomiendas_destino_entregadas,
+      COALESCE(destino.monto, 0)::numeric AS monto_destino_entregado,
+      (COALESCE(origen.monto, 0) + COALESCE(destino.monto, 0))::numeric AS monto_efectivo
+    FROM mad_punto_venta pv
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS encomiendas,
+        COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto
+      FROM ventas tv
+      WHERE tv.id_punto_venta = pv.id_punto_venta
+    ) origen ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS encomiendas,
+        COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto
+      FROM ventas tv
+      WHERE tv.id_punto_venta_dest = pv.id_punto_venta
+        AND tv.entrega_fecha IS NOT NULL
+    ) destino ON TRUE
+    WHERE pv.id_usuario = $2
+      AND pv.documento_id = $3
+      AND pv.activo = TRUE
+    ORDER BY monto_efectivo DESC, monto_facturado DESC, pv.nombre
+  `, params);
+
+  return result.rows.map((item) => ({
+    id_punto_venta: item.id_punto_venta,
+    agencia: item.agencia,
+    encomiendas_facturadas: Number(item.encomiendas_facturadas || 0),
+    monto_facturado: Number(item.monto_facturado || 0),
+    encomiendas_destino_entregadas: Number(item.encomiendas_destino_entregadas || 0),
+    monto_destino_entregado: Number(item.monto_destino_entregado || 0),
+    monto_efectivo: Number(item.monto_efectivo || 0),
+  }));
 };
 
 // Endpoint para probar solo la fila superior de KPI del dashboard.
@@ -596,6 +753,29 @@ const obtenerRutasDashboardTransporte = async (req, res) => {
   }
 };
 
+// Endpoint para probar solo el comparativo mensual de encomiendas.
+const obtenerComparativoMensualEncomiendasDashboardTransporte = async (req, res) => {
+  const filtro = resolverFiltroDashboardTransporte(req);
+
+  if (!validarFiltroDashboardTransporte(filtro)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para el comparativo mensual del dashboard'
+    });
+  }
+
+  try {
+    const data = await obtenerComparativoMensualEncomiendasDashboardTransporteData(filtro);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error al obtener comparativo mensual del dashboard de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
 // Endpoint principal: devuelve todos los datos que necesita el dashboard en una sola llamada.
 const obtenerDashboardTransporte = async (req, res) => {
   const filtro = resolverFiltroDashboardTransporte(req);
@@ -608,11 +788,13 @@ const obtenerDashboardTransporte = async (req, res) => {
   }
 
   try {
-    const [resumen, productividad, sunat, rutas] = await Promise.all([
+    const [resumen, productividad, sunat, rutas, comparativoMensual, recaudacionAgencias] = await Promise.all([
       obtenerResumenDashboardTransporteData(filtro),
       obtenerProductividadDashboardTransporteData(filtro),
       obtenerSunatDashboardTransporteData(filtro),
       obtenerRutasDashboardTransporteData(filtro),
+      obtenerComparativoMensualEncomiendasDashboardTransporteData(filtro),
+      obtenerRecaudacionAgenciasDashboardTransporteData(filtro),
     ]);
 
     return res.status(200).json({
@@ -623,6 +805,8 @@ const obtenerDashboardTransporte = async (req, res) => {
         productividad,
         sunat,
         rutas,
+        comparativo_mensual_encomiendas: comparativoMensual,
+        recaudacion_agencias: recaudacionAgencias,
       }
     });
   } catch (error) {
@@ -2010,6 +2194,7 @@ module.exports = {
   obtenerProductividadDashboardTransporte,
   obtenerSunatDashboardTransporte,
   obtenerRutasDashboardTransporte,
+  obtenerComparativoMensualEncomiendasDashboardTransporte,
   obtenerDashboardTransporte,
   generarCPEexpertcontTransporte,
   generarResumenCPEexpertcontTransporte,

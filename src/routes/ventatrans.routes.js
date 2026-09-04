@@ -14,6 +14,7 @@ const {
   obtenerProductividadDashboardTransporte,
   obtenerSunatDashboardTransporte,
   obtenerRutasDashboardTransporte,
+  obtenerComparativoMensualEncomiendasDashboardTransporte,
   obtenerDashboardTransporte,
   generarCPEexpertcontTransporte,
   generarResumenCPEexpertcontTransporte,
@@ -60,6 +61,11 @@ router.get(
 router.get(
   '/mve_transventa/dashboard/rutas/:periodo/:id_anfitrion/:documento_id',
   obtenerRutasDashboardTransporte
+);
+
+router.get(
+  '/mve_transventa/dashboard/encomiendas-mensual/:periodo/:id_anfitrion/:documento_id',
+  obtenerComparativoMensualEncomiendasDashboardTransporte
 );
 
 router.get(
