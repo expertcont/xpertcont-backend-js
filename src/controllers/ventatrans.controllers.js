@@ -316,6 +316,9 @@ const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta }) => 
   return filtros.join('\n');
 };
 
+const condicionPagoSql = "COALESCE(NULLIF(REGEXP_REPLACE(UPPER(COALESCE(tv.condicion_pago, '')), '[^A-Z]', '', 'g'), ''), 'PAGADO')";
+const condicionPorCobrarSql = `${condicionPagoSql} IN ('PORCOBRAR', 'PORPAGAR')`;
+
 // Calcula los KPI principales: encomiendas, boletos, entregas, SUNAT y ventas.
 const obtenerResumenDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
@@ -329,12 +332,16 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
   let filtroAgenciaOrigen = '';
   let filtroAgenciaDestino = 'AND FALSE';
   let filtroMontoTotal = 'TRUE';
+  let filtroEfectivoAgencia = "TRUE";
+  let filtroPendienteCobroEntrega = "TRUE";
 
   if (filtro.id_punto_venta) {
     params.push(filtro.id_punto_venta);
     filtroAgenciaOrigen = `AND tv.id_punto_venta = $${params.length}`;
     filtroAgenciaDestino = `AND tv.id_punto_venta_dest = $${params.length}`;
     filtroMontoTotal = `tv.id_punto_venta = $${params.length}`;
+    filtroEfectivoAgencia = `(tv.id_punto_venta = $${params.length} OR (tv.entrega_fecha IS NOT NULL AND tv.id_punto_venta_dest = $${params.length}))`;
+    filtroPendienteCobroEntrega = `tv.id_punto_venta_dest = $${params.length}`;
   }
 
   const result = await pool.query(`
@@ -363,19 +370,26 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
       COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (WHERE ${filtroMontoTotal}), 0)::numeric AS monto_total,
       COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (
         WHERE tv.tipo_operacion = 'E'
+          AND ${condicionPorCobrarSql}
+          AND tv.entrega_fecha IS NULL
+          AND ${filtroPendienteCobroEntrega}
+      ), 0)::numeric AS monto_por_cobrar_pendiente_entrega,
+      COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (
+        WHERE tv.tipo_operacion = 'E'
+          AND NOT (${condicionPorCobrarSql})
           ${filtroAgenciaOrigen}
       ), 0)::numeric AS monto_efectivo_origen_agencia,
       COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (
         WHERE tv.tipo_operacion = 'E'
+          AND ${condicionPorCobrarSql}
           AND tv.entrega_fecha IS NOT NULL
+          AND FALSE
           ${filtroAgenciaDestino}
       ), 0)::numeric AS monto_efectivo_destino_entregado,
       COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)) FILTER (
         WHERE tv.tipo_operacion = 'E'
-          AND (
-            (TRUE ${filtroAgenciaOrigen})
-            OR (tv.entrega_fecha IS NOT NULL ${filtroAgenciaDestino})
-          )
+          AND ${filtroEfectivoAgencia}
+          AND NOT (${condicionPorCobrarSql})
       ), 0)::numeric AS monto_efectivo_agencia
     FROM base tv
   `, params);
@@ -397,6 +411,8 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
     monto_efectivo_destino_entregado: Number(row.monto_efectivo_destino_entregado || 0),
     monto_efectivo_cancelado_agencia: Number(row.monto_efectivo_origen_agencia || 0),
     monto_efectivo_porpagar_entregado: Number(row.monto_efectivo_destino_entregado || 0),
+    monto_por_cobrar: Number(row.monto_por_cobrar_pendiente_entrega || 0),
+    monto_por_cobrar_pendiente_entrega: Number(row.monto_por_cobrar_pendiente_entrega || 0),
     monto_efectivo_agencia: Number(row.monto_efectivo_agencia || 0),
     monto_boletos: Number(row.monto_boletos || 0),
     monto_total: Number(row.monto_total || 0),
@@ -635,6 +651,7 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
         COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto
       FROM ventas tv
       WHERE tv.id_punto_venta = pv.id_punto_venta
+        AND NOT (${condicionPorCobrarSql})
     ) origen ON TRUE
     LEFT JOIN LATERAL (
       SELECT
@@ -642,7 +659,8 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
         COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto
       FROM ventas tv
       WHERE tv.id_punto_venta_dest = pv.id_punto_venta
-        AND tv.entrega_fecha IS NOT NULL
+        AND ${condicionPorCobrarSql}
+        AND FALSE
     ) destino ON TRUE
     WHERE pv.id_usuario = $2
       AND pv.documento_id = $3
