@@ -317,7 +317,7 @@ const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta }) => 
 };
 
 const condicionPagoSql = "COALESCE(NULLIF(REGEXP_REPLACE(UPPER(COALESCE(tv.condicion_pago, '')), '[^A-Z]', '', 'g'), ''), 'PAGADO')";
-const condicionPorCobrarSql = `${condicionPagoSql} IN ('PORCOBRAR', 'PORPAGAR')`;
+const condicionPorCobrarSql = `${condicionPagoSql} = 'PORCOBRAR'`;
 
 // Calcula los KPI principales: encomiendas, boletos, entregas, SUNAT y ventas.
 const obtenerResumenDashboardTransporteData = async (filtro) => {
@@ -639,11 +639,20 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
     SELECT
       pv.id_punto_venta,
       pv.nombre AS agencia,
-      COALESCE(origen.encomiendas, 0)::integer AS encomiendas_facturadas,
-      COALESCE(origen.monto, 0)::numeric AS monto_facturado,
-      COALESCE(destino.encomiendas, 0)::integer AS encomiendas_destino_entregadas,
-      COALESCE(destino.monto, 0)::numeric AS monto_destino_entregado,
-      (COALESCE(origen.monto, 0) + COALESCE(destino.monto, 0))::numeric AS monto_efectivo
+      COALESCE(origen_total.encomiendas, 0)::integer AS encomiendas_facturadas,
+      COALESCE(origen_total.monto, 0)::numeric AS monto_facturado,
+      COALESCE(por_pagar.encomiendas, 0)::integer AS encomiendas_por_pagar,
+      COALESCE(por_pagar.monto, 0)::numeric AS monto_por_pagar,
+      COALESCE(salidas.encomiendas, 0)::integer AS encomiendas_salidas_dinero,
+      COALESCE(salidas.monto, 0)::numeric AS monto_salidas_dinero,
+      GREATEST(
+        COALESCE(origen_total.monto, 0) - COALESCE(por_pagar.monto, 0) - COALESCE(salidas.monto, 0),
+        0
+      )::numeric AS monto_recaudado,
+      GREATEST(
+        COALESCE(origen_total.monto, 0) - COALESCE(por_pagar.monto, 0) - COALESCE(salidas.monto, 0),
+        0
+      )::numeric AS monto_efectivo
     FROM mad_punto_venta pv
     LEFT JOIN LATERAL (
       SELECT
@@ -651,17 +660,25 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
         COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto
       FROM ventas tv
       WHERE tv.id_punto_venta = pv.id_punto_venta
-        AND NOT (${condicionPorCobrarSql})
-    ) origen ON TRUE
+    ) origen_total ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS encomiendas,
+        COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto
+      FROM ventas tv
+      WHERE tv.id_punto_venta = pv.id_punto_venta
+        AND ${condicionPorCobrarSql}
+        AND tv.entrega_fecha IS NULL
+    ) por_pagar ON TRUE
     LEFT JOIN LATERAL (
       SELECT
         COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS encomiendas,
         COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto
       FROM ventas tv
       WHERE tv.id_punto_venta_dest = pv.id_punto_venta
-        AND ${condicionPorCobrarSql}
+        AND tv.entrega_fecha IS NOT NULL
         AND FALSE
-    ) destino ON TRUE
+    ) salidas ON TRUE
     WHERE pv.id_usuario = $2
       AND pv.documento_id = $3
       AND pv.activo = TRUE
@@ -673,8 +690,13 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
     agencia: item.agencia,
     encomiendas_facturadas: Number(item.encomiendas_facturadas || 0),
     monto_facturado: Number(item.monto_facturado || 0),
-    encomiendas_destino_entregadas: Number(item.encomiendas_destino_entregadas || 0),
-    monto_destino_entregado: Number(item.monto_destino_entregado || 0),
+    encomiendas_por_pagar: Number(item.encomiendas_por_pagar || 0),
+    monto_por_pagar: Number(item.monto_por_pagar || 0),
+    encomiendas_salidas_dinero: Number(item.encomiendas_salidas_dinero || 0),
+    monto_salidas_dinero: Number(item.monto_salidas_dinero || 0),
+    encomiendas_destino_entregadas: Number(item.encomiendas_salidas_dinero || 0),
+    monto_destino_entregado: Number(item.monto_salidas_dinero || 0),
+    monto_recaudado: Number(item.monto_recaudado || 0),
     monto_efectivo: Number(item.monto_efectivo || 0),
   }));
 };
