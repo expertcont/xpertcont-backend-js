@@ -278,8 +278,21 @@ const calcularTributosTransporte = ({
   };
 };
 
-// Lee los parametros comunes del dashboard.
-// Se permite consultar todo el periodo o un dia puntual con ?fecha=YYYY-MM-DD.
+// ------------------------------------------------------------
+// DASHBOARD TRANSPORTE
+// ------------------------------------------------------------
+// Objetivo:
+//   Controlar caja y movimiento de encomiendas/boletos por periodo,
+//   dia, agencia/punto de venta y usuario que registro la operacion.
+//
+// Reglas principales:
+//   - Anfitrion y superusuario pueden ver toda la empresa.
+//   - Invitado normal solo ve sus puntos de venta permitidos.
+//   - El usuario operativo se toma de mve_transventa.ctrl_crea_us.
+//   - Dia "*" significa todo el periodo; fecha puntual usa YYYY-MM-DD.
+// ------------------------------------------------------------
+
+// Lee los parametros comunes enviados por el frontend del dashboard.
 const resolverFiltroDashboardTransporte = (req) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
   const fecha = req.query.fecha || (dia && dia !== '*' ? `${periodo}-${String(dia).padStart(2, '0')}` : null);
@@ -308,6 +321,8 @@ const validarFiltroDashboardTransporte = ({ periodo, id_anfitrion, documento_id 
   periodo && id_anfitrion && documento_id
 );
 
+// Condicion reutilizable para validar si el invitado esta dentro de
+// alguno de sus turnos activos en mad_punto_venta_usuario.
 const condicionTurnoPuntoVentaUsuario = `
   (
     (
@@ -364,6 +379,9 @@ const condicionTurnoPuntoVentaUsuario = `
   )
 `;
 
+// Devuelve los puntos de venta vigentes para un invitado convencional.
+// Si el usuario no tiene punto activo/turno vigente, el dashboard queda
+// sin datos para evitar mezclar caja con otras agencias.
 const obtenerPuntosVentaDashboardUsuario = async ({ id_anfitrion, documento_id, id_invitado }) => {
   if (!id_anfitrion || !documento_id || !id_invitado) {
     return [];
@@ -388,6 +406,8 @@ const obtenerPuntosVentaDashboardUsuario = async ({ id_anfitrion, documento_id, 
   return result.rows.map((item) => item.id_punto_venta).filter(Boolean);
 };
 
+// Resuelve el alcance real del dashboard antes de consultar indicadores.
+// Aqui se decide si el filtro es global, por agencia o por lista de agencias.
 const resolverAccesoDashboardTransporte = async (filtro) => {
   if (!filtro.id_invitado || filtro.id_anfitrion === filtro.id_invitado) {
     return {
@@ -438,6 +458,7 @@ const resolverAccesoDashboardTransporte = async (filtro) => {
 };
 
 // Agrega filtros opcionales reutilizables sin duplicar SQL en cada indicador.
+// id_usuario_operacion corresponde al correo guardado en ctrl_crea_us.
 const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta, id_puntos_venta, id_usuario_operacion }) => {
   const filtros = [];
 
@@ -467,7 +488,9 @@ const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta, id_pu
 const condicionPagoSql = "COALESCE(NULLIF(REGEXP_REPLACE(UPPER(COALESCE(tv.condicion_pago, '')), '[^A-Z]', '', 'g'), ''), 'PAGADO')";
 const condicionPorCobrarSql = `${condicionPagoSql} = 'PORCOBRAR'`;
 
-// Calcula los KPI principales: encomiendas, boletos, entregas, SUNAT y ventas.
+// Calcula los KPI principales de caja:
+// encomiendas, boletos, entregas, SUNAT pendiente y montos.
+// Cuando se filtra por agencia, separa origen/destino para no duplicar caja.
 const obtenerResumenDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
   const filtros = [];
@@ -582,6 +605,7 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
 };
 
 // Agrupa documentos por franjas de 2 horas para medir productividad del turno.
+// Sirve para ver en que hora se concentro la emision del dia.
 const obtenerProductividadDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
   const filtros = agregarFiltroDashboardTransporte({
@@ -630,7 +654,8 @@ const obtenerProductividadDashboardTransporteData = async (filtro) => {
   });
 };
 
-// Resume el estado tributario de boletas de transporte listas o pendientes para SUNAT.
+// Resume el estado tributario de boletas de transporte listas o pendientes
+// para el resumen diario SUNAT.
 const obtenerSunatDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
   const filtros = agregarFiltroDashboardTransporte({
@@ -800,7 +825,9 @@ const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtr
   });
 };
 
-// Recaudacion por cada agencia registrada.
+// Recaudacion por agencia.
+// En vista global lista todas las agencias activas; al filtrar por una agencia
+// muestra solo esa caja. En invitado normal respeta sus agencias permitidas.
 const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
   const filtrosFecha = [];
@@ -902,6 +929,9 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
   }));
 };
 
+// Lista los usuarios que registraron movimiento en el filtro actual.
+// La fuente oficial del usuario operativo es mve_transventa.ctrl_crea_us.
+// Por ahora el nombre mostrado es el mismo correo, sin depender de mad_usuario.
 const obtenerUsuariosDashboardTransporteData = async (filtroFinal) => {
   if (!filtroFinal.acceso_total) {
     return [{
@@ -1096,7 +1126,10 @@ const obtenerComparativoMensualEncomiendasDashboardTransporte = async (req, res)
   }
 };
 
-// Endpoint principal: devuelve todos los datos que necesita el dashboard en una sola llamada.
+// Endpoint principal.
+// Devuelve todos los bloques que necesita la pantalla en una sola llamada:
+// filtros aplicados, resumen, productividad, SUNAT, rutas, comparativo,
+// recaudacion y usuarios de trabajo.
 const obtenerDashboardTransporte = async (req, res) => {
   const filtro = resolverFiltroDashboardTransporte(req);
 
