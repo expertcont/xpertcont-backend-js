@@ -284,6 +284,8 @@ const resolverFiltroDashboardTransporte = (req) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
   const fecha = req.query.fecha || (dia && dia !== '*' ? `${periodo}-${String(dia).padStart(2, '0')}` : null);
   const idPuntoVenta = req.query.id_punto_venta || null;
+  const idInvitado = req.query.id_invitado || null;
+  const superUsuario = req.query.super_usuario || req.query.super || null;
 
   return {
     periodo,
@@ -291,6 +293,10 @@ const resolverFiltroDashboardTransporte = (req) => {
     documento_id,
     fecha,
     id_punto_venta: idPuntoVenta,
+    id_invitado: idInvitado,
+    super_usuario: superUsuario,
+    acceso_total: !idInvitado || id_anfitrion === idInvitado || String(superUsuario) === '1',
+    id_usuario_operacion: null,
   };
 };
 
@@ -299,8 +305,132 @@ const validarFiltroDashboardTransporte = ({ periodo, id_anfitrion, documento_id 
   periodo && id_anfitrion && documento_id
 );
 
+const condicionTurnoPuntoVentaUsuario = `
+  (
+    (
+      pvu.turno1_inicio IS NOT NULL
+      AND pvu.turno1_fin IS NOT NULL
+      AND (
+        (
+          pvu.turno1_inicio <= pvu.turno1_fin
+          AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno1_inicio AND pvu.turno1_fin
+        )
+        OR (
+          pvu.turno1_inicio > pvu.turno1_fin
+          AND (
+            (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno1_inicio
+            OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno1_fin
+          )
+        )
+      )
+    )
+    OR (
+      pvu.turno2_inicio IS NOT NULL
+      AND pvu.turno2_fin IS NOT NULL
+      AND (
+        (
+          pvu.turno2_inicio <= pvu.turno2_fin
+          AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno2_inicio AND pvu.turno2_fin
+        )
+        OR (
+          pvu.turno2_inicio > pvu.turno2_fin
+          AND (
+            (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno2_inicio
+            OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno2_fin
+          )
+        )
+      )
+    )
+    OR (
+      pvu.turno3_inicio IS NOT NULL
+      AND pvu.turno3_fin IS NOT NULL
+      AND (
+        (
+          pvu.turno3_inicio <= pvu.turno3_fin
+          AND (now() AT TIME ZONE 'America/Lima')::time BETWEEN pvu.turno3_inicio AND pvu.turno3_fin
+        )
+        OR (
+          pvu.turno3_inicio > pvu.turno3_fin
+          AND (
+            (now() AT TIME ZONE 'America/Lima')::time >= pvu.turno3_inicio
+            OR (now() AT TIME ZONE 'America/Lima')::time <= pvu.turno3_fin
+          )
+        )
+      )
+    )
+  )
+`;
+
+const obtenerPuntosVentaDashboardUsuario = async ({ id_anfitrion, documento_id, id_invitado }) => {
+  if (!id_anfitrion || !documento_id || !id_invitado) {
+    return [];
+  }
+
+  const result = await pool.query(`
+    SELECT pvu.id_punto_venta
+      FROM mad_punto_venta_usuario pvu
+      JOIN mad_punto_venta pv
+        ON pv.id_usuario = pvu.id_usuario
+       AND pv.documento_id = pvu.documento_id
+       AND pv.id_punto_venta = pvu.id_punto_venta
+     WHERE pvu.id_usuario = $1
+       AND pvu.documento_id = $2
+       AND pvu.id_invitado = $3
+       AND pvu.activo = TRUE
+       AND pv.activo = TRUE
+       AND (pvu.sin_restriccion = TRUE OR ${condicionTurnoPuntoVentaUsuario})
+     ORDER BY pv.nombre, pv.id_punto_venta
+  `, [id_anfitrion, documento_id, id_invitado]);
+
+  return result.rows.map((item) => item.id_punto_venta).filter(Boolean);
+};
+
+const resolverAccesoDashboardTransporte = async (filtro) => {
+  if (!filtro.id_invitado || filtro.id_anfitrion === filtro.id_invitado) {
+    return {
+      ...filtro,
+      acceso_total: true,
+      id_usuario_operacion: null,
+    };
+  }
+
+  if (String(filtro.super_usuario) === '1') {
+    return {
+      ...filtro,
+      acceso_total: true,
+      id_usuario_operacion: null,
+    };
+  }
+
+  const superQuery = await pool.query(
+    "SELECT 1 FROM mad_usuario WHERE id_usuario = $1 AND super = '1' LIMIT 1",
+    [filtro.id_invitado]
+  );
+
+  if (superQuery.rows.length > 0) {
+    return {
+      ...filtro,
+      acceso_total: true,
+      id_usuario_operacion: null,
+    };
+  }
+
+  const puntosVentaPermitidos = await obtenerPuntosVentaDashboardUsuario(filtro);
+  const idPuntoVenta = puntosVentaPermitidos.includes(filtro.id_punto_venta)
+    ? filtro.id_punto_venta
+    : puntosVentaPermitidos[0] || '__SIN_PUNTO_VENTA__';
+
+  return {
+    ...filtro,
+    acceso_total: false,
+    id_punto_venta: idPuntoVenta || null,
+    id_usuario_operacion: filtro.id_invitado,
+    puntos_venta_permitidos: puntosVentaPermitidos,
+  };
+};
+
 // Agrega filtros opcionales reutilizables sin duplicar SQL en cada indicador.
-const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta }) => {
+const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta, id_usuario_operacion }) => {
   const filtros = [];
 
   if (fecha) {
@@ -311,6 +441,11 @@ const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta }) => 
   if (id_punto_venta) {
     params.push(id_punto_venta);
     filtros.push(`AND tv.id_punto_venta = $${params.length}`);
+  }
+
+  if (id_usuario_operacion) {
+    params.push(id_usuario_operacion);
+    filtros.push(`AND tv.ctrl_crea_us = $${params.length}`);
   }
 
   return filtros.join('\n');
@@ -327,6 +462,11 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
   if (filtro.fecha) {
     params.push(filtro.fecha);
     filtros.push(`AND tv.r_fecemi = $${params.length}::date`);
+  }
+
+  if (filtro.id_usuario_operacion) {
+    params.push(filtro.id_usuario_operacion);
+    filtros.push(`AND tv.ctrl_crea_us = $${params.length}`);
   }
 
   let filtroAgenciaOrigen = '';
@@ -426,6 +566,7 @@ const obtenerProductividadDashboardTransporteData = async (filtro) => {
     params,
     fecha: filtro.fecha,
     id_punto_venta: filtro.id_punto_venta,
+    id_usuario_operacion: filtro.id_usuario_operacion,
   });
 
   const result = await pool.query(`
@@ -473,6 +614,7 @@ const obtenerSunatDashboardTransporteData = async (filtro) => {
     params,
     fecha: filtro.fecha,
     id_punto_venta: filtro.id_punto_venta,
+    id_usuario_operacion: filtro.id_usuario_operacion,
   });
 
   const result = await pool.query(`
@@ -513,6 +655,7 @@ const obtenerRutasDashboardTransporteData = async (filtro) => {
     params,
     fecha: filtro.fecha,
     id_punto_venta: filtro.id_punto_venta,
+    id_usuario_operacion: filtro.id_usuario_operacion,
   });
 
   const result = await pool.query(`
@@ -573,9 +716,16 @@ const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtr
     puntoVentaParam = params.length;
   }
 
+  let usuarioOperacionParam = null;
+  if (filtro.id_usuario_operacion) {
+    params.push(filtro.id_usuario_operacion);
+    usuarioOperacionParam = params.length;
+  }
+
   const query = periodos.map((_, index) => {
     const periodoParam = index + 3;
     const filtroPuntoVenta = puntoVentaParam ? `AND tv.id_punto_venta = $${puntoVentaParam}` : '';
+    const filtroUsuarioOperacion = usuarioOperacionParam ? `AND tv.ctrl_crea_us = $${usuarioOperacionParam}` : '';
 
     return `
       SELECT
@@ -588,6 +738,7 @@ const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtr
         AND tv.documento_id = $2
         AND tv.tipo_operacion = 'E'
         ${filtroPuntoVenta}
+        ${filtroUsuarioOperacion}
     `;
   }).join('\nUNION ALL\n');
 
@@ -624,6 +775,17 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
   if (filtro.fecha) {
     params.push(filtro.fecha);
     filtrosFecha.push(`AND tv.r_fecemi = $${params.length}::date`);
+  }
+
+  if (filtro.id_usuario_operacion) {
+    params.push(filtro.id_usuario_operacion);
+    filtrosFecha.push(`AND tv.ctrl_crea_us = $${params.length}`);
+  }
+
+  const filtrosPuntoVenta = [];
+  if (filtro.id_punto_venta) {
+    params.push(filtro.id_punto_venta);
+    filtrosPuntoVenta.push(`AND pv.id_punto_venta = $${params.length}`);
   }
 
   const result = await pool.query(`
@@ -682,6 +844,7 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
     WHERE pv.id_usuario = $2
       AND pv.documento_id = $3
       AND pv.activo = TRUE
+      ${filtrosPuntoVenta.join('\n')}
     ORDER BY monto_efectivo DESC, monto_facturado DESC, pv.nombre
   `, params);
 
@@ -713,7 +876,8 @@ const obtenerResumenDashboardTransporte = async (req, res) => {
   }
 
   try {
-    const data = await obtenerResumenDashboardTransporteData(filtro);
+    const filtroFinal = await resolverAccesoDashboardTransporte(filtro);
+    const data = await obtenerResumenDashboardTransporteData(filtroFinal);
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error al obtener resumen del dashboard de transporte:', error);
@@ -736,7 +900,8 @@ const obtenerProductividadDashboardTransporte = async (req, res) => {
   }
 
   try {
-    const data = await obtenerProductividadDashboardTransporteData(filtro);
+    const filtroFinal = await resolverAccesoDashboardTransporte(filtro);
+    const data = await obtenerProductividadDashboardTransporteData(filtroFinal);
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error al obtener productividad del dashboard de transporte:', error);
@@ -759,7 +924,8 @@ const obtenerSunatDashboardTransporte = async (req, res) => {
   }
 
   try {
-    const data = await obtenerSunatDashboardTransporteData(filtro);
+    const filtroFinal = await resolverAccesoDashboardTransporte(filtro);
+    const data = await obtenerSunatDashboardTransporteData(filtroFinal);
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error al obtener SUNAT del dashboard de transporte:', error);
@@ -782,7 +948,8 @@ const obtenerRutasDashboardTransporte = async (req, res) => {
   }
 
   try {
-    const data = await obtenerRutasDashboardTransporteData(filtro);
+    const filtroFinal = await resolverAccesoDashboardTransporte(filtro);
+    const data = await obtenerRutasDashboardTransporteData(filtroFinal);
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error al obtener rutas del dashboard de transporte:', error);
@@ -805,7 +972,8 @@ const obtenerComparativoMensualEncomiendasDashboardTransporte = async (req, res)
   }
 
   try {
-    const data = await obtenerComparativoMensualEncomiendasDashboardTransporteData(filtro);
+    const filtroFinal = await resolverAccesoDashboardTransporte(filtro);
+    const data = await obtenerComparativoMensualEncomiendasDashboardTransporteData(filtroFinal);
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error al obtener comparativo mensual del dashboard de transporte:', error);
@@ -828,19 +996,20 @@ const obtenerDashboardTransporte = async (req, res) => {
   }
 
   try {
+    const filtroFinal = await resolverAccesoDashboardTransporte(filtro);
     const [resumen, productividad, sunat, rutas, comparativoMensual, recaudacionAgencias] = await Promise.all([
-      obtenerResumenDashboardTransporteData(filtro),
-      obtenerProductividadDashboardTransporteData(filtro),
-      obtenerSunatDashboardTransporteData(filtro),
-      obtenerRutasDashboardTransporteData(filtro),
-      obtenerComparativoMensualEncomiendasDashboardTransporteData(filtro),
-      obtenerRecaudacionAgenciasDashboardTransporteData(filtro),
+      obtenerResumenDashboardTransporteData(filtroFinal),
+      obtenerProductividadDashboardTransporteData(filtroFinal),
+      obtenerSunatDashboardTransporteData(filtroFinal),
+      obtenerRutasDashboardTransporteData(filtroFinal),
+      obtenerComparativoMensualEncomiendasDashboardTransporteData(filtroFinal),
+      obtenerRecaudacionAgenciasDashboardTransporteData(filtroFinal),
     ]);
 
     return res.status(200).json({
       success: true,
       data: {
-        filtros: filtro,
+        filtros: filtroFinal,
         resumen,
         productividad,
         sunat,

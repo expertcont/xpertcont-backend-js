@@ -42,6 +42,11 @@ router.get(
   obtenerDashboardTransporte
 );
 
+router.get(
+  '/mve_transventa/dashboard/:periodo/:id_anfitrion/:documento_id/:dia',
+  obtenerDashboardTransporte
+);
+
 // Endpoints por bloque: utiles para probar cada seccion del dashboard por separado.
 router.get(
   '/mve_transventa/dashboard/resumen/:periodo/:id_anfitrion/:documento_id',
