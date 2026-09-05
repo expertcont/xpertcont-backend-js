@@ -927,19 +927,17 @@ const obtenerUsuariosDashboardTransporteData = async (filtroFinal) => {
 
   const result = await pool.query(`
     SELECT tv.ctrl_crea_us AS id_usuario,
-           COALESCE(NULLIF(mu.nombre, ''), tv.ctrl_crea_us) AS nombre,
+           tv.ctrl_crea_us AS nombre,
            COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS documentos,
            COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto_total
       FROM mve_transventa tv
-      LEFT JOIN mad_usuario mu
-        ON mu.id_usuario = tv.ctrl_crea_us
      WHERE tv.periodo = $1
        AND tv.id_usuario = $2
        AND tv.documento_id = $3
        AND tv.tipo_operacion IN ('B', 'E')
        AND COALESCE(tv.ctrl_crea_us, '') <> ''
        ${filtros}
-     GROUP BY tv.ctrl_crea_us, COALESCE(NULLIF(mu.nombre, ''), tv.ctrl_crea_us)
+     GROUP BY tv.ctrl_crea_us
      ORDER BY nombre, id_usuario
   `, params);
 
