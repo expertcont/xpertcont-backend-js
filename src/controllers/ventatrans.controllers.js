@@ -297,6 +297,7 @@ const resolverFiltroDashboardTransporte = (req) => {
     super_usuario: superUsuario,
     acceso_total: !idInvitado || id_anfitrion === idInvitado || String(superUsuario) === '1',
     id_usuario_operacion: null,
+    id_puntos_venta: null,
   };
 };
 
@@ -391,6 +392,7 @@ const resolverAccesoDashboardTransporte = async (filtro) => {
       ...filtro,
       acceso_total: true,
       id_usuario_operacion: null,
+      id_puntos_venta: null,
     };
   }
 
@@ -399,6 +401,7 @@ const resolverAccesoDashboardTransporte = async (filtro) => {
       ...filtro,
       acceso_total: true,
       id_usuario_operacion: null,
+      id_puntos_venta: null,
     };
   }
 
@@ -412,25 +415,28 @@ const resolverAccesoDashboardTransporte = async (filtro) => {
       ...filtro,
       acceso_total: true,
       id_usuario_operacion: null,
+      id_puntos_venta: null,
     };
   }
 
   const puntosVentaPermitidos = await obtenerPuntosVentaDashboardUsuario(filtro);
-  const idPuntoVenta = puntosVentaPermitidos.includes(filtro.id_punto_venta)
+  const idPuntoVenta = filtro.id_punto_venta && puntosVentaPermitidos.includes(filtro.id_punto_venta)
     ? filtro.id_punto_venta
-    : puntosVentaPermitidos[0] || '__SIN_PUNTO_VENTA__';
+    : null;
+  const puntosVentaFiltro = idPuntoVenta ? null : (puntosVentaPermitidos.length > 0 ? puntosVentaPermitidos : ['__SIN_PUNTO_VENTA__']);
 
   return {
     ...filtro,
     acceso_total: false,
-    id_punto_venta: idPuntoVenta || null,
+    id_punto_venta: idPuntoVenta,
+    id_puntos_venta: puntosVentaFiltro,
     id_usuario_operacion: filtro.id_invitado,
     puntos_venta_permitidos: puntosVentaPermitidos,
   };
 };
 
 // Agrega filtros opcionales reutilizables sin duplicar SQL en cada indicador.
-const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta, id_usuario_operacion }) => {
+const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta, id_puntos_venta, id_usuario_operacion }) => {
   const filtros = [];
 
   if (fecha) {
@@ -441,6 +447,11 @@ const agregarFiltroDashboardTransporte = ({ params, fecha, id_punto_venta, id_us
   if (id_punto_venta) {
     params.push(id_punto_venta);
     filtros.push(`AND tv.id_punto_venta = $${params.length}`);
+  }
+
+  if (Array.isArray(id_puntos_venta) && id_puntos_venta.length > 0) {
+    params.push(id_puntos_venta);
+    filtros.push(`AND tv.id_punto_venta = ANY($${params.length}::varchar[])`);
   }
 
   if (id_usuario_operacion) {
@@ -482,6 +493,15 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
     filtroMontoTotal = `tv.id_punto_venta = $${params.length}`;
     filtroEfectivoAgencia = `(tv.id_punto_venta = $${params.length} OR (tv.entrega_fecha IS NOT NULL AND tv.id_punto_venta_dest = $${params.length}))`;
     filtroPendienteCobroEntrega = `tv.id_punto_venta_dest = $${params.length}`;
+  }
+
+  if (Array.isArray(filtro.id_puntos_venta) && filtro.id_puntos_venta.length > 0) {
+    params.push(filtro.id_puntos_venta);
+    filtroAgenciaOrigen = `AND tv.id_punto_venta = ANY($${params.length}::varchar[])`;
+    filtroAgenciaDestino = `AND tv.id_punto_venta_dest = ANY($${params.length}::varchar[])`;
+    filtroMontoTotal = `tv.id_punto_venta = ANY($${params.length}::varchar[])`;
+    filtroEfectivoAgencia = `(tv.id_punto_venta = ANY($${params.length}::varchar[]) OR (tv.entrega_fecha IS NOT NULL AND tv.id_punto_venta_dest = ANY($${params.length}::varchar[])))`;
+    filtroPendienteCobroEntrega = `tv.id_punto_venta_dest = ANY($${params.length}::varchar[])`;
   }
 
   const result = await pool.query(`
@@ -566,6 +586,7 @@ const obtenerProductividadDashboardTransporteData = async (filtro) => {
     params,
     fecha: filtro.fecha,
     id_punto_venta: filtro.id_punto_venta,
+    id_puntos_venta: filtro.id_puntos_venta,
     id_usuario_operacion: filtro.id_usuario_operacion,
   });
 
@@ -614,6 +635,7 @@ const obtenerSunatDashboardTransporteData = async (filtro) => {
     params,
     fecha: filtro.fecha,
     id_punto_venta: filtro.id_punto_venta,
+    id_puntos_venta: filtro.id_puntos_venta,
     id_usuario_operacion: filtro.id_usuario_operacion,
   });
 
@@ -655,6 +677,7 @@ const obtenerRutasDashboardTransporteData = async (filtro) => {
     params,
     fecha: filtro.fecha,
     id_punto_venta: filtro.id_punto_venta,
+    id_puntos_venta: filtro.id_puntos_venta,
     id_usuario_operacion: filtro.id_usuario_operacion,
   });
 
@@ -716,6 +739,12 @@ const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtr
     puntoVentaParam = params.length;
   }
 
+  let puntosVentaParam = null;
+  if (Array.isArray(filtro.id_puntos_venta) && filtro.id_puntos_venta.length > 0) {
+    params.push(filtro.id_puntos_venta);
+    puntosVentaParam = params.length;
+  }
+
   let usuarioOperacionParam = null;
   if (filtro.id_usuario_operacion) {
     params.push(filtro.id_usuario_operacion);
@@ -725,6 +754,7 @@ const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtr
   const query = periodos.map((_, index) => {
     const periodoParam = index + 3;
     const filtroPuntoVenta = puntoVentaParam ? `AND tv.id_punto_venta = $${puntoVentaParam}` : '';
+    const filtroPuntosVenta = puntosVentaParam ? `AND tv.id_punto_venta = ANY($${puntosVentaParam}::varchar[])` : '';
     const filtroUsuarioOperacion = usuarioOperacionParam ? `AND tv.ctrl_crea_us = $${usuarioOperacionParam}` : '';
 
     return `
@@ -738,6 +768,7 @@ const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtr
         AND tv.documento_id = $2
         AND tv.tipo_operacion = 'E'
         ${filtroPuntoVenta}
+        ${filtroPuntosVenta}
         ${filtroUsuarioOperacion}
     `;
   }).join('\nUNION ALL\n');
@@ -786,6 +817,11 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
   if (filtro.id_punto_venta) {
     params.push(filtro.id_punto_venta);
     filtrosPuntoVenta.push(`AND pv.id_punto_venta = $${params.length}`);
+  }
+
+  if (Array.isArray(filtro.id_puntos_venta) && filtro.id_puntos_venta.length > 0) {
+    params.push(filtro.id_puntos_venta);
+    filtrosPuntoVenta.push(`AND pv.id_punto_venta = ANY($${params.length}::varchar[])`);
   }
 
   const result = await pool.query(`
