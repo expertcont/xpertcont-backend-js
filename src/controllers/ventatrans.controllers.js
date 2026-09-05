@@ -902,6 +902,55 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
   }));
 };
 
+const obtenerUsuariosDashboardTransporteData = async (filtroFinal) => {
+  if (!filtroFinal.acceso_total) {
+    return [{
+      id_usuario: filtroFinal.id_invitado,
+      nombre: filtroFinal.id_invitado,
+      documentos: 0,
+      monto_total: 0,
+    }];
+  }
+
+  const filtroUsuarios = {
+    ...filtroFinal,
+    id_usuario_operacion: null,
+  };
+
+  const params = [filtroUsuarios.periodo, filtroUsuarios.id_anfitrion, filtroUsuarios.documento_id];
+  const filtros = agregarFiltroDashboardTransporte({
+    params,
+    fecha: filtroUsuarios.fecha,
+    id_punto_venta: filtroUsuarios.id_punto_venta,
+    id_puntos_venta: filtroUsuarios.id_puntos_venta,
+  });
+
+  const result = await pool.query(`
+    SELECT tv.ctrl_crea_us AS id_usuario,
+           COALESCE(NULLIF(mu.nombre, ''), tv.ctrl_crea_us) AS nombre,
+           COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS documentos,
+           COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto_total
+      FROM mve_transventa tv
+      LEFT JOIN mad_usuario mu
+        ON mu.id_usuario = tv.ctrl_crea_us
+     WHERE tv.periodo = $1
+       AND tv.id_usuario = $2
+       AND tv.documento_id = $3
+       AND tv.tipo_operacion IN ('B', 'E')
+       AND COALESCE(tv.ctrl_crea_us, '') <> ''
+       ${filtros}
+     GROUP BY tv.ctrl_crea_us, COALESCE(NULLIF(mu.nombre, ''), tv.ctrl_crea_us)
+     ORDER BY nombre, id_usuario
+  `, params);
+
+  return result.rows.map((item) => ({
+    id_usuario: item.id_usuario,
+    nombre: item.nombre,
+    documentos: Number(item.documentos || 0),
+    monto_total: Number(item.monto_total || 0),
+  }));
+};
+
 const obtenerUsuariosDashboardTransporte = async (req, res) => {
   const filtro = resolverFiltroDashboardTransporte(req);
 
@@ -917,54 +966,9 @@ const obtenerUsuariosDashboardTransporte = async (req, res) => {
       ...filtro,
       id_usuario_trabajo: null,
     });
+    const data = await obtenerUsuariosDashboardTransporteData(filtroFinal);
 
-    if (!filtroFinal.acceso_total) {
-      return res.status(200).json({
-        success: true,
-        data: [{
-          id_usuario: filtroFinal.id_invitado,
-          nombre: filtroFinal.id_invitado,
-          documentos: 0,
-          monto_total: 0,
-        }]
-      });
-    }
-
-    const params = [filtroFinal.periodo, filtroFinal.id_anfitrion, filtroFinal.documento_id];
-    const filtros = agregarFiltroDashboardTransporte({
-      params,
-      fecha: filtroFinal.fecha,
-      id_punto_venta: filtroFinal.id_punto_venta,
-      id_puntos_venta: filtroFinal.id_puntos_venta,
-    });
-
-    const result = await pool.query(`
-      SELECT tv.ctrl_crea_us AS id_usuario,
-             COALESCE(NULLIF(mu.nombre, ''), tv.ctrl_crea_us) AS nombre,
-             COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS documentos,
-             COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto_total
-        FROM mve_transventa tv
-        LEFT JOIN mad_usuario mu
-          ON mu.id_usuario = tv.ctrl_crea_us
-       WHERE tv.periodo = $1
-         AND tv.id_usuario = $2
-         AND tv.documento_id = $3
-         AND tv.tipo_operacion IN ('B', 'E')
-         AND COALESCE(tv.ctrl_crea_us, '') <> ''
-         ${filtros}
-       GROUP BY tv.ctrl_crea_us, COALESCE(NULLIF(mu.nombre, ''), tv.ctrl_crea_us)
-       ORDER BY nombre, id_usuario
-    `, params);
-
-    return res.status(200).json({
-      success: true,
-      data: result.rows.map((item) => ({
-        id_usuario: item.id_usuario,
-        nombre: item.nombre,
-        documentos: Number(item.documentos || 0),
-        monto_total: Number(item.monto_total || 0),
-      }))
-    });
+    return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error al obtener usuarios del dashboard de transporte:', error);
     return res.status(500).json({
@@ -1107,13 +1111,14 @@ const obtenerDashboardTransporte = async (req, res) => {
 
   try {
     const filtroFinal = await resolverAccesoDashboardTransporte(filtro);
-    const [resumen, productividad, sunat, rutas, comparativoMensual, recaudacionAgencias] = await Promise.all([
+    const [resumen, productividad, sunat, rutas, comparativoMensual, recaudacionAgencias, usuariosTrabajo] = await Promise.all([
       obtenerResumenDashboardTransporteData(filtroFinal),
       obtenerProductividadDashboardTransporteData(filtroFinal),
       obtenerSunatDashboardTransporteData(filtroFinal),
       obtenerRutasDashboardTransporteData(filtroFinal),
       obtenerComparativoMensualEncomiendasDashboardTransporteData(filtroFinal),
       obtenerRecaudacionAgenciasDashboardTransporteData(filtroFinal),
+      obtenerUsuariosDashboardTransporteData(filtroFinal),
     ]);
 
     return res.status(200).json({
@@ -1126,6 +1131,7 @@ const obtenerDashboardTransporte = async (req, res) => {
         rutas,
         comparativo_mensual_encomiendas: comparativoMensual,
         recaudacion_agencias: recaudacionAgencias,
+        usuarios_trabajo: usuariosTrabajo,
       }
     });
   } catch (error) {
