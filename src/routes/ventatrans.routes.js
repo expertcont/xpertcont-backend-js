@@ -15,6 +15,7 @@ const {
   obtenerSunatDashboardTransporte,
   obtenerRutasDashboardTransporte,
   obtenerComparativoMensualEncomiendasDashboardTransporte,
+  obtenerUsuariosDashboardTransporte,
   obtenerDashboardTransporte,
   generarCPEexpertcontTransporte,
   generarResumenCPEexpertcontTransporte,
@@ -34,17 +35,6 @@ router.get(
 router.get(
   '/mve_transventa/encomienda/por-entregar/:periodo/:id_anfitrion/:documento_id/:id_punto_venta_dest',
   listarEncomiendasPorEntregar
-);
-
-// Dashboard consolidado: una sola llamada para pintar todos los bloques.
-router.get(
-  '/mve_transventa/dashboard/:periodo/:id_anfitrion/:documento_id',
-  obtenerDashboardTransporte
-);
-
-router.get(
-  '/mve_transventa/dashboard/:periodo/:id_anfitrion/:documento_id/:dia',
-  obtenerDashboardTransporte
 );
 
 // Endpoints por bloque: utiles para probar cada seccion del dashboard por separado.
@@ -71,6 +61,22 @@ router.get(
 router.get(
   '/mve_transventa/dashboard/encomiendas-mensual/:periodo/:id_anfitrion/:documento_id',
   obtenerComparativoMensualEncomiendasDashboardTransporte
+);
+
+router.get(
+  '/mve_transventa/dashboard/usuarios/:periodo/:id_anfitrion/:documento_id',
+  obtenerUsuariosDashboardTransporte
+);
+
+// Dashboard consolidado: una sola llamada para pintar todos los bloques.
+router.get(
+  '/mve_transventa/dashboard/:periodo/:id_anfitrion/:documento_id',
+  obtenerDashboardTransporte
+);
+
+router.get(
+  '/mve_transventa/dashboard/:periodo/:id_anfitrion/:documento_id/:dia',
+  obtenerDashboardTransporte
 );
 
 router.get(

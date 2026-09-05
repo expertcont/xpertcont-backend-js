@@ -286,6 +286,7 @@ const resolverFiltroDashboardTransporte = (req) => {
   const idPuntoVenta = req.query.id_punto_venta || null;
   const idInvitado = req.query.id_invitado || null;
   const superUsuario = req.query.super_usuario || req.query.super || null;
+  const idUsuarioTrabajo = req.query.id_usuario_trabajo || req.query.id_usuario_operacion || null;
 
   return {
     periodo,
@@ -296,6 +297,7 @@ const resolverFiltroDashboardTransporte = (req) => {
     id_invitado: idInvitado,
     super_usuario: superUsuario,
     acceso_total: !idInvitado || id_anfitrion === idInvitado || String(superUsuario) === '1',
+    id_usuario_trabajo: idUsuarioTrabajo,
     id_usuario_operacion: null,
     id_puntos_venta: null,
   };
@@ -391,7 +393,7 @@ const resolverAccesoDashboardTransporte = async (filtro) => {
     return {
       ...filtro,
       acceso_total: true,
-      id_usuario_operacion: null,
+      id_usuario_operacion: filtro.id_usuario_trabajo || null,
       id_puntos_venta: null,
     };
   }
@@ -400,7 +402,7 @@ const resolverAccesoDashboardTransporte = async (filtro) => {
     return {
       ...filtro,
       acceso_total: true,
-      id_usuario_operacion: null,
+      id_usuario_operacion: filtro.id_usuario_trabajo || null,
       id_puntos_venta: null,
     };
   }
@@ -414,7 +416,7 @@ const resolverAccesoDashboardTransporte = async (filtro) => {
     return {
       ...filtro,
       acceso_total: true,
-      id_usuario_operacion: null,
+      id_usuario_operacion: filtro.id_usuario_trabajo || null,
       id_puntos_venta: null,
     };
   }
@@ -898,6 +900,78 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
     monto_recaudado: Number(item.monto_recaudado || 0),
     monto_efectivo: Number(item.monto_efectivo || 0),
   }));
+};
+
+const obtenerUsuariosDashboardTransporte = async (req, res) => {
+  const filtro = resolverFiltroDashboardTransporte(req);
+
+  if (!validarFiltroDashboardTransporte(filtro)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para usuarios del dashboard'
+    });
+  }
+
+  try {
+    const filtroFinal = await resolverAccesoDashboardTransporte({
+      ...filtro,
+      id_usuario_trabajo: null,
+    });
+
+    if (!filtroFinal.acceso_total) {
+      return res.status(200).json({
+        success: true,
+        data: [{
+          id_usuario: filtroFinal.id_invitado,
+          nombre: filtroFinal.id_invitado,
+          documentos: 0,
+          monto_total: 0,
+        }]
+      });
+    }
+
+    const params = [filtroFinal.periodo, filtroFinal.id_anfitrion, filtroFinal.documento_id];
+    const filtros = agregarFiltroDashboardTransporte({
+      params,
+      fecha: filtroFinal.fecha,
+      id_punto_venta: filtroFinal.id_punto_venta,
+      id_puntos_venta: filtroFinal.id_puntos_venta,
+    });
+
+    const result = await pool.query(`
+      SELECT tv.ctrl_crea_us AS id_usuario,
+             COALESCE(NULLIF(mu.nombre, ''), tv.ctrl_crea_us) AS nombre,
+             COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS documentos,
+             COALESCE(SUM(tv.r_monto_total * COALESCE(tv.registrado, 1)), 0)::numeric AS monto_total
+        FROM mve_transventa tv
+        LEFT JOIN mad_usuario mu
+          ON mu.id_usuario = tv.ctrl_crea_us
+       WHERE tv.periodo = $1
+         AND tv.id_usuario = $2
+         AND tv.documento_id = $3
+         AND tv.tipo_operacion IN ('B', 'E')
+         AND COALESCE(tv.ctrl_crea_us, '') <> ''
+         ${filtros}
+       GROUP BY tv.ctrl_crea_us, COALESCE(NULLIF(mu.nombre, ''), tv.ctrl_crea_us)
+       ORDER BY nombre, id_usuario
+    `, params);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows.map((item) => ({
+        id_usuario: item.id_usuario,
+        nombre: item.nombre,
+        documentos: Number(item.documentos || 0),
+        monto_total: Number(item.monto_total || 0),
+      }))
+    });
+  } catch (error) {
+    console.error('Error al obtener usuarios del dashboard de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
 };
 
 // Endpoint para probar solo la fila superior de KPI del dashboard.
@@ -2440,6 +2514,7 @@ module.exports = {
   obtenerSunatDashboardTransporte,
   obtenerRutasDashboardTransporte,
   obtenerComparativoMensualEncomiendasDashboardTransporte,
+  obtenerUsuariosDashboardTransporte,
   obtenerDashboardTransporte,
   generarCPEexpertcontTransporte,
   generarResumenCPEexpertcontTransporte,
