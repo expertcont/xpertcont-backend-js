@@ -95,16 +95,6 @@ const listarPuntosVentaUsuario = async (req, res) => {
               WHERE mu.id_usuario = $3
                 AND mu.super = '1'
            )
-           OR
-           EXISTS (
-             SELECT 1
-               FROM mad_punto_venta_usuario pvu
-              WHERE pvu.id_usuario = pv.id_usuario
-                AND pvu.documento_id = pv.documento_id
-                AND pvu.id_invitado = $3
-                AND pvu.activo = TRUE
-                AND pvu.sin_restriccion = TRUE
-           )
            OR EXISTS (
              SELECT 1
                FROM mad_punto_venta_usuario pvu
@@ -114,6 +104,8 @@ const listarPuntosVentaUsuario = async (req, res) => {
                 AND pvu.id_invitado = $3
                 AND pvu.activo = TRUE
                 AND (
+                  pvu.sin_restriccion = TRUE
+                  OR
                   (
                     pvu.turno1_inicio IS NOT NULL
                     AND pvu.turno1_fin IS NOT NULL
