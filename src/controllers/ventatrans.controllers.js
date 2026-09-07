@@ -1302,6 +1302,148 @@ const generaJsonPrevioCPEexpertcontTransporte = async (
   return JSON.stringify(jsonPayload, null, 2);
 };
 
+const generaJsonTicketEncomiendaExpertcontTransporte = async (
+  p_periodo,
+  p_id_usuario,
+  p_documento_id,
+  p_r_cod,
+  p_r_serie,
+  p_r_numero,
+  p_elemento
+) => {
+  const datosQuery = await pool.query(
+    `
+    SELECT *
+      FROM mad_usuariocontabilidad
+     WHERE id_usuario = $1
+       AND documento_id = $2
+       AND tipo = 'ADMIN'
+    `,
+    [p_id_usuario, p_documento_id]
+  );
+  const datos = datosQuery.rows[0];
+
+  if (!datos) {
+    throw new Error('CONTABILIDAD NO ENCONTRADA');
+  }
+
+  const ventaQuery = await pool.query(
+    `
+    SELECT tv.*,
+           ruta.nombre AS nombre_ruta,
+           punto_origen.nombre AS punto_venta_nombre,
+           punto_destino.nombre AS punto_venta_dest_nombre
+      FROM mve_transventa tv
+      LEFT JOIN mve_transruta ruta
+        ON ruta.id_usuario = tv.id_usuario
+       AND ruta.documento_id = tv.documento_id
+       AND ruta.id_ruta = tv.id_ruta
+      LEFT JOIN mad_punto_venta punto_origen
+        ON punto_origen.id_usuario = tv.id_usuario
+       AND punto_origen.documento_id = tv.documento_id
+       AND punto_origen.id_punto_venta = tv.id_punto_venta
+      LEFT JOIN mad_punto_venta punto_destino
+        ON punto_destino.id_usuario = tv.id_usuario
+       AND punto_destino.documento_id = tv.documento_id
+       AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
+     WHERE tv.periodo = $1
+       AND tv.id_usuario = $2
+       AND tv.documento_id = $3
+       AND tv.r_cod = $4
+       AND tv.r_serie = $5
+       AND tv.r_numero = $6
+       AND tv.elemento = $7
+    `,
+    [p_periodo, p_id_usuario, p_documento_id, p_r_cod, p_r_serie, p_r_numero, p_elemento]
+  );
+  const venta = ventaQuery.rows[0];
+
+  if (!venta) {
+    throw new Error('ENCOMIENDA NO ENCONTRADA');
+  }
+
+  if (String(venta.tipo_operacion || '').trim() !== 'E') {
+    throw new Error('Solo se puede generar ticket para una operacion de encomienda');
+  }
+
+  const total = toNumber(venta.r_monto_total || venta.precio_neto);
+
+  return JSON.stringify({
+    empresa: {
+      ruc: datos.documento_id,
+      razon_social: datos.razon_social,
+      nombre_comercial: datos.razon_social,
+      domicilio_fiscal: datos.direccion,
+      ubigeo: datos.ubigeo,
+      distrito: datos.distrito,
+      provincia: datos.provincia,
+      departamento: datos.departamento,
+      modo: datos.modo,
+    },
+    cliente: {
+      razon_social_nombres: venta.cliente,
+      documento_identidad: venta.cliente_documento_id,
+      tipo_identidad: venta.cliente_id_doc,
+      cliente_direccion: venta.cliente_direccion_fact || venta.cliente_direccion || '',
+    },
+    venta: {
+      codigo: venta.r_cod_ref || venta.r_cod,
+      serie: venta.r_serie_ref || venta.r_serie,
+      numero: venta.r_numero_ref || venta.r_numero,
+      fecha_emision: toIsoDate(venta.r_fecemi),
+      hora_emision: toIsoTime(venta.ctrl_crea),
+      moneda_id: 'PEN',
+      forma_pago_id: venta.condicion_pago || 'PAGADO',
+      total,
+      r_monto_total: total,
+      total_igv: toNumber(venta.r_igv),
+      base_gravada: toNumber(venta.r_gravado),
+      base_exonerada: toNumber(venta.r_exonerado),
+      r_vfirmado: venta.r_vfirmado || '',
+    },
+    encomienda: {
+      periodo: venta.periodo,
+      r_cod: venta.r_cod,
+      r_serie: venta.r_serie,
+      r_numero: venta.r_numero,
+      elemento: venta.elemento,
+      r_fecemi: toIsoDate(venta.r_fecemi),
+      ctrl_crea: toIsoTime(venta.ctrl_crea),
+      cliente: venta.cliente,
+      cliente_documento_id: venta.cliente_documento_id,
+      cliente_telefono: venta.cliente_telefono,
+      cliente_direccion: venta.cliente_direccion,
+      remitente_zona: venta.cliente_zona,
+      remitente_direccion: venta.cliente_direccion,
+      destinatario: venta.destinatario,
+      destinatario_documento_id: venta.destinatario_documento_id,
+      destinatario_telefono: venta.destinatario_telefono,
+      destinatario_zona: venta.destinatario_zona,
+      destinatario_direccion: venta.destinatario_direccion,
+      id_ruta: venta.id_ruta,
+      nombre_ruta: venta.nombre_ruta,
+      id_punto_venta: venta.id_punto_venta,
+      punto_venta_nombre: venta.punto_venta_nombre,
+      id_punto_venta_dest: venta.id_punto_venta_dest,
+      punto_venta_dest_nombre: venta.punto_venta_dest_nombre,
+      descripcion: venta.descripcion,
+      placa: venta.placa,
+      licencia: venta.licencia,
+      condicion_pago: venta.condicion_pago,
+      llegada_aprox: toIsoTime(venta.llegada_aprox),
+      precio_neto: total,
+      r_monto_total: total,
+    },
+    items: [
+      {
+        producto: venta.descripcion || 'SERVICIO DE TRANSPORTE DE ENCOMIENDA',
+        cantidad: 1,
+        precio_neto: total,
+      }
+    ],
+  }, null, 2);
+};
+
 const generaJsonResumenCPEexpertcontTransporte = async ({
   periodo,
   id_usuario,
@@ -2238,6 +2380,91 @@ const generarCPEexpertcontTransporte = async (req, res) => {
   }
 };
 
+const generarTicketPDFEncomiendaExpertcont = async (req, res) => {
+  const {
+    p_periodo,
+    p_id_usuario,
+    p_documento_id,
+    p_r_cod,
+    p_r_serie,
+    p_r_numero,
+    p_elemento,
+    periodo,
+    id_usuario,
+    id_anfitrion,
+    documento_id,
+    r_cod,
+    r_serie,
+    r_numero,
+    elemento
+  } = req.body;
+
+  const periodoFinal = p_periodo || periodo;
+  const idUsuarioFinal = p_id_usuario || id_usuario || id_anfitrion;
+  const documentoIdFinal = p_documento_id || documento_id;
+  const rCodFinal = p_r_cod || r_cod;
+  const rSerieFinal = p_r_serie || r_serie;
+  const rNumeroFinal = p_r_numero || r_numero;
+  const elementoFinal = p_elemento ?? elemento ?? 1;
+
+  if (
+    !periodoFinal ||
+    !idUsuarioFinal ||
+    !documentoIdFinal ||
+    !rCodFinal ||
+    !rSerieFinal ||
+    !rNumeroFinal ||
+    elementoFinal === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para generar ticket de encomienda'
+    });
+  }
+
+  try {
+    const jsonString = await generaJsonTicketEncomiendaExpertcontTransporte(
+      periodoFinal,
+      idUsuarioFinal,
+      documentoIdFinal,
+      rCodFinal,
+      rSerieFinal,
+      rNumeroFinal,
+      elementoFinal
+    );
+
+    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatticketencomienda', {
+      method: 'POST',
+      body: jsonString,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const responseData = await leerRespuestaSunat(apiResponse);
+
+    if (!apiResponse.ok) {
+      return res.status(apiResponse.status).json({
+        success: false,
+        message: responseData.respuesta_sunat_descripcion || responseData.message || 'No se pudo generar el ticket de encomienda',
+        ruta_pdf: responseData.ruta_pdf || 'error'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      respuesta_sunat_descripcion: responseData.respuesta_sunat_descripcion,
+      ruta_pdf: responseData.ruta_pdf
+    });
+  } catch (error) {
+    console.error('Error generando ticket PDF de encomienda:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno generando ticket de encomienda',
+      ruta_pdf: 'error'
+    });
+  }
+};
+
 // ORDEN DE EJECUCION - ENDPOINT ADMINISTRATIVO DE RESUMEN
 // Ruta:
 //   POST /mve_transventa/cpe/resumen
@@ -2554,6 +2781,7 @@ module.exports = {
   obtenerUsuariosDashboardTransporte,
   obtenerDashboardTransporte,
   generarCPEexpertcontTransporte,
+  generarTicketPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
   consultarResumenCPEexpertcontTransporte
 };
