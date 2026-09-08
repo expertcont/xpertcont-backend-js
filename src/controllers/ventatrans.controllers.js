@@ -1257,6 +1257,7 @@ const generaJsonPrevioCPEexpertcontTransporte = async (
       razon_social_nombres: venta.cliente,
       documento_identidad: venta.cliente_documento_id,
       tipo_identidad: venta.cliente_id_doc,
+      cliente_direccion_fact: venta.cliente_direccion_fact || '',
       cliente_direccion: venta.cliente_direccion_fact || venta.cliente_direccion || '',
     },
     venta: {
@@ -1394,11 +1395,13 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
       hora_emision: toIsoTime(venta.ctrl_crea),
       moneda_id: 'PEN',
       forma_pago_id: venta.condicion_pago || 'PAGADO',
+      medio_pago: 'EFECTIVO',
       total,
       r_monto_total: total,
       total_igv: toNumber(venta.r_igv),
       base_gravada: toNumber(venta.r_gravado),
       base_exonerada: toNumber(venta.r_exonerado),
+      nota: venta.numero_rdi ? `RDI: ${venta.numero_rdi}` : '',
       r_vfirmado: venta.r_vfirmado || '',
     },
     encomienda: {
@@ -1412,7 +1415,8 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
       cliente: venta.cliente,
       cliente_documento_id: venta.cliente_documento_id,
       cliente_telefono: venta.cliente_telefono,
-      cliente_direccion: venta.cliente_direccion,
+      cliente_direccion_fact: venta.cliente_direccion_fact || '',
+      cliente_direccion: venta.cliente_direccion_fact || venta.cliente_direccion || '',
       remitente_zona: venta.cliente_zona,
       remitente_direccion: venta.cliente_direccion,
       destinatario: venta.destinatario,
@@ -1430,9 +1434,18 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
       placa: venta.placa,
       licencia: venta.licencia,
       condicion_pago: venta.condicion_pago,
+      medio_pago: 'EFECTIVO',
       llegada_aprox: toIsoTime(venta.llegada_aprox),
+      numero_rdi: venta.numero_rdi,
+      observaciones: venta.numero_rdi ? `RDI: ${venta.numero_rdi}` : '-',
       precio_neto: total,
       r_monto_total: total,
+    },
+    ticket: {
+      formato: 'ENCOMIENDA_BOARDING_PASS_80MM',
+      titulo: 'ENCOMIENDA',
+      mostrar_origen_destino: true,
+      mostrar_qr: true,
     },
     items: [
       {
@@ -2433,7 +2446,7 @@ const generarTicketPDFEncomiendaExpertcont = async (req, res) => {
       elementoFinal
     );
 
-    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatticketencomienda', {
+    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatticketencomienda/v2', {
       method: 'POST',
       body: jsonString,
       headers: {
