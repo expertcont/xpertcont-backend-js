@@ -2,6 +2,62 @@ const pool = require('../db');
 const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaStringComplete, corregirTCPEN, corregirMontoNotaCredito, obtenerPeriodoAnterior} = require('../utils/libreria.utils');
 const fetch = require('node-fetch');
 
+const normalizarTexto = (valor) => (valor || '').toString().trim();
+const normalizarDocumento = (valor) => normalizarTexto(valor).replace(/\D/g, '');
+const normalizarBoolean = (valor) => valor === true || valor === 'true' || valor === '1' || valor === 1;
+
+const registrarCorrentistaHabitualSiCorresponde = async ({
+  registrar_habitual,
+  id_anfitrion,
+  documento_id,
+  r_documento_id,
+  r_razon_social,
+  r_id_doc,
+  r_direccion
+}) => {
+  if (!normalizarBoolean(registrar_habitual)) {
+    return { intentado: false, creado: false };
+  }
+
+  const hab_documento_id = normalizarDocumento(r_documento_id);
+  const hab_razon_social = normalizarTexto(r_razon_social).toUpperCase();
+  const hab_id_doc = normalizarTexto(r_id_doc) || (hab_documento_id.length === 11 ? '6' : '1');
+
+  if (!normalizarTexto(id_anfitrion) || !normalizarTexto(documento_id) || !hab_documento_id || !hab_razon_social || !hab_id_doc) {
+    return { intentado: true, creado: false, omitido: true };
+  }
+
+  if ((hab_id_doc === '6' && hab_documento_id.length !== 11) || (hab_id_doc === '1' && hab_documento_id.length !== 8)) {
+    return { intentado: true, creado: false, omitido: true };
+  }
+
+  const result = await pool.query(
+    `
+      INSERT INTO mad_correntista_habitual (
+        id_usuario,
+        documento_id,
+        hab_documento_id,
+        hab_razon_social,
+        hab_id_doc,
+        hab_direccion
+      )
+      VALUES ($1,$2,$3,$4,$5,$6)
+      ON CONFLICT DO NOTHING
+      RETURNING *
+    `,
+    [
+      normalizarTexto(id_anfitrion),
+      normalizarTexto(documento_id),
+      hab_documento_id,
+      hab_razon_social,
+      hab_id_doc,
+      normalizarTexto(r_direccion) || '-'
+    ]
+  );
+
+  return { intentado: true, creado: result.rowCount > 0 };
+};
+
 const obtenerRegistroTodos = async (req, res, next) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
 
@@ -534,6 +590,7 @@ const generarComprobante = async (req, res, next) => {
     vuelto,              //23
     forma_pago2,         //24
     efectivo2,           //25
+    registrar_habitual,
 
   } = req.body;
 
@@ -623,8 +680,26 @@ const generarComprobante = async (req, res, next) => {
     }
 
     if (result.rows.length > 0) {
+      let habitual = { intentado: false, creado: false };
+
+      try {
+        habitual = await registrarCorrentistaHabitualSiCorresponde({
+          registrar_habitual,
+          id_anfitrion,
+          documento_id,
+          r_documento_id,
+          r_razon_social,
+          r_id_doc,
+          r_direccion
+        });
+      } catch (habitualError) {
+        console.error('Error registrando cliente habitual desde venta:', habitualError);
+        habitual = { intentado: true, creado: false, error: true };
+      }
+
       res.status(200).json({
         success: true,
+        habitual,
         ...result.rows[0],
       });
     } else {
