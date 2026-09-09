@@ -8,6 +8,7 @@ const normalizarBoolean = (valor) => valor === true || valor === 'true' || valor
 
 const registrarCorrentistaHabitualSiCorresponde = async ({
   registrar_habitual,
+  r_cod_emitir,
   id_anfitrion,
   documento_id,
   r_documento_id,
@@ -15,7 +16,7 @@ const registrarCorrentistaHabitualSiCorresponde = async ({
   r_id_doc,
   r_direccion
 }) => {
-  if (!normalizarBoolean(registrar_habitual)) {
+  if (r_cod_emitir !== '01' || !normalizarBoolean(registrar_habitual)) {
     return { intentado: false, creado: false };
   }
 
@@ -685,6 +686,7 @@ const generarComprobante = async (req, res, next) => {
       try {
         habitual = await registrarCorrentistaHabitualSiCorresponde({
           registrar_habitual,
+          r_cod_emitir,
           id_anfitrion,
           documento_id,
           r_documento_id,
