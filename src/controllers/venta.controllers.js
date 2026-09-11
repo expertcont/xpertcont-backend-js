@@ -1953,6 +1953,152 @@ const generarPDFexpertcont = async (req,res,next)=> {
       }
 };
 
+const generarResumenDiarioSunat = async (req, res) => {
+  const {
+    id_anfitrion,
+    id_usuario,
+    documento_id,
+    fecha,
+    fecha_documentos,
+    origen,
+    id_punto_venta
+  } = req.body;
+
+  const idUsuario = normalizarTexto(id_usuario || id_anfitrion);
+  const documentoId = normalizarTexto(documento_id);
+  const fechaResumen = normalizarTexto(fecha_documentos || fecha);
+  const origenResumen = normalizarTexto(origen || 'VENTA_COMERCIAL').toUpperCase();
+  const idPuntoVenta = normalizarTexto(id_punto_venta) || null;
+
+  if (!idUsuario || !documentoId || !fechaResumen) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos: id_anfitrion, documento_id o fecha_documentos',
+      mensaje_usuario: 'Faltan datos para generar el Resumen Diario SUNAT.'
+    });
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaResumen)) {
+    return res.status(400).json({
+      success: false,
+      message: 'fecha_documentos debe tener formato YYYY-MM-DD',
+      mensaje_usuario: 'La fecha del resumen debe tener formato YYYY-MM-DD.'
+    });
+  }
+
+  if (!['VENTA_COMERCIAL', 'TRANS_ENCOMIENDA', 'TRANS_BOLETO'].includes(origenResumen)) {
+    return res.status(400).json({
+      success: false,
+      message: `Origen no reconocido: ${origenResumen}`,
+      mensaje_usuario: 'El origen del Resumen Diario SUNAT no es valido.'
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT creado, numero_rdi, secuencia, cantidad, mensaje
+        FROM public.fve_crear_resumen_diario($1, $2, $3::date, $4, $5)
+      `,
+      [
+        idUsuario,
+        documentoId,
+        fechaResumen,
+        origenResumen,
+        idPuntoVenta
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: 'La funcion fve_crear_resumen_diario no retorno resultado',
+        mensaje_usuario: 'No se pudo obtener respuesta al generar el Resumen Diario SUNAT.'
+      });
+    }
+
+    const resumen = result.rows[0];
+    const creado = resumen.creado === true;
+    const cantidad = Number(resumen.cantidad || 0);
+
+    if (!creado) {
+      const resumenExistente = await pool.query(
+        `
+          SELECT numero_rdi, estado, ticket, respuesta_codigo, respuesta_desc
+          FROM public.mve_rdi_sunat
+          WHERE id_usuario = $1
+            AND documento_id = $2
+            AND fecha = $3::date
+            AND origen = $4
+          ORDER BY secuencia DESC
+          LIMIT 1
+        `,
+        [
+          idUsuario,
+          documentoId,
+          fechaResumen,
+          origenResumen
+        ]
+      );
+
+      if (resumenExistente.rows.length > 0) {
+        const existente = resumenExistente.rows[0];
+        const estado = normalizarTexto(existente.estado);
+        const mensajeEstado = ['ENVIADO', 'ACEPTADO'].includes(estado)
+          ? `Resumen Diario ${existente.numero_rdi} ya fue enviado a SUNAT. Estado: ${estado}.`
+          : `Resumen Diario ${existente.numero_rdi} ya fue generado. Estado actual: ${estado || 'PENDIENTE'}.`;
+
+        return res.status(200).json({
+          success: false,
+          creado: false,
+          ya_generado: true,
+          numero_rdi: existente.numero_rdi,
+          estado,
+          ticket: existente.ticket,
+          respuesta_codigo: existente.respuesta_codigo,
+          respuesta_desc: existente.respuesta_desc,
+          cantidad: 0,
+          origen: origenResumen,
+          fecha: fechaResumen,
+          message: mensajeEstado,
+          mensaje_usuario: mensajeEstado,
+          data: {
+            ...existente,
+            ya_generado: true,
+            origen: origenResumen,
+            fecha: fechaResumen
+          }
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: creado,
+      creado,
+      numero_rdi: resumen.numero_rdi,
+      secuencia: resumen.secuencia,
+      cantidad,
+      origen: origenResumen,
+      fecha: fechaResumen,
+      message: resumen.mensaje,
+      mensaje_usuario: resumen.mensaje,
+      data: {
+        ...resumen,
+        cantidad,
+        origen: origenResumen,
+        fecha: fechaResumen
+      }
+    });
+  } catch (error) {
+    console.error('Error al generar Resumen Diario SUNAT:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor',
+      mensaje_usuario: 'Error interno generando el Resumen Diario SUNAT.'
+    });
+  }
+};
+
 const obtenerPedidosPendientes = async (req, res) => {
   const { periodo, id_anfitrion} = req.params;
 
@@ -2312,6 +2458,7 @@ module.exports = {
     anularRegistro,
     generarCPE,
     generarCPEexpertcont,
+    generarResumenDiarioSunat,
     generarPDFexpertcont, 
     obtenerTotalVentas,
     obtenerTotalVentasUsuario,
