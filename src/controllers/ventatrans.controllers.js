@@ -2393,7 +2393,11 @@ const generarCPEexpertcontTransporte = async (req, res) => {
   }
 };
 
-const generarTicketPDFEncomiendaExpertcont = async (req, res) => {
+const generarTicketPDFEncomiendaExpertcont = async (
+  req,
+  res,
+  endpointTicket = 'https://expertcont-api-sunat.up.railway.app/cpesunatticketencomienda/v2'
+) => {
   const {
     p_periodo,
     p_id_usuario,
@@ -2446,7 +2450,7 @@ const generarTicketPDFEncomiendaExpertcont = async (req, res) => {
       elementoFinal
     );
 
-    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatticketencomienda/v2', {
+    const apiResponse = await fetch(endpointTicket, {
       method: 'POST',
       body: jsonString,
       headers: {
@@ -2476,6 +2480,14 @@ const generarTicketPDFEncomiendaExpertcont = async (req, res) => {
       ruta_pdf: 'error'
     });
   }
+};
+
+const generarTicketAdminPDFEncomiendaExpertcont = async (req, res) => {
+  await generarTicketPDFEncomiendaExpertcont(
+    req,
+    res,
+    'https://expertcont-api-sunat.up.railway.app/cpesunatticketencomienda'
+  );
 };
 
 // ORDEN DE EJECUCION - ENDPOINT ADMINISTRATIVO DE RESUMEN
@@ -2795,6 +2807,7 @@ module.exports = {
   obtenerDashboardTransporte,
   generarCPEexpertcontTransporte,
   generarTicketPDFEncomiendaExpertcont,
+  generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
   consultarResumenCPEexpertcontTransporte
 };

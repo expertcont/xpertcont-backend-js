@@ -19,6 +19,7 @@ const {
   obtenerDashboardTransporte,
   generarCPEexpertcontTransporte,
   generarTicketPDFEncomiendaExpertcont,
+  generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
   consultarResumenCPEexpertcontTransporte
 } = require('../controllers/ventatrans.controllers');
@@ -26,6 +27,7 @@ const {
 router.post('/mve_transventa', crearVentaTrans);
 router.post('/mve_transventa/cpe', generarCPEexpertcontTransporte);
 router.post('/mve_transventa/ticket/encomienda', generarTicketPDFEncomiendaExpertcont);
+router.post('/mve_transventa/ticket/encomienda/admin', generarTicketAdminPDFEncomiendaExpertcont);
 router.post('/mve_transventa/cpe/resumen', generarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/ticket', consultarResumenCPEexpertcontTransporte);
 
