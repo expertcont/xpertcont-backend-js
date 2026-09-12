@@ -1,7 +1,7 @@
 const {Router} = require('express');
 const pool = require('../db');
 const router = Router();
-const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, generarResumenDiarioSunat, consultarResumenDiarioSunat, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont, obtenerTotalUnidades, obtenerCodigosComprobante, obtenerPedidosPendientes, insertarVentaRefGrupo, generarVentaRefGrupoPendientes, retrocederVentaRefGrupoPendientes, obtenerReporteVentasReferencias, obtenerSeriesComprobante, obtenerTotalVentasUsuario} = require('../controllers/venta.controllers')
+const {obtenerRegistroTodos,obtenerRegistro,crearRegistro,actualizarRegistro,anularRegistro,eliminarRegistro, generarRegistro, generarComprobante, generarCPE, clonarRegistro, generarCPEexpertcont, generarResumenDiarioSunat, consultarResumenDiarioSunat, obtenerResumenesDiariosSunat, obtenerTotalVentas, obtenerTotalRecaudacion, generarPDFexpertcont, obtenerTotalUnidades, obtenerCodigosComprobante, obtenerPedidosPendientes, insertarVentaRefGrupo, generarVentaRefGrupoPendientes, retrocederVentaRefGrupoPendientes, obtenerReporteVentasReferencias, obtenerSeriesComprobante, obtenerTotalVentasUsuario} = require('../controllers/venta.controllers')
 
 router.get('/ad_venta/:periodo/:id_anfitrion/:documento_id/:dia', obtenerRegistroTodos);//
 
@@ -20,6 +20,7 @@ router.post('/ad_venta', generarRegistro);
 router.post('/ad_ventacomp', generarComprobante);
 //router.post('/ad_ventacpe', generarCPE); //proveedor 01
 router.post('/ad_ventacpe', generarCPEexpertcont); //proveedor 02 expercont now ;)
+router.get('/ad_ventacpe/resumen/:periodo/:id_anfitrion/:documento_id', obtenerResumenesDiariosSunat);
 router.post('/ad_ventacpe/resumen', generarResumenDiarioSunat);
 router.post('/ad_ventacpe/resumen/ticket', consultarResumenDiarioSunat);
 router.post('/ad_ventacpepdf', generarPDFexpertcont); //proveedor 02 solo PDF, api auxiliar

@@ -2069,21 +2069,46 @@ const actualizarRdiSunatComercial = async ({
   ticket = null,
   respuestaCodigo = null,
   respuestaDesc = null,
+  nombreArchivo = null,
+  rutaXml = null,
+  rutaCdr = null,
 }) => {
-  await pool.query(
-    `
-      UPDATE public.mve_rdi_sunat
-         SET estado = $4,
-             ticket = COALESCE($5, ticket),
-             respuesta_codigo = $6,
-             respuesta_desc = $7,
-             ctrl_actualiza = CURRENT_TIMESTAMP
-       WHERE id_usuario = $1
-         AND documento_id = $2
-         AND numero_rdi = $3
-    `,
-    [idUsuario, documentoId, numeroRdi, estado, ticket, respuestaCodigo, respuestaDesc]
-  );
+  try {
+    await pool.query(
+      `
+        UPDATE public.mve_rdi_sunat
+           SET estado = $4,
+               ticket = COALESCE($5, ticket),
+               respuesta_codigo = $6,
+               respuesta_desc = $7,
+               nombre_archivo = COALESCE($8, nombre_archivo),
+               ruta_xml = COALESCE($9, ruta_xml),
+               ruta_cdr = COALESCE($10, ruta_cdr),
+               ctrl_actualiza = CURRENT_TIMESTAMP
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+      `,
+      [idUsuario, documentoId, numeroRdi, estado, ticket, respuestaCodigo, respuestaDesc, nombreArchivo, rutaXml, rutaCdr]
+    );
+  } catch (error) {
+    if (error.code !== '42703') throw error;
+
+    await pool.query(
+      `
+        UPDATE public.mve_rdi_sunat
+           SET estado = $4,
+               ticket = COALESCE($5, ticket),
+               respuesta_codigo = $6,
+               respuesta_desc = $7,
+               ctrl_actualiza = CURRENT_TIMESTAMP
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+      `,
+      [idUsuario, documentoId, numeroRdi, estado, ticket, respuestaCodigo, respuestaDesc]
+    );
+  }
 };
 
 const incrementarIntentoRdiSunatComercial = async ({ idUsuario, documentoId, numeroRdi }) => {
@@ -2308,6 +2333,8 @@ const enviarRdiSunatComercial = async ({
       ticket,
       respuestaCodigo: dataSunat.codigo || null,
       respuestaDesc: descripcion.substring(0, 500),
+      nombreArchivo: dataSunat.nombre_archivo || `${documentoId}-${numeroRdi}`,
+      rutaXml: dataSunat.ruta_xml || null,
     });
 
     return {
@@ -2447,6 +2474,8 @@ const consultarTicketRdiSunatComercial = async ({
     ticket: dataSunat.ticket || rdi.ticket,
     respuestaCodigo: dataSunat.codigo || null,
     respuestaDesc: descripcion.substring(0, 500),
+    nombreArchivo: dataSunat.nombre_archivo || nombreArchivo,
+    rutaCdr: dataSunat.ruta_cdr || null,
   });
 
   return {
@@ -2657,6 +2686,103 @@ const consultarResumenDiarioSunat = async (req, res) => {
       success: false,
       message: error.message || 'Error interno del servidor',
       mensaje_usuario: 'Error interno consultando el ticket del Resumen Diario SUNAT.'
+    });
+  }
+};
+
+const obtenerResumenesDiariosSunat = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id } = req.params;
+  const origenResumen = normalizarTexto(req.query?.origen || 'VENTA_COMERCIAL').toUpperCase();
+
+  if (!periodo || !id_anfitrion || !documento_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos: periodo, id_anfitrion o documento_id',
+    });
+  }
+
+  const ejecutarConsulta = async (incluyeArchivos = true) => {
+    const columnasArchivos = incluyeArchivos
+      ? `
+          r.nombre_archivo,
+          r.ruta_xml,
+          r.ruta_cdr,
+          r.ultimo_intento,
+          r.intentos,
+        `
+      : `
+          NULL::varchar AS nombre_archivo,
+          NULL::varchar AS ruta_xml,
+          NULL::varchar AS ruta_cdr,
+          NULL::timestamp AS ultimo_intento,
+          0::integer AS intentos,
+        `;
+
+    return pool.query(
+      `
+        SELECT
+          r.id_usuario,
+          r.documento_id,
+          CAST(r.fecha AS varchar(10)) AS fecha,
+          r.numero_rdi,
+          r.secuencia,
+          r.origen,
+          COALESCE(r.estado, 'PENDIENTE') AS estado,
+          r.ticket,
+          r.respuesta_codigo,
+          r.respuesta_desc,
+          ${columnasArchivos}
+          CAST(r.ctrl_insercion AS varchar(30)) AS ctrl_insercion,
+          CAST(r.ctrl_actualiza AS varchar(30)) AS ctrl_actualiza,
+          COALESCE(COUNT(v.*), 0)::integer AS cantidad_boletas
+        FROM public.mve_rdi_sunat r
+        LEFT JOIN public.mve_venta v
+          ON v.id_usuario = r.id_usuario
+         AND v.documento_id = r.documento_id
+         AND v.numero_rdi = r.numero_rdi
+        WHERE r.id_usuario = $1
+          AND r.documento_id = $2
+          AND to_char(r.fecha, 'YYYY-MM') = $3
+          AND r.origen = $4
+        GROUP BY
+          r.id_usuario,
+          r.documento_id,
+          r.fecha,
+          r.numero_rdi,
+          r.secuencia,
+          r.origen,
+          r.estado,
+          r.ticket,
+          r.respuesta_codigo,
+          r.respuesta_desc,
+          ${incluyeArchivos ? 'r.nombre_archivo, r.ruta_xml, r.ruta_cdr, r.ultimo_intento, r.intentos,' : ''}
+          r.ctrl_insercion,
+          r.ctrl_actualiza
+        ORDER BY r.fecha DESC, r.secuencia DESC
+      `,
+      [id_anfitrion, documento_id, periodo, origenResumen]
+    );
+  };
+
+  try {
+    let result;
+
+    try {
+      result = await ejecutarConsulta(true);
+    } catch (error) {
+      if (error.code !== '42703') throw error;
+      result = await ejecutarConsulta(false);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error('Error al obtener Resumenes Diario SUNAT:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno obteniendo Resumenes Diario SUNAT.',
     });
   }
 };
@@ -3022,6 +3148,7 @@ module.exports = {
     generarCPEexpertcont,
     generarResumenDiarioSunat,
     consultarResumenDiarioSunat,
+    obtenerResumenesDiariosSunat,
     generarPDFexpertcont, 
     obtenerTotalVentas,
     obtenerTotalVentasUsuario,
