@@ -188,6 +188,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
     r_vfirmado,
     cdr_descripcion,
     cdr_nivel,
+    numero_rdi,
     
     (CASE 
         WHEN r_cod_ref IS NULL THEN null::varchar
@@ -2111,6 +2112,59 @@ const actualizarRdiSunatComercial = async ({
   }
 };
 
+const marcarVentasResumenSunatComercial = async ({
+  idUsuario,
+  documentoId,
+  numeroRdi,
+  estado = 'PENDIENTE',
+  respuestaCodigo = null,
+  respuestaDesc = null,
+  ticket = null,
+}) => {
+  const estadoNormalizado = normalizarTexto(estado).toUpperCase() || 'PENDIENTE';
+  const descripcionBase = estadoNormalizado === 'ACEPTADO'
+    ? `Resumen Diario SUNAT ${numeroRdi} aceptado.`
+    : estadoNormalizado === 'RECHAZADO'
+      ? `Resumen Diario SUNAT ${numeroRdi} rechazado.`
+      : `Procesado por Resumen Diario SUNAT ${numeroRdi}.`;
+  const descripcion = [
+    descripcionBase,
+    ticket ? `Ticket: ${ticket}.` : null,
+    respuestaDesc || null,
+  ].filter(Boolean).join(' ').substring(0, 100);
+
+  await pool.query(
+    `
+      UPDATE public.mve_venta
+         SET r_vfirmado = COALESCE(r_vfirmado, $4),
+             cdr_codigo = COALESCE($5, cdr_codigo),
+             cdr_descripcion = $6,
+             cdr_nivel = $7,
+             cdr_pendiente = CASE
+                               WHEN $7 = 'PENDIENTE' THEN '1'
+                               ELSE '0'
+                             END,
+             ctrl_mod = CURRENT_TIMESTAMP
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND numero_rdi = $3
+    `,
+    [
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      `RDI:${numeroRdi}`,
+      respuestaCodigo,
+      descripcion,
+      estadoNormalizado === 'ACEPTADO'
+        ? 'ACEPTADO'
+        : estadoNormalizado === 'RECHAZADO'
+          ? 'RECHAZADO'
+          : 'PENDIENTE'
+    ]
+  );
+};
+
 const incrementarIntentoRdiSunatComercial = async ({ idUsuario, documentoId, numeroRdi }) => {
   try {
     await pool.query(
@@ -2337,6 +2391,18 @@ const enviarRdiSunatComercial = async ({
       rutaXml: dataSunat.ruta_xml || null,
     });
 
+    if (ticket) {
+      await marcarVentasResumenSunatComercial({
+        idUsuario,
+        documentoId,
+        numeroRdi,
+        estado: 'PENDIENTE',
+        respuestaCodigo: dataSunat.codigo || null,
+        respuestaDesc: descripcion,
+        ticket,
+      });
+    }
+
     return {
       success: Boolean(ticket),
       numero_rdi: numeroRdi,
@@ -2478,6 +2544,16 @@ const consultarTicketRdiSunatComercial = async ({
     rutaCdr: dataSunat.ruta_cdr || null,
   });
 
+  await marcarVentasResumenSunatComercial({
+    idUsuario,
+    documentoId,
+    numeroRdi,
+    estado: estadoRdi,
+    respuestaCodigo: dataSunat.codigo || null,
+    respuestaDesc: descripcion,
+    ticket: dataSunat.ticket || rdi.ticket,
+  });
+
   return {
     success: dataSunat.estado === true || nivel === 'PENDIENTE',
     numero_rdi: numeroRdi,
@@ -2503,7 +2579,8 @@ const generarResumenDiarioSunat = async (req, res) => {
     fecha,
     fecha_documentos,
     origen,
-    id_punto_venta
+    id_punto_venta,
+    numero_rdi
   } = req.body;
 
   const idUsuario = normalizarTexto(id_usuario || id_anfitrion);
@@ -2511,6 +2588,7 @@ const generarResumenDiarioSunat = async (req, res) => {
   const fechaResumen = normalizarTexto(fecha_documentos || fecha);
   const origenResumen = normalizarTexto(origen || 'VENTA_COMERCIAL').toUpperCase();
   const idPuntoVenta = normalizarTexto(id_punto_venta) || null;
+  const numeroRdiSolicitado = normalizarTexto(numero_rdi);
 
   if (!idUsuario || !documentoId || !fechaResumen) {
     return res.status(400).json({
@@ -2537,6 +2615,29 @@ const generarResumenDiarioSunat = async (req, res) => {
   }
 
   try {
+    if (origenResumen === 'VENTA_COMERCIAL' && numeroRdiSolicitado) {
+      const envio = await enviarRdiSunatComercial({
+        periodo: req.body.periodo || fechaResumen.substring(0, 7),
+        idUsuario,
+        documentoId,
+        numeroRdi: numeroRdiSolicitado,
+      });
+
+      return res.status(200).json({
+        ...envio,
+        creado: false,
+        cantidad: Number(envio.total_documentos || 0),
+        origen: origenResumen,
+        fecha: fechaResumen,
+        message: envio.mensaje_usuario,
+        data: {
+          ...envio,
+          origen: origenResumen,
+          fecha: fechaResumen
+        }
+      });
+    }
+
     if (origenResumen === 'VENTA_COMERCIAL') {
       const pendiente = await obtenerPrimerRdiPendienteSunatComercial({
         idUsuario,
