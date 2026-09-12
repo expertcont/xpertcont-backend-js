@@ -2042,6 +2042,25 @@ const obtenerRdiSunatComercial = async ({ idUsuario, documentoId, numeroRdi, fec
   return rdiQuery.rows[0] || null;
 };
 
+const obtenerPrimerRdiPendienteSunatComercial = async ({ idUsuario, documentoId, fechaResumen, origenResumen }) => {
+  const rdiQuery = await pool.query(
+    `
+      SELECT *
+        FROM public.mve_rdi_sunat
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND fecha = $3::date
+         AND origen = $4
+         AND COALESCE(estado, 'PENDIENTE') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', 'ERROR')
+       ORDER BY secuencia ASC
+       LIMIT 1
+    `,
+    [idUsuario, documentoId, fechaResumen, origenResumen]
+  );
+
+  return rdiQuery.rows[0] || null;
+};
+
 const actualizarRdiSunatComercial = async ({
   idUsuario,
   documentoId,
@@ -2489,6 +2508,40 @@ const generarResumenDiarioSunat = async (req, res) => {
   }
 
   try {
+    if (origenResumen === 'VENTA_COMERCIAL') {
+      const pendiente = await obtenerPrimerRdiPendienteSunatComercial({
+        idUsuario,
+        documentoId,
+        fechaResumen,
+        origenResumen,
+      });
+
+      if (pendiente) {
+        const envioPendiente = await enviarRdiSunatComercial({
+          periodo: req.body.periodo || fechaResumen.substring(0, 7),
+          idUsuario,
+          documentoId,
+          numeroRdi: pendiente.numero_rdi,
+        });
+
+        return res.status(200).json({
+          ...envioPendiente,
+          creado: false,
+          rdi_pendiente_previo: true,
+          cantidad: Number(envioPendiente.total_documentos || 0),
+          origen: origenResumen,
+          fecha: fechaResumen,
+          message: envioPendiente.mensaje_usuario,
+          data: {
+            ...pendiente,
+            ...envioPendiente,
+            origen: origenResumen,
+            fecha: fechaResumen
+          }
+        });
+      }
+    }
+
     const result = await pool.query(
       `
         SELECT creado, numero_rdi, secuencia, cantidad, mensaje
@@ -2515,7 +2568,7 @@ const generarResumenDiarioSunat = async (req, res) => {
     let numeroRdi = resumen.numero_rdi;
 
     if (!numeroRdi) {
-      const existente = await obtenerRdiSunatComercial({
+      const existente = await obtenerPrimerRdiPendienteSunatComercial({
         idUsuario,
         documentoId,
         fechaResumen,
