@@ -1538,6 +1538,7 @@ const generaJsonResumenCPEexpertcontTransporte = async ({
     const baseGratuita = 0;
     const totalIgv = toNumber(venta.r_igv);
     const total = toNumber(venta.r_monto_total || venta.precio_neto);
+    const status = Number(venta.registrado) === 0 ? '3' : '1';
 
     return {
       tipo_documento: venta.r_cod_ref || venta.r_cod,
@@ -1545,7 +1546,7 @@ const generaJsonResumenCPEexpertcontTransporte = async ({
       numero: venta.r_numero_ref || venta.r_numero,
       cliente_numero_documento: venta.cliente_documento_id || '-',
       cliente_tipo_documento: venta.cliente_id_doc || '0',
-      status: '1',
+      status,
       moneda_id: 'PEN',
       total_a_pagar: total,
       total_gravada: baseGravada,

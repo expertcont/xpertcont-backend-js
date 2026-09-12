@@ -3,6 +3,49 @@ const {devuelveCadenaNull,devuelveNumero, convertirFechaString, convertirFechaSt
 const fetch = require('node-fetch');
 
 const normalizarTexto = (valor) => (valor || '').toString().trim();
+const toNumber = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+const toIsoDate = (value) => {
+  if (!value) return '';
+  if (value instanceof Date) return value.toISOString().split('T')[0];
+  return String(value).split('T')[0].split(' ')[0];
+};
+const leerRespuestaSunatResumen = async (apiResponse) => {
+  const raw = await apiResponse.text();
+  if (!raw) return {};
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return { message: raw };
+  }
+};
+const normalizarErrorResumenSunat = (responseData, fallbackMessage = 'Error en la API SUNAT enviando resumen') => {
+  const data = responseData?.error || responseData?.data || responseData || {};
+  const descripcion = data.respuesta_sunat_descripcion || data.mensaje || data.message || fallbackMessage;
+  const nivel = data.nivel || 'ERROR';
+
+  return {
+    success: false,
+    estado: data.estado === true ? 'ENVIADO' : 'ERROR',
+    nivel,
+    codigo: data.codigo || 'ERROR_SUNAT',
+    titulo_usuario: data.titulo_usuario || (nivel === 'PENDIENTE' ? 'Resumen pendiente' : 'No se pudo enviar a SUNAT'),
+    mensaje_usuario: data.mensaje_usuario || descripcion,
+    respuesta_codigo: data.codigo || 'ERROR_SUNAT',
+    respuesta_desc: descripcion,
+    respuesta_sunat_descripcion: descripcion,
+    detalle_tecnico: data.detalle_sunat || data.detalleSunat || descripcion,
+    permite_reintento: data.permite_reintento ?? data.permiteReintento ?? true,
+    ticket: data.ticket || null,
+    nombre_archivo: data.nombre_archivo || null,
+    ruta_xml: data.ruta_xml || 'error',
+    ruta_cdr: data.ruta_cdr || 'error',
+    codigo_hash: data.codigo_hash || null
+  };
+};
 const normalizarDocumento = (valor) => normalizarTexto(valor).replace(/\D/g, '');
 const normalizarBoolean = (valor) => valor === true || valor === 'true' || valor === '1' || valor === 1;
 
@@ -1953,6 +1996,457 @@ const generarPDFexpertcont = async (req,res,next)=> {
       }
 };
 
+const obtenerDatosResumenSunatComercial = async (idUsuario, documentoId) => {
+  const datosQuery = await pool.query(
+    `
+      SELECT *
+        FROM mad_usuariocontabilidad
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND tipo = 'ADMIN'
+    `,
+    [idUsuario, documentoId]
+  );
+  const datos = datosQuery.rows[0];
+
+  if (!datos) {
+    throw new Error('CONTABILIDAD NO ENCONTRADA');
+  }
+
+  return datos;
+};
+
+const obtenerRdiSunatComercial = async ({ idUsuario, documentoId, numeroRdi, fechaResumen, origenResumen }) => {
+  const params = [idUsuario, documentoId];
+  let query = `
+    SELECT *
+      FROM public.mve_rdi_sunat
+     WHERE id_usuario = $1
+       AND documento_id = $2
+  `;
+
+  if (numeroRdi) {
+    params.push(numeroRdi);
+    query += ` AND numero_rdi = $${params.length} `;
+  } else {
+    params.push(fechaResumen, origenResumen);
+    query += `
+       AND fecha = $${params.length - 1}::date
+       AND origen = $${params.length}
+    `;
+  }
+
+  query += ' ORDER BY secuencia DESC LIMIT 1';
+
+  const rdiQuery = await pool.query(query, params);
+  return rdiQuery.rows[0] || null;
+};
+
+const actualizarRdiSunatComercial = async ({
+  idUsuario,
+  documentoId,
+  numeroRdi,
+  estado,
+  ticket = null,
+  respuestaCodigo = null,
+  respuestaDesc = null,
+}) => {
+  await pool.query(
+    `
+      UPDATE public.mve_rdi_sunat
+         SET estado = $4,
+             ticket = COALESCE($5, ticket),
+             respuesta_codigo = $6,
+             respuesta_desc = $7,
+             ctrl_actualiza = CURRENT_TIMESTAMP
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND numero_rdi = $3
+    `,
+    [idUsuario, documentoId, numeroRdi, estado, ticket, respuestaCodigo, respuestaDesc]
+  );
+};
+
+const incrementarIntentoRdiSunatComercial = async ({ idUsuario, documentoId, numeroRdi }) => {
+  try {
+    await pool.query(
+      `
+        UPDATE public.mve_rdi_sunat
+           SET estado = 'GENERADO',
+               intentos = COALESCE(intentos, 0) + 1,
+               ultimo_intento = CURRENT_TIMESTAMP,
+               ctrl_actualiza = CURRENT_TIMESTAMP
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+      `,
+      [idUsuario, documentoId, numeroRdi]
+    );
+  } catch (error) {
+    if (error.code !== '42703') throw error;
+
+    await pool.query(
+      `
+        UPDATE public.mve_rdi_sunat
+           SET estado = 'GENERADO',
+               ctrl_actualiza = CURRENT_TIMESTAMP
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+      `,
+      [idUsuario, documentoId, numeroRdi]
+    );
+  }
+};
+
+const generarPayloadResumenSunatComercial = async ({
+  periodo,
+  idUsuario,
+  documentoId,
+  numeroRdi,
+}) => {
+  const datos = await obtenerDatosResumenSunatComercial(idUsuario, documentoId);
+  const rdi = await obtenerRdiSunatComercial({ idUsuario, documentoId, numeroRdi });
+
+  if (!rdi) {
+    throw new Error(`No se encontro el Resumen Diario ${numeroRdi}.`);
+  }
+
+  const ventaQuery = await pool.query(
+    `
+      SELECT mv.*,
+             CAST(mv.r_fecemi AS VARCHAR(10)) AS fecha_emision
+        FROM public.mve_venta mv
+       WHERE mv.periodo = $1
+         AND mv.id_usuario = $2
+         AND mv.documento_id = $3
+         AND mv.numero_rdi = $4
+       ORDER BY mv.r_serie, mv.r_numero, mv.elemento
+    `,
+    [periodo, idUsuario, documentoId, numeroRdi]
+  );
+
+  if (ventaQuery.rows.length === 0) {
+    throw new Error(`El Resumen Diario ${numeroRdi} no tiene boletas comerciales asociadas.`);
+  }
+
+  const comprobantes = ventaQuery.rows.map((venta) => {
+    const totalGravada = toNumber(venta.r_base002);
+    const totalExonerada = toNumber(venta.r_base003);
+    const totalInafecta = toNumber(venta.r_base004);
+    const totalGratuita = toNumber(venta.r_base_gratuita || venta.r_total_gratuito);
+    const esGratuita = totalGratuita > 0 || toNumber(venta.r_total_gratuito) > 0;
+    const status = Number(venta.registrado) === 0 ? '3' : '1';
+
+    return {
+      tipo_documento: venta.r_cod_ref || venta.r_cod,
+      serie: venta.r_serie_ref || venta.r_serie,
+      numero: venta.r_numero_ref || venta.r_numero,
+      cliente_numero_documento: venta.r_documento_id || '-',
+      cliente_tipo_documento: venta.r_id_doc || '0',
+      status,
+      moneda_id: venta.r_moneda || 'PEN',
+      total_a_pagar: esGratuita ? 0 : toNumber(venta.r_monto_total),
+      total_gravada: totalGravada,
+      total_exonerada: totalExonerada,
+      total_inafecta: totalInafecta,
+      total_gratuita: totalGratuita,
+      total_igv: toNumber(venta.r_igv002),
+      origen: {
+        periodo: venta.periodo,
+        r_cod: venta.r_cod,
+        r_serie: venta.r_serie,
+        r_numero: venta.r_numero,
+        elemento: venta.elemento,
+      }
+    };
+  });
+
+  const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+    String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
+
+  return {
+    rdi,
+    total_documentos: comprobantes.length,
+    payload: {
+      empresa: {
+        ruc: datos.documento_id,
+        razon_social: datos.razon_social,
+        nombre_comercial: datos.razon_social,
+        domicilio_fiscal: datos.direccion,
+        ubigeo: datos.ubigeo,
+        distrito: datos.distrito,
+        provincia: datos.provincia,
+        departamento: datos.departamento,
+        modo: datos.modo,
+      },
+      resumen: {
+        numero: fechaNumero,
+        correlativo: String(correlativo),
+        fecha_documentos: toIsoDate(rdi.fecha),
+        fecha_resumen: toIsoDate(rdi.fecha),
+      },
+      comprobantes,
+    }
+  };
+};
+
+const enviarRdiSunatComercial = async ({
+  periodo,
+  idUsuario,
+  documentoId,
+  numeroRdi,
+}) => {
+  const { rdi, payload, total_documentos } = await generarPayloadResumenSunatComercial({
+    periodo,
+    idUsuario,
+    documentoId,
+    numeroRdi,
+  });
+
+  const estadoActual = normalizarTexto(rdi.estado).toUpperCase();
+  if (rdi.ticket) {
+    return consultarTicketRdiSunatComercial({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      periodo,
+    });
+  }
+
+  if (['ACEPTADO', 'RECHAZADO'].includes(estadoActual)) {
+    return {
+      success: estadoActual === 'ACEPTADO',
+      numero_rdi: numeroRdi,
+      estado: estadoActual,
+      ticket: rdi.ticket,
+      total_documentos,
+      mensaje_usuario: `Resumen Diario ${numeroRdi} en estado ${estadoActual}.`,
+    };
+  }
+
+  const lockKey = `rdi:${idUsuario}:${documentoId}:${numeroRdi}`;
+  const lockClient = await pool.connect();
+  let lockAcquired = false;
+
+  try {
+    const lockResult = await lockClient.query(
+      'SELECT pg_try_advisory_lock(hashtext($1)) AS locked',
+      [lockKey]
+    );
+    lockAcquired = lockResult.rows[0]?.locked === true;
+
+    if (!lockAcquired) {
+      return {
+        success: false,
+        numero_rdi: numeroRdi,
+        estado: estadoActual || 'PENDIENTE',
+        total_documentos,
+        mensaje_usuario: `Resumen Diario ${numeroRdi} ya esta siendo procesado. Espera unos segundos y consulta nuevamente.`,
+      };
+    }
+
+    await incrementarIntentoRdiSunatComercial({ idUsuario, documentoId, numeroRdi });
+
+    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatresumen', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 90000,
+    });
+    const responseData = await leerRespuestaSunatResumen(apiResponse);
+    const dataSunat = responseData?.data || responseData;
+
+    if (!apiResponse.ok) {
+      const errorNormalizado = normalizarErrorResumenSunat(responseData);
+      await actualizarRdiSunatComercial({
+        idUsuario,
+        documentoId,
+        numeroRdi,
+        estado: 'ERROR',
+        respuestaCodigo: errorNormalizado.codigo,
+        respuestaDesc: errorNormalizado.respuesta_desc,
+      });
+
+      return {
+        ...errorNormalizado,
+        numero_rdi: numeroRdi,
+        total_documentos,
+      };
+    }
+
+    const ticket = dataSunat.ticket || null;
+    const estadoRdi = ticket ? 'ENVIADO' : 'ERROR';
+    const descripcion = dataSunat.respuesta_sunat_descripcion || dataSunat.mensaje || dataSunat.message || '';
+
+    await actualizarRdiSunatComercial({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      estado: estadoRdi,
+      ticket,
+      respuestaCodigo: dataSunat.codigo || null,
+      respuestaDesc: descripcion.substring(0, 500),
+    });
+
+    return {
+      success: Boolean(ticket),
+      numero_rdi: numeroRdi,
+      estado: estadoRdi,
+      nivel: dataSunat.nivel || 'TICKET',
+      ticket,
+      nombre_archivo: dataSunat.nombre_archivo || `${documentoId}-${numeroRdi}`,
+      total_documentos,
+      respuesta_sunat_descripcion: descripcion,
+      mensaje_usuario: ticket
+        ? `Resumen Diario ${numeroRdi} enviado a SUNAT. Ticket: ${ticket}.`
+        : `SUNAT no retorno ticket para el Resumen Diario ${numeroRdi}.`,
+      ruta_xml: dataSunat.ruta_xml,
+      codigo_hash: dataSunat.codigo_hash,
+      payload
+    };
+  } catch (error) {
+    const esRecepcionIncierta = ['request-timeout', 'ETIMEDOUT', 'ECONNRESET', 'ECONNABORTED'].includes(error.type || error.code);
+    const estado = esRecepcionIncierta ? 'INCIERTO' : 'ERROR';
+    const mensaje = esRecepcionIncierta
+      ? 'No se pudo confirmar la recepcion del resumen por SUNAT. Verifica antes de reenviar.'
+      : (error.message || 'Error interno procesando Resumen Diario SUNAT.');
+
+    await actualizarRdiSunatComercial({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      estado,
+      respuestaCodigo: estado,
+      respuestaDesc: mensaje.substring(0, 500),
+    });
+
+    return {
+      success: false,
+      numero_rdi: numeroRdi,
+      estado,
+      nivel: estado,
+      total_documentos,
+      mensaje_usuario: mensaje,
+      respuesta_sunat_descripcion: mensaje,
+      detalle_tecnico: error.message,
+      permite_reintento: estado === 'ERROR',
+    };
+  } finally {
+    if (lockAcquired) {
+      await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [lockKey]);
+    }
+    lockClient.release();
+  }
+};
+
+const consultarTicketRdiSunatComercial = async ({
+  idUsuario,
+  documentoId,
+  numeroRdi,
+  periodo,
+}) => {
+  const datos = await obtenerDatosResumenSunatComercial(idUsuario, documentoId);
+  const rdi = await obtenerRdiSunatComercial({ idUsuario, documentoId, numeroRdi });
+
+  if (!rdi) {
+    throw new Error(`No se encontro el Resumen Diario ${numeroRdi}.`);
+  }
+
+  if (!rdi.ticket) {
+    return {
+      success: false,
+      numero_rdi: numeroRdi,
+      estado: normalizarTexto(rdi.estado).toUpperCase() || 'PENDIENTE',
+      mensaje_usuario: `Resumen Diario ${numeroRdi} aun no tiene ticket para consultar.`,
+      permite_reintento: true,
+    };
+  }
+
+  const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+    String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
+  const nombreArchivo = `${documentoId}-RC-${fechaNumero}-${correlativo}`;
+  const payload = {
+    empresa: {
+      ruc: datos.documento_id,
+      razon_social: datos.razon_social,
+      modo: datos.modo,
+    },
+    ticket: rdi.ticket,
+    nombre_archivo: nombreArchivo,
+    resumen: {
+      numero: fechaNumero,
+      correlativo: String(correlativo),
+      fecha_documentos: toIsoDate(rdi.fecha),
+    }
+  };
+
+  const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatresumen/ticket', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    timeout: 90000,
+  });
+  const responseData = await leerRespuestaSunatResumen(apiResponse);
+
+  if (!apiResponse.ok) {
+    const errorNormalizado = normalizarErrorResumenSunat(responseData, 'Error consultando ticket de Resumen Diario');
+    await actualizarRdiSunatComercial({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      estado: normalizarTexto(rdi.estado).toUpperCase() || 'ENVIADO',
+      respuestaCodigo: errorNormalizado.codigo,
+      respuestaDesc: errorNormalizado.respuesta_desc,
+    });
+
+    return {
+      ...errorNormalizado,
+      numero_rdi: numeroRdi,
+      ticket: rdi.ticket,
+    };
+  }
+
+  const dataSunat = responseData?.data || responseData;
+  const nivel = dataSunat.nivel || 'PENDIENTE';
+  const estadoRdi = nivel === 'ACEPTADO'
+    ? 'ACEPTADO'
+    : nivel === 'RECHAZADO'
+      ? 'RECHAZADO'
+      : 'ENVIADO';
+  const descripcion = dataSunat.respuesta_sunat_descripcion || dataSunat.mensaje || dataSunat.message || '';
+
+  await actualizarRdiSunatComercial({
+    idUsuario,
+    documentoId,
+    numeroRdi,
+    estado: estadoRdi,
+    ticket: dataSunat.ticket || rdi.ticket,
+    respuestaCodigo: dataSunat.codigo || null,
+    respuestaDesc: descripcion.substring(0, 500),
+  });
+
+  return {
+    success: dataSunat.estado === true || nivel === 'PENDIENTE',
+    numero_rdi: numeroRdi,
+    estado: estadoRdi,
+    nivel,
+    codigo: dataSunat.codigo,
+    ticket: dataSunat.ticket || rdi.ticket,
+    nombre_archivo: dataSunat.nombre_archivo || nombreArchivo,
+    ruta_cdr: dataSunat.ruta_cdr,
+    respuesta_sunat_descripcion: descripcion,
+    mensaje_usuario: nivel === 'PENDIENTE'
+      ? `SUNAT aun esta procesando el Resumen Diario ${numeroRdi}.`
+      : descripcion,
+    periodo,
+  };
+};
+
 const generarResumenDiarioSunat = async (req, res) => {
   const {
     id_anfitrion,
@@ -2018,73 +2512,48 @@ const generarResumenDiarioSunat = async (req, res) => {
     }
 
     const resumen = result.rows[0];
-    const creado = resumen.creado === true;
-    const cantidad = Number(resumen.cantidad || 0);
+    let numeroRdi = resumen.numero_rdi;
 
-    if (!creado) {
-      const resumenExistente = await pool.query(
-        `
-          SELECT numero_rdi, estado, ticket, respuesta_codigo, respuesta_desc
-          FROM public.mve_rdi_sunat
-          WHERE id_usuario = $1
-            AND documento_id = $2
-            AND fecha = $3::date
-            AND origen = $4
-          ORDER BY secuencia DESC
-          LIMIT 1
-        `,
-        [
-          idUsuario,
-          documentoId,
-          fechaResumen,
-          origenResumen
-        ]
-      );
+    if (!numeroRdi) {
+      const existente = await obtenerRdiSunatComercial({
+        idUsuario,
+        documentoId,
+        fechaResumen,
+        origenResumen,
+      });
 
-      if (resumenExistente.rows.length > 0) {
-        const existente = resumenExistente.rows[0];
-        const estado = normalizarTexto(existente.estado);
-        const mensajeEstado = ['ENVIADO', 'ACEPTADO'].includes(estado)
-          ? `Resumen Diario ${existente.numero_rdi} ya fue enviado a SUNAT. Estado: ${estado}.`
-          : `Resumen Diario ${existente.numero_rdi} ya fue generado. Estado actual: ${estado || 'PENDIENTE'}.`;
-
+      if (!existente) {
         return res.status(200).json({
           success: false,
           creado: false,
-          ya_generado: true,
-          numero_rdi: existente.numero_rdi,
-          estado,
-          ticket: existente.ticket,
-          respuesta_codigo: existente.respuesta_codigo,
-          respuesta_desc: existente.respuesta_desc,
           cantidad: 0,
           origen: origenResumen,
           fecha: fechaResumen,
-          message: mensajeEstado,
-          mensaje_usuario: mensajeEstado,
-          data: {
-            ...existente,
-            ya_generado: true,
-            origen: origenResumen,
-            fecha: fechaResumen
-          }
+          message: resumen.mensaje || `No hay boletas pendientes para ${fechaResumen}.`,
+          mensaje_usuario: resumen.mensaje || `No hay boletas pendientes para ${fechaResumen}.`,
         });
       }
+
+      numeroRdi = existente.numero_rdi;
     }
 
+    const envio = await enviarRdiSunatComercial({
+      periodo: req.body.periodo || fechaResumen.substring(0, 7),
+      idUsuario,
+      documentoId,
+      numeroRdi,
+    });
+
     return res.status(200).json({
-      success: creado,
-      creado,
-      numero_rdi: resumen.numero_rdi,
-      secuencia: resumen.secuencia,
-      cantidad,
+      ...envio,
+      creado: resumen.creado === true,
+      cantidad: Number(resumen.cantidad || envio.total_documentos || 0),
       origen: origenResumen,
       fecha: fechaResumen,
-      message: resumen.mensaje,
-      mensaje_usuario: resumen.mensaje,
+      message: envio.mensaje_usuario || resumen.mensaje,
       data: {
         ...resumen,
-        cantidad,
+        ...envio,
         origen: origenResumen,
         fecha: fechaResumen
       }
@@ -2095,6 +2564,46 @@ const generarResumenDiarioSunat = async (req, res) => {
       success: false,
       message: error.message || 'Error interno del servidor',
       mensaje_usuario: 'Error interno generando el Resumen Diario SUNAT.'
+    });
+  }
+};
+
+const consultarResumenDiarioSunat = async (req, res) => {
+  const {
+    id_anfitrion,
+    id_usuario,
+    documento_id,
+    numero_rdi,
+    periodo
+  } = req.body;
+
+  const idUsuario = normalizarTexto(id_usuario || id_anfitrion);
+  const documentoId = normalizarTexto(documento_id);
+  const numeroRdi = normalizarTexto(numero_rdi);
+
+  if (!idUsuario || !documentoId || !numeroRdi) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos: id_anfitrion, documento_id o numero_rdi',
+      mensaje_usuario: 'Faltan datos para consultar el ticket del Resumen Diario SUNAT.'
+    });
+  }
+
+  try {
+    const resultado = await consultarTicketRdiSunatComercial({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      periodo
+    });
+
+    return res.status(200).json(resultado);
+  } catch (error) {
+    console.error('Error al consultar ticket de Resumen Diario SUNAT:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor',
+      mensaje_usuario: 'Error interno consultando el ticket del Resumen Diario SUNAT.'
     });
   }
 };
@@ -2459,6 +2968,7 @@ module.exports = {
     generarCPE,
     generarCPEexpertcont,
     generarResumenDiarioSunat,
+    consultarResumenDiarioSunat,
     generarPDFexpertcont, 
     obtenerTotalVentas,
     obtenerTotalVentasUsuario,
