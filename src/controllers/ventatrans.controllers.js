@@ -1,6 +1,8 @@
 const pool = require('../db');
 const fetch = require('node-fetch');
 
+const normalizarTexto = (valor) => (valor || '').toString().trim();
+
 const columnasVentaTrans = `
   CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
   r_cod,
@@ -54,6 +56,8 @@ const columnasVentaTrans = `
   condicion_pago,
   CAST(llegada_aprox AS VARCHAR(50)) AS llegada_aprox,
   numero_rdi,
+  r_vfirmado,
+  cdr_descripcion,
   estado_sunat,
   ctrl_crea,
   ctrl_crea_us,
@@ -145,6 +149,31 @@ const leerRespuestaSunat = async (apiResponse) => {
   } catch (error) {
     return { message: raw };
   }
+};
+
+const normalizarErrorResumenSunatTransporte = (responseData, fallbackMessage = 'Error en la API SUNAT enviando resumen') => {
+  const data = responseData?.error || responseData?.data || responseData || {};
+  const descripcion = data.respuesta_sunat_descripcion || data.mensaje || data.message || fallbackMessage;
+  const nivel = data.nivel || 'ERROR';
+
+  return {
+    success: false,
+    estado: data.estado === true ? 'ENVIADO' : 'ERROR',
+    nivel,
+    codigo: data.codigo || 'ERROR_SUNAT',
+    titulo_usuario: data.titulo_usuario || (nivel === 'PENDIENTE' ? 'Resumen pendiente' : 'No se pudo enviar a SUNAT'),
+    mensaje_usuario: data.mensaje_usuario || descripcion,
+    respuesta_codigo: data.codigo || 'ERROR_SUNAT',
+    respuesta_desc: descripcion,
+    respuesta_sunat_descripcion: descripcion,
+    detalle_tecnico: data.detalle_sunat || data.detalleSunat || descripcion,
+    permite_reintento: data.permite_reintento ?? data.permiteReintento ?? true,
+    ticket: data.ticket || null,
+    nombre_archivo: data.nombre_archivo || null,
+    ruta_xml: data.ruta_xml || 'error',
+    ruta_cdr: data.ruta_cdr || 'error',
+    codigo_hash: data.codigo_hash || null
+  };
 };
 
 const estadoSunatTransportePorNivel = (nivel) => {
@@ -546,7 +575,8 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
       COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (WHERE tv.tipo_operacion = 'E' AND tv.entrega_fecha IS NOT NULL ${filtroAgenciaOrigen}), 0)::integer AS encomiendas_entregadas,
       COALESCE(SUM(COALESCE(tv.registrado, 1)) FILTER (
         WHERE tv.tipo_operacion IN ('B', 'E')
-          AND COALESCE(tv.estado_sunat, '') NOT IN ('A', 'P', 'R')
+          AND COALESCE(tv.r_vfirmado, '') = ''
+          AND COALESCE(tv.numero_rdi, '') = ''
           AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
           ${filtroAgenciaOrigen}
       ), 0)::integer AS sunat_pendientes,
@@ -669,7 +699,11 @@ const obtenerSunatDashboardTransporteData = async (filtro) => {
   const result = await pool.query(`
     SELECT
       tv.tipo_operacion,
-      COALESCE(tv.estado_sunat, '') AS estado_sunat,
+      CASE
+        WHEN COALESCE(tv.numero_rdi, '') <> '' THEN 'RDI'
+        WHEN COALESCE(tv.r_vfirmado, '') <> '' THEN 'FIRMADO'
+        ELSE 'PENDIENTE'
+      END AS estado_sunat,
       COALESCE(SUM(COALESCE(tv.registrado, 1)), 0)::integer AS documentos,
       COALESCE(SUM(tv.r_gravado * COALESCE(tv.registrado, 1)), 0)::numeric AS base_gravada,
       COALESCE(SUM(tv.r_exonerado * COALESCE(tv.registrado, 1)), 0)::numeric AS base_exonerada,
@@ -682,8 +716,8 @@ const obtenerSunatDashboardTransporteData = async (filtro) => {
       AND tv.tipo_operacion IN ('B', 'E')
       AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
       ${filtros}
-    GROUP BY tv.tipo_operacion, COALESCE(tv.estado_sunat, '')
-    ORDER BY tv.tipo_operacion, COALESCE(tv.estado_sunat, '')
+    GROUP BY tv.tipo_operacion, 2
+    ORDER BY tv.tipo_operacion, 2
   `, params);
 
   return result.rows.map((item) => ({
@@ -1228,6 +1262,20 @@ const generaJsonPrevioCPEexpertcontTransporte = async (
     throw new Error('Solo se puede enviar a SUNAT una operacion de encomienda');
   }
 
+  if (normalizarTexto(venta.numero_rdi)) {
+    const error = new Error(`La encomienda ya fue incluida en el RDI ${venta.numero_rdi}. No corresponde envio individual.`);
+    error.statusCode = 409;
+    error.nivel = 'PENDIENTE';
+    throw error;
+  }
+
+  if (normalizarTexto(venta.r_vfirmado)) {
+    const error = new Error('La encomienda ya tiene firma SUNAT registrada. Use las descargas del comprobante.');
+    error.statusCode = 409;
+    error.nivel = 'ACEPTADO';
+    throw error;
+  }
+
   const baseGravada = toNumber(venta.r_gravado);
   const baseExonerada = toNumber(venta.r_exonerado);
   const totalIgv = toNumber(venta.r_igv);
@@ -1490,7 +1538,7 @@ const generaJsonResumenCPEexpertcontTransporte = async ({
   // Equivale a elegir los comprobantes que antes se listaban en el TRD.
   // E = encomienda gravada con IGV.
   // B = boleto de viaje exonerado.
-  // Se excluyen A/P/R para no volver a resumir comprobantes ya tratados.
+  // Se excluyen comprobantes con RDI para no volver a resumir documentos ya tratados.
   let query = `
     SELECT tv.*,
            CAST(tv.r_fecemi AS VARCHAR(10)) AS fecha_emision
@@ -1501,7 +1549,7 @@ const generaJsonResumenCPEexpertcontTransporte = async ({
        AND tv.r_fecemi = $4::date
        AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
        AND tv.tipo_operacion IN ('B', 'E')
-       AND COALESCE(tv.estado_sunat, '') NOT IN ('A', 'P', 'R')
+       AND COALESCE(tv.numero_rdi, '') = ''
   `;
   const params = [periodo, id_usuario, documento_id, fecha_documentos];
 
@@ -1645,9 +1693,15 @@ const obtenerVentasTrans = async (req, res) => {
   try {
     let query = `
       SELECT ${columnasVentaTrans},
-             ruta.nombre_ruta
+             ruta.nombre_ruta,
+             rdi.estado AS rdi_estado,
+             rdi.ticket AS rdi_ticket
         FROM mve_transventa
         ${joinNombreRuta}
+        LEFT JOIN public.mve_rdi_sunat rdi
+          ON rdi.id_usuario = mve_transventa.id_usuario
+         AND rdi.documento_id = mve_transventa.documento_id
+         AND rdi.numero_rdi = mve_transventa.numero_rdi
        WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -2296,7 +2350,7 @@ const generarCPEexpertcontTransporte = async (req, res) => {
       await pool.query(
         `
         UPDATE mve_transventa
-           SET estado_sunat = $8,
+           SET cdr_descripcion = $8,
                ctrl_mod = CURRENT_TIMESTAMP,
                ctrl_mod_us = COALESCE($9, ctrl_mod_us)
          WHERE periodo = $1
@@ -2315,7 +2369,7 @@ const generarCPEexpertcontTransporte = async (req, res) => {
           rSerieFinal,
           rNumeroFinal,
           elementoFinal,
-          estadoSunatTransportePorNivel(errorNormalizado.nivel),
+          errorNormalizado.respuesta_sunat_descripcion,
           req.body.id_invitado || req.body.ctrl_mod_us || null
         ]
       );
@@ -2343,9 +2397,10 @@ const generarCPEexpertcontTransporte = async (req, res) => {
       await pool.query(
         `
         UPDATE mve_transventa
-           SET estado_sunat = $8,
+           SET r_vfirmado = COALESCE($8, r_vfirmado),
+               cdr_descripcion = $9,
                ctrl_mod = CURRENT_TIMESTAMP,
-               ctrl_mod_us = COALESCE($9, ctrl_mod_us)
+               ctrl_mod_us = COALESCE($10, ctrl_mod_us)
          WHERE periodo = $1
            AND id_usuario = $2
            AND documento_id = $3
@@ -2362,7 +2417,8 @@ const generarCPEexpertcontTransporte = async (req, res) => {
           rSerieFinal,
           rNumeroFinal,
           elementoFinal,
-          estadoSunatTransportePorNivel(nivel),
+          codigo_hash,
+          (respuesta_sunat_descripcion || '').substring(0, 100),
           req.body.id_invitado || req.body.ctrl_mod_us || null
         ]
       );
@@ -2387,8 +2443,8 @@ const generarCPEexpertcontTransporte = async (req, res) => {
     });
   } catch (error) {
     console.error('Error procesando envio SUNAT de transporte:', error);
-    return res.status(500).json(normalizarErrorSunatTransporte(
-      { message: error.message },
+    return res.status(error.statusCode || 500).json(normalizarErrorSunatTransporte(
+      { message: error.message, nivel: error.nivel || 'ERROR' },
       'Error interno procesando envio SUNAT de transporte'
     ));
   }
@@ -2491,6 +2547,530 @@ const generarTicketAdminPDFEncomiendaExpertcont = async (req, res) => {
   );
 };
 
+const obtenerDatosResumenSunatTransporte = async (idUsuario, documentoId) => {
+  const datosQuery = await pool.query(
+    `
+      SELECT *
+        FROM mad_usuariocontabilidad
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND tipo = 'ADMIN'
+    `,
+    [idUsuario, documentoId]
+  );
+
+  const datos = datosQuery.rows[0];
+  if (!datos) {
+    throw new Error('CONTABILIDAD NO ENCONTRADA');
+  }
+
+  return datos;
+};
+
+const obtenerRdiSunatTransporte = async ({ idUsuario, documentoId, numeroRdi, fechaResumen, origenResumen }) => {
+  const params = [idUsuario, documentoId];
+  let query = `
+    SELECT *
+      FROM public.mve_rdi_sunat
+     WHERE id_usuario = $1
+       AND documento_id = $2
+  `;
+
+  if (numeroRdi) {
+    params.push(numeroRdi);
+    query += ` AND numero_rdi = $${params.length} `;
+  } else {
+    params.push(fechaResumen, origenResumen);
+    query += `
+       AND fecha = $${params.length - 1}::date
+       AND origen = $${params.length}
+    `;
+  }
+
+  query += ' ORDER BY secuencia DESC LIMIT 1';
+  const rdiQuery = await pool.query(query, params);
+  return rdiQuery.rows[0] || null;
+};
+
+const obtenerPrimerRdiPendienteSunatTransporte = async ({ idUsuario, documentoId, fechaResumen, origenResumen }) => {
+  const rdiQuery = await pool.query(
+    `
+      SELECT *
+        FROM public.mve_rdi_sunat
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND fecha = $3::date
+         AND origen = $4
+         AND COALESCE(estado, 'PENDIENTE') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', 'ERROR')
+       ORDER BY secuencia ASC
+       LIMIT 1
+    `,
+    [idUsuario, documentoId, fechaResumen, origenResumen]
+  );
+
+  return rdiQuery.rows[0] || null;
+};
+
+const actualizarRdiSunatTransporte = async ({
+  idUsuario,
+  documentoId,
+  numeroRdi,
+  estado,
+  ticket = null,
+  respuestaCodigo = null,
+  respuestaDesc = null,
+}) => {
+  await pool.query(
+    `
+      UPDATE public.mve_rdi_sunat
+         SET estado = $4,
+             ticket = COALESCE($5, ticket),
+             respuesta_codigo = $6,
+             respuesta_desc = $7,
+             ctrl_actualiza = CURRENT_TIMESTAMP
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND numero_rdi = $3
+    `,
+    [idUsuario, documentoId, numeroRdi, estado, ticket, respuestaCodigo, respuestaDesc]
+  );
+};
+
+const marcarOperacionesRdiSunatTransporte = async ({
+  idUsuario,
+  documentoId,
+  numeroRdi,
+  estado = 'PENDIENTE',
+  respuestaDesc = null,
+  ticket = null,
+  ctrlModUs = null,
+}) => {
+  const estadoNormalizado = normalizarTexto(estado).toUpperCase() || 'PENDIENTE';
+  const descripcionBase = estadoNormalizado === 'ACEPTADO'
+    ? `Resumen Diario SUNAT ${numeroRdi} aceptado.`
+    : estadoNormalizado === 'RECHAZADO'
+      ? `Resumen Diario SUNAT ${numeroRdi} rechazado.`
+      : `Procesado por Resumen Diario SUNAT ${numeroRdi}.`;
+  const descripcion = [
+    descripcionBase,
+    ticket ? `Ticket: ${ticket}.` : null,
+    respuestaDesc || null,
+  ].filter(Boolean).join(' ').substring(0, 100);
+
+  await pool.query(
+    `
+      UPDATE public.mve_transventa
+         SET r_vfirmado = COALESCE(r_vfirmado, $4),
+             cdr_descripcion = $5,
+             ctrl_mod = CURRENT_TIMESTAMP,
+             ctrl_mod_us = COALESCE($6, ctrl_mod_us)
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND numero_rdi = $3
+    `,
+    [
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      `RDI:${numeroRdi}`,
+      descripcion,
+      ctrlModUs,
+    ]
+  );
+};
+
+const incrementarIntentoRdiSunatTransporte = async ({ idUsuario, documentoId, numeroRdi }) => {
+  await pool.query(
+    `
+      UPDATE public.mve_rdi_sunat
+         SET estado = 'GENERADO',
+             ctrl_actualiza = CURRENT_TIMESTAMP
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND numero_rdi = $3
+    `,
+    [idUsuario, documentoId, numeroRdi]
+  );
+};
+
+const generarPayloadResumenSunatTransporteDesdeRdi = async ({
+  periodo,
+  idUsuario,
+  documentoId,
+  numeroRdi,
+  tipoOperacion,
+}) => {
+  const datos = await obtenerDatosResumenSunatTransporte(idUsuario, documentoId);
+  const rdi = await obtenerRdiSunatTransporte({ idUsuario, documentoId, numeroRdi });
+
+  if (!rdi) {
+    throw new Error(`No se encontro el Resumen Diario ${numeroRdi}.`);
+  }
+
+  const params = [periodo, idUsuario, documentoId, numeroRdi];
+  let query = `
+    SELECT tv.*,
+           CAST(tv.r_fecemi AS VARCHAR(10)) AS fecha_emision
+      FROM public.mve_transventa tv
+     WHERE tv.periodo = $1
+       AND tv.id_usuario = $2
+       AND tv.documento_id = $3
+       AND tv.numero_rdi = $4
+  `;
+
+  if (tipoOperacion && ['B', 'E'].includes(tipoOperacion)) {
+    params.push(tipoOperacion);
+    query += ` AND tv.tipo_operacion = $${params.length} `;
+  }
+
+  query += ` ORDER BY tv.tipo_operacion, tv.r_serie, tv.r_numero, tv.elemento `;
+
+  const ventaQuery = await pool.query(query, params);
+
+  if (ventaQuery.rows.length === 0) {
+    throw new Error(`El Resumen Diario ${numeroRdi} no tiene boletas de transporte asociadas.`);
+  }
+
+  const comprobantes = ventaQuery.rows.map((venta) => {
+    const total = toNumber(venta.r_monto_total || venta.precio_neto);
+
+    return {
+      tipo_documento: venta.r_cod_ref || venta.r_cod,
+      serie: venta.r_serie_ref || venta.r_serie,
+      numero: venta.r_numero_ref || venta.r_numero,
+      cliente_numero_documento: venta.cliente_documento_id || '-',
+      cliente_tipo_documento: venta.cliente_id_doc || '0',
+      status: Number(venta.registrado) === 0 ? '3' : '1',
+      moneda_id: 'PEN',
+      total_a_pagar: total,
+      total_gravada: toNumber(venta.r_gravado),
+      total_exonerada: toNumber(venta.r_exonerado),
+      total_inafecta: 0,
+      total_gratuita: 0,
+      total_igv: toNumber(venta.r_igv),
+      tipo_operacion: venta.tipo_operacion,
+      origen: {
+        periodo: venta.periodo,
+        r_cod: venta.r_cod,
+        r_serie: venta.r_serie,
+        r_numero: venta.r_numero,
+        elemento: venta.elemento,
+      }
+    };
+  });
+
+  const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+    String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
+
+  return {
+    rdi,
+    total_documentos: comprobantes.length,
+    payload: {
+      empresa: {
+        ruc: datos.documento_id,
+        razon_social: datos.razon_social,
+        nombre_comercial: datos.razon_social,
+        domicilio_fiscal: datos.direccion,
+        ubigeo: datos.ubigeo,
+        distrito: datos.distrito,
+        provincia: datos.provincia,
+        departamento: datos.departamento,
+        modo: datos.modo,
+      },
+      resumen: {
+        numero: fechaNumero,
+        correlativo: String(correlativo),
+        fecha_documentos: toIsoDate(rdi.fecha),
+        fecha_resumen: toIsoDate(rdi.fecha),
+      },
+      comprobantes,
+    }
+  };
+};
+
+const consultarTicketRdiSunatTransporte = async ({
+  idUsuario,
+  documentoId,
+  numeroRdi,
+  periodo,
+  ctrlModUs = null,
+}) => {
+  const datos = await obtenerDatosResumenSunatTransporte(idUsuario, documentoId);
+  const rdi = await obtenerRdiSunatTransporte({ idUsuario, documentoId, numeroRdi });
+
+  if (!rdi) {
+    throw new Error(`No se encontro el Resumen Diario ${numeroRdi}.`);
+  }
+
+  if (!rdi.ticket) {
+    return {
+      success: false,
+      numero_rdi: numeroRdi,
+      estado: normalizarTexto(rdi.estado).toUpperCase() || 'PENDIENTE',
+      mensaje_usuario: `Resumen Diario ${numeroRdi} aun no tiene ticket para consultar.`,
+      permite_reintento: true,
+    };
+  }
+
+  const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+    String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
+  const nombreArchivo = `${documentoId}-RC-${fechaNumero}-${correlativo}`;
+  const payload = {
+    empresa: {
+      ruc: datos.documento_id,
+      razon_social: datos.razon_social,
+      modo: datos.modo,
+    },
+    ticket: rdi.ticket,
+    nombre_archivo: nombreArchivo,
+    resumen: {
+      numero: fechaNumero,
+      correlativo: String(correlativo),
+      fecha_documentos: toIsoDate(rdi.fecha),
+    }
+  };
+
+  const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatresumen/ticket', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    timeout: 90000,
+  });
+  const responseData = await leerRespuestaSunat(apiResponse);
+
+  if (!apiResponse.ok) {
+    const errorNormalizado = normalizarErrorResumenSunatTransporte(responseData, 'Error consultando ticket de Resumen Diario');
+    await actualizarRdiSunatTransporte({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      estado: normalizarTexto(rdi.estado).toUpperCase() || 'ENVIADO',
+      respuestaCodigo: errorNormalizado.codigo,
+      respuestaDesc: errorNormalizado.respuesta_desc,
+    });
+
+    return {
+      ...errorNormalizado,
+      numero_rdi: numeroRdi,
+      ticket: rdi.ticket,
+    };
+  }
+
+  const dataSunat = responseData?.data || responseData;
+  const nivel = dataSunat.nivel || 'PENDIENTE';
+  const estadoRdi = nivel === 'ACEPTADO'
+    ? 'ACEPTADO'
+    : nivel === 'RECHAZADO'
+      ? 'RECHAZADO'
+      : 'ENVIADO';
+  const descripcion = dataSunat.respuesta_sunat_descripcion || dataSunat.mensaje || dataSunat.message || '';
+
+  await actualizarRdiSunatTransporte({
+    idUsuario,
+    documentoId,
+    numeroRdi,
+    estado: estadoRdi,
+    ticket: dataSunat.ticket || rdi.ticket,
+    respuestaCodigo: dataSunat.codigo || null,
+    respuestaDesc: descripcion.substring(0, 500),
+  });
+
+  await marcarOperacionesRdiSunatTransporte({
+    idUsuario,
+    documentoId,
+    numeroRdi,
+    estado: estadoRdi,
+    respuestaDesc: descripcion,
+    ticket: dataSunat.ticket || rdi.ticket,
+    ctrlModUs,
+  });
+
+  return {
+    success: dataSunat.estado === true || nivel === 'PENDIENTE',
+    numero_rdi: numeroRdi,
+    estado: estadoRdi,
+    nivel,
+    codigo: dataSunat.codigo,
+    ticket: dataSunat.ticket || rdi.ticket,
+    nombre_archivo: dataSunat.nombre_archivo || nombreArchivo,
+    ruta_cdr: dataSunat.ruta_cdr,
+    respuesta_sunat_descripcion: descripcion,
+    mensaje_usuario: nivel === 'PENDIENTE'
+      ? `SUNAT aun esta procesando el Resumen Diario ${numeroRdi}.`
+      : descripcion,
+    periodo,
+  };
+};
+
+const enviarRdiSunatTransporte = async ({
+  periodo,
+  idUsuario,
+  documentoId,
+  numeroRdi,
+  tipoOperacion,
+  ctrlModUs = null,
+}) => {
+  const { rdi, payload, total_documentos } = await generarPayloadResumenSunatTransporteDesdeRdi({
+    periodo,
+    idUsuario,
+    documentoId,
+    numeroRdi,
+    tipoOperacion,
+  });
+
+  const estadoActual = normalizarTexto(rdi.estado).toUpperCase();
+  if (rdi.ticket) {
+    return consultarTicketRdiSunatTransporte({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      periodo,
+      ctrlModUs,
+    });
+  }
+
+  if (['ACEPTADO', 'RECHAZADO'].includes(estadoActual)) {
+    return {
+      success: estadoActual === 'ACEPTADO',
+      numero_rdi: numeroRdi,
+      estado: estadoActual,
+      ticket: rdi.ticket,
+      total_documentos,
+      mensaje_usuario: `Resumen Diario ${numeroRdi} en estado ${estadoActual}.`,
+    };
+  }
+
+  const lockKey = `rdi-trans:${idUsuario}:${documentoId}:${numeroRdi}`;
+  const lockClient = await pool.connect();
+  let lockAcquired = false;
+
+  try {
+    const lockResult = await lockClient.query(
+      'SELECT pg_try_advisory_lock(hashtext($1)) AS locked',
+      [lockKey]
+    );
+    lockAcquired = lockResult.rows[0]?.locked === true;
+
+    if (!lockAcquired) {
+      return {
+        success: false,
+        numero_rdi: numeroRdi,
+        estado: estadoActual || 'PENDIENTE',
+        total_documentos,
+        mensaje_usuario: `Resumen Diario ${numeroRdi} ya esta siendo procesado. Espera unos segundos y consulta nuevamente.`,
+      };
+    }
+
+    await incrementarIntentoRdiSunatTransporte({ idUsuario, documentoId, numeroRdi });
+
+    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatresumen', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 90000,
+    });
+    const responseData = await leerRespuestaSunat(apiResponse);
+    const dataSunat = responseData?.data || responseData;
+
+    if (!apiResponse.ok) {
+      const errorNormalizado = normalizarErrorResumenSunatTransporte(responseData);
+      await actualizarRdiSunatTransporte({
+        idUsuario,
+        documentoId,
+        numeroRdi,
+        estado: 'ERROR',
+        respuestaCodigo: errorNormalizado.codigo,
+        respuestaDesc: errorNormalizado.respuesta_desc,
+      });
+
+      return {
+        ...errorNormalizado,
+        numero_rdi: numeroRdi,
+        total_documentos,
+      };
+    }
+
+    const ticket = dataSunat.ticket || null;
+    const estadoRdi = ticket ? 'ENVIADO' : 'ERROR';
+    const descripcion = dataSunat.respuesta_sunat_descripcion || dataSunat.mensaje || dataSunat.message || '';
+
+    await actualizarRdiSunatTransporte({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      estado: estadoRdi,
+    ticket,
+    respuestaCodigo: dataSunat.codigo || null,
+    respuestaDesc: descripcion.substring(0, 500),
+    });
+
+    if (ticket) {
+      await marcarOperacionesRdiSunatTransporte({
+        idUsuario,
+        documentoId,
+        numeroRdi,
+        estado: 'PENDIENTE',
+        respuestaDesc: descripcion,
+        ticket,
+        ctrlModUs,
+      });
+    }
+
+    return {
+      success: Boolean(ticket),
+      numero_rdi: numeroRdi,
+      estado: estadoRdi,
+      nivel: dataSunat.nivel || 'TICKET',
+      ticket,
+      nombre_archivo: dataSunat.nombre_archivo || `${documentoId}-${numeroRdi}`,
+      total_documentos,
+      respuesta_sunat_descripcion: descripcion,
+      mensaje_usuario: ticket
+        ? `Resumen Diario ${numeroRdi} enviado a SUNAT. Ticket: ${ticket}.`
+        : `SUNAT no retorno ticket para el Resumen Diario ${numeroRdi}.`,
+      ruta_xml: dataSunat.ruta_xml,
+      codigo_hash: dataSunat.codigo_hash,
+      payload
+    };
+  } catch (error) {
+    const esRecepcionIncierta = ['request-timeout', 'ETIMEDOUT', 'ECONNRESET', 'ECONNABORTED'].includes(error.type || error.code);
+    const estado = esRecepcionIncierta ? 'INCIERTO' : 'ERROR';
+    const mensaje = esRecepcionIncierta
+      ? 'No se pudo confirmar la recepcion del resumen por SUNAT. Verifica antes de reenviar.'
+      : (error.message || 'Error interno procesando Resumen Diario SUNAT.');
+
+    await actualizarRdiSunatTransporte({
+      idUsuario,
+      documentoId,
+      numeroRdi,
+      estado,
+      respuestaCodigo: estado,
+      respuestaDesc: mensaje.substring(0, 500),
+    });
+
+    return {
+      success: false,
+      numero_rdi: numeroRdi,
+      estado,
+      nivel: estado,
+      total_documentos,
+      mensaje_usuario: mensaje,
+      respuesta_sunat_descripcion: mensaje,
+      detalle_tecnico: error.message,
+      permite_reintento: estado === 'ERROR',
+    };
+  } finally {
+    if (lockAcquired) {
+      await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [lockKey]);
+    }
+    lockClient.release();
+  }
+};
+
 // ORDEN DE EJECUCION - ENDPOINT ADMINISTRATIVO DE RESUMEN
 // Ruta:
 //   POST /mve_transventa/cpe/resumen
@@ -2500,8 +3080,7 @@ const generarTicketAdminPDFEncomiendaExpertcont = async (req, res) => {
 //   Lee parametros del request: periodo, empresa, fecha, correlativo y filtros.
 //
 // Paso 2:
-//   generaJsonResumenCPEexpertcontTransporte(...)
-//   Arma el JSON tributario, equivalente moderno del antiguo archivo TRD.
+//   Crea o reutiliza cabecera en mve_rdi_sunat usando fve_crear_resumen_diario.
 //
 // Paso 3:
 //   Dentro de generaJsonResumenCPEexpertcontTransporte:
@@ -2512,7 +3091,7 @@ const generarTicketAdminPDFEncomiendaExpertcont = async (req, res) => {
 //       B boleto     -> exonerada + IGV 0.00.
 //
 // Paso 4:
-//   Si solo_payload=true, responde el JSON sin enviar a SUNAT.
+//   Si solo_payload=true, responde un JSON de auditoria sin crear/enviar RDI.
 //   Sirve para revisar lo que antes se revisaba en el TRD/SFS.
 //
 // Paso 5:
@@ -2525,11 +3104,10 @@ const generarTicketAdminPDFEncomiendaExpertcont = async (req, res) => {
 //   Normaliza la respuesta del backend API SUNAT.
 //
 // Paso 7:
-//   marcarOperacionesResumen(...)
-//   En produccion marca las boletas como pendientes ('P') para evitar reenvio.
+//   Guarda ticket/estado en mve_rdi_sunat y actualiza los datos CDR del documento.
 //
 // Paso 8:
-//   Responde al frontend con ticket, nombre_archivo, ruta_xml y payload usado.
+//   Responde al frontend con numero_rdi, ticket, estado y payload usado.
 const generarResumenCPEexpertcontTransporte = async (req, res) => {
   const {
     p_periodo,
@@ -2545,7 +3123,8 @@ const generarResumenCPEexpertcontTransporte = async (req, res) => {
     correlativo,
     id_punto_venta,
     tipo_operacion,
-    solo_payload
+    solo_payload,
+    numero_rdi
   } = req.body;
 
   const periodoFinal = p_periodo || periodo;
@@ -2553,6 +3132,11 @@ const generarResumenCPEexpertcontTransporte = async (req, res) => {
   const documentoIdFinal = p_documento_id || documento_id;
   const fechaDocumentosFinal = p_fecha_documentos || fecha_documentos;
   const correlativoFinal = p_correlativo || correlativo || 1;
+  const tipoOperacionFinal = ['B', 'E'].includes(String(tipo_operacion || '').trim())
+    ? String(tipo_operacion).trim()
+    : 'E';
+  const origenResumen = tipoOperacionFinal === 'B' ? 'TRANS_BOLETO' : 'TRANS_ENCOMIENDA';
+  const numeroRdiSolicitado = normalizarTexto(numero_rdi);
 
   if (!periodoFinal || !idUsuarioFinal || !documentoIdFinal || !fechaDocumentosFinal) {
     return res.status(400).json({
@@ -2561,21 +3145,26 @@ const generarResumenCPEexpertcontTransporte = async (req, res) => {
     });
   }
 
-  try {
-    // Paso 1: armar el JSON tributario desde la base administrativa.
-    // Es la nueva version estructurada del TRD. Con solo_payload=true se
-    // puede auditar sin enviar nada a SUNAT.
-    const { payload, operaciones } = await generaJsonResumenCPEexpertcontTransporte({
-      periodo: periodoFinal,
-      id_usuario: idUsuarioFinal,
-      documento_id: documentoIdFinal,
-      fecha_documentos: fechaDocumentosFinal,
-      correlativo: correlativoFinal,
-      id_punto_venta,
-      tipo_operacion,
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaDocumentosFinal)) {
+    return res.status(400).json({
+      success: false,
+      message: 'fecha_documentos debe tener formato YYYY-MM-DD',
+      mensaje_usuario: 'La fecha del resumen debe tener formato YYYY-MM-DD.'
     });
+  }
 
+  try {
     if (solo_payload === true || solo_payload === '1') {
+      const { payload, operaciones } = await generaJsonResumenCPEexpertcontTransporte({
+        periodo: periodoFinal,
+        id_usuario: idUsuarioFinal,
+        documento_id: documentoIdFinal,
+        fecha_documentos: fechaDocumentosFinal,
+        correlativo: correlativoFinal,
+        id_punto_venta,
+        tipo_operacion: tipoOperacionFinal,
+      });
+
       return res.status(200).json({
         success: true,
         payload,
@@ -2583,53 +3172,139 @@ const generarResumenCPEexpertcontTransporte = async (req, res) => {
       });
     }
 
-    // Paso 2: enviar el payload al microservicio SUNAT.
-    // A partir de aqui el backend API hace lo que antes hacia SFS:
-    // generar XML, firmar, comprimir ZIP y ejecutar sendSummary.
-    // SUNAT devuelve ticket, no CDR inmediato.
-    const apiResponse = await fetch('https://expertcont-api-sunat.up.railway.app/cpesunatresumen', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    const responseData = await leerRespuestaSunat(apiResponse);
+    if (numeroRdiSolicitado) {
+      const envio = await enviarRdiSunatTransporte({
+        periodo: periodoFinal,
+        idUsuario: idUsuarioFinal,
+        documentoId: documentoIdFinal,
+        numeroRdi: numeroRdiSolicitado,
+        tipoOperacion: tipoOperacionFinal,
+        ctrlModUs: req.body.id_invitado || req.body.ctrl_mod_us || null,
+      });
 
-    if (!apiResponse.ok) {
-      const errorNormalizado = normalizarErrorSunatTransporte(responseData, 'Error en la API SUNAT enviando resumen');
-      return res.status(apiResponse.status).json(errorNormalizado);
-    }
-
-    const dataSunat = responseData?.data || responseData;
-    const nivel = dataSunat.nivel || 'TICKET';
-
-    // Paso 3: marcar operaciones como pendientes en produccion.
-    // Esto reemplaza la espera manual del ticket SFS y bloquea reenvios
-    // mientras SUNAT procesa el resumen.
-    if (String(payload.empresa.modo) === '1') {
-      await marcarOperacionesResumen({
-        operaciones,
-        estado_sunat: 'P',
-        ctrl_mod_us: req.body.id_invitado || req.body.ctrl_mod_us || null
+      return res.status(200).json({
+        ...envio,
+        creado: false,
+        cantidad: Number(envio.total_documentos || 0),
+        origen: origenResumen,
+        fecha: fechaDocumentosFinal,
+        message: envio.mensaje_usuario,
+        data: {
+          ...envio,
+          origen: origenResumen,
+          fecha: fechaDocumentosFinal,
+        }
       });
     }
 
+    const pendiente = await obtenerPrimerRdiPendienteSunatTransporte({
+      idUsuario: idUsuarioFinal,
+      documentoId: documentoIdFinal,
+      fechaResumen: fechaDocumentosFinal,
+      origenResumen,
+    });
+
+    if (pendiente) {
+      const envioPendiente = await enviarRdiSunatTransporte({
+        periodo: periodoFinal,
+        idUsuario: idUsuarioFinal,
+        documentoId: documentoIdFinal,
+        numeroRdi: pendiente.numero_rdi,
+        tipoOperacion: tipoOperacionFinal,
+        ctrlModUs: req.body.id_invitado || req.body.ctrl_mod_us || null,
+      });
+
+      return res.status(200).json({
+        ...envioPendiente,
+        creado: false,
+        rdi_pendiente_previo: true,
+        cantidad: Number(envioPendiente.total_documentos || 0),
+        origen: origenResumen,
+        fecha: fechaDocumentosFinal,
+        message: envioPendiente.mensaje_usuario,
+        data: {
+          ...pendiente,
+          ...envioPendiente,
+          origen: origenResumen,
+          fecha: fechaDocumentosFinal,
+        }
+      });
+    }
+
+    const result = await pool.query(
+      `
+        SELECT creado, numero_rdi, secuencia, cantidad, mensaje
+        FROM public.fve_crear_resumen_diario($1, $2, $3::date, $4, $5)
+      `,
+      [
+        idUsuarioFinal,
+        documentoIdFinal,
+        fechaDocumentosFinal,
+        origenResumen,
+        id_punto_venta || null
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: 'La funcion fve_crear_resumen_diario no retorno resultado',
+        mensaje_usuario: 'No se pudo obtener respuesta al generar el Resumen Diario SUNAT.'
+      });
+    }
+
+    const resumen = result.rows[0];
+    let numeroRdi = resumen.numero_rdi;
+
+    if (!numeroRdi) {
+      const existente = await obtenerPrimerRdiPendienteSunatTransporte({
+        idUsuario: idUsuarioFinal,
+        documentoId: documentoIdFinal,
+        fechaResumen: fechaDocumentosFinal,
+        origenResumen,
+      });
+
+      if (!existente) {
+        return res.status(200).json({
+          success: false,
+          creado: false,
+          cantidad: 0,
+          origen: origenResumen,
+          fecha: fechaDocumentosFinal,
+          message: resumen.mensaje || `No hay boletas de transporte pendientes para ${fechaDocumentosFinal}.`,
+          mensaje_usuario: resumen.mensaje || `No hay boletas de transporte pendientes para ${fechaDocumentosFinal}.`,
+        });
+      }
+
+      numeroRdi = existente.numero_rdi;
+    }
+
+    const envio = await enviarRdiSunatTransporte({
+      periodo: periodoFinal,
+      idUsuario: idUsuarioFinal,
+      documentoId: documentoIdFinal,
+      numeroRdi,
+      tipoOperacion: tipoOperacionFinal,
+      ctrlModUs: req.body.id_invitado || req.body.ctrl_mod_us || null,
+    });
+
     return res.status(200).json({
-      success: true,
-      estado: dataSunat.estado === true,
-      nivel,
-      ticket: dataSunat.ticket || '',
-      nombre_archivo: dataSunat.nombre_archivo,
-      total_documentos: operaciones.length,
-      respuesta_sunat_descripcion: dataSunat.respuesta_sunat_descripcion,
-      ruta_xml: dataSunat.ruta_xml,
-      codigo_hash: dataSunat.codigo_hash,
-      payload
+      ...envio,
+      creado: resumen.creado === true,
+      cantidad: Number(resumen.cantidad || envio.total_documentos || 0),
+      origen: origenResumen,
+      fecha: fechaDocumentosFinal,
+      message: envio.mensaje_usuario || resumen.mensaje,
+      data: {
+        ...resumen,
+        ...envio,
+        origen: origenResumen,
+        fecha: fechaDocumentosFinal,
+      }
     });
   } catch (error) {
     console.error('Error procesando resumen SUNAT de transporte:', error);
-    return res.status(500).json(normalizarErrorSunatTransporte(
+    return res.status(500).json(normalizarErrorResumenSunatTransporte(
       { message: error.message },
       'Error interno procesando resumen SUNAT de transporte'
     ));
@@ -2663,6 +3338,7 @@ const consultarResumenCPEexpertcontTransporte = async (req, res) => {
     documento_id,
     id_usuario,
     id_anfitrion,
+    numero_rdi,
     ticket,
     nombre_archivo,
     periodo,
@@ -2670,6 +3346,38 @@ const consultarResumenCPEexpertcontTransporte = async (req, res) => {
     correlativo,
     empresa
   } = req.body;
+
+  const idUsuarioFinal = normalizarTexto(id_usuario || id_anfitrion);
+  const documentoIdFinal = normalizarTexto(documento_id);
+  const numeroRdiFinal = normalizarTexto(numero_rdi);
+
+  if (numeroRdiFinal) {
+    if (!idUsuarioFinal || !documentoIdFinal) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan parametros requeridos: id_anfitrion, documento_id o numero_rdi',
+        mensaje_usuario: 'Faltan datos para consultar el ticket del Resumen Diario SUNAT.'
+      });
+    }
+
+    try {
+      const resultado = await consultarTicketRdiSunatTransporte({
+        idUsuario: idUsuarioFinal,
+        documentoId: documentoIdFinal,
+        numeroRdi: numeroRdiFinal,
+        periodo,
+        ctrlModUs: req.body.id_invitado || req.body.ctrl_mod_us || null,
+      });
+
+      return res.status(200).json(resultado);
+    } catch (error) {
+      console.error('Error consultando RDI transporte por numero:', error);
+      return res.status(500).json(normalizarErrorResumenSunatTransporte(
+        { message: error.message },
+        'Error interno consultando el ticket del Resumen Diario SUNAT.'
+      ));
+    }
+  }
 
   let empresaFinal = empresa || {
     ruc: documento_id,
@@ -2759,34 +3467,83 @@ const consultarResumenCPEexpertcontTransporte = async (req, res) => {
   }
 };
 
-const marcarOperacionesResumen = async ({ operaciones, estado_sunat, ctrl_mod_us }) => {
-  for (const venta of operaciones) {
-    await pool.query(
+const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id } = req.params;
+  const origenResumen = normalizarTexto(req.query?.origen || 'TRANS_ENCOMIENDA').toUpperCase();
+
+  if (!periodo || !id_anfitrion || !documento_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos: periodo, id_anfitrion o documento_id',
+    });
+  }
+
+  if (!['TRANS_ENCOMIENDA', 'TRANS_BOLETO'].includes(origenResumen)) {
+    return res.status(400).json({
+      success: false,
+      message: `Origen no reconocido: ${origenResumen}`,
+    });
+  }
+
+  try {
+    const result = await pool.query(
       `
-      UPDATE mve_transventa
-         SET estado_sunat = $8,
-             ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = COALESCE($9, ctrl_mod_us)
-       WHERE periodo = $1
-         AND id_usuario = $2
-         AND documento_id = $3
-         AND r_cod = $4
-         AND r_serie = $5
-         AND r_numero = $6
-         AND elemento = $7
+        SELECT
+          r.id_usuario,
+          r.documento_id,
+          CAST(r.fecha AS varchar(10)) AS fecha,
+          r.numero_rdi,
+          r.secuencia,
+          r.origen,
+          COALESCE(r.estado, 'PENDIENTE') AS estado,
+          r.ticket,
+          r.respuesta_codigo,
+          r.respuesta_desc,
+          NULL::varchar AS nombre_archivo,
+          NULL::varchar AS ruta_xml,
+          NULL::varchar AS ruta_cdr,
+          NULL::timestamp AS ultimo_intento,
+          0::integer AS intentos,
+          CAST(r.ctrl_insercion AS varchar(30)) AS ctrl_insercion,
+          CAST(r.ctrl_actualiza AS varchar(30)) AS ctrl_actualiza,
+          COALESCE(COUNT(tv.*), 0)::integer AS cantidad_boletas
+        FROM public.mve_rdi_sunat r
+        LEFT JOIN public.mve_transventa tv
+          ON tv.id_usuario = r.id_usuario
+         AND tv.documento_id = r.documento_id
+         AND tv.numero_rdi = r.numero_rdi
+        WHERE r.id_usuario = $1
+          AND r.documento_id = $2
+          AND to_char(r.fecha, 'YYYY-MM') = $3
+          AND r.origen = $4
+        GROUP BY
+          r.id_usuario,
+          r.documento_id,
+          r.fecha,
+          r.numero_rdi,
+          r.secuencia,
+          r.origen,
+          r.estado,
+          r.ticket,
+          r.respuesta_codigo,
+          r.respuesta_desc,
+          r.ctrl_insercion,
+          r.ctrl_actualiza
+        ORDER BY r.fecha DESC, r.secuencia DESC
       `,
-      [
-        venta.periodo,
-        venta.id_usuario,
-        venta.documento_id,
-        venta.r_cod,
-        venta.r_serie,
-        venta.r_numero,
-        venta.elemento,
-        estado_sunat,
-        ctrl_mod_us
-      ]
+      [id_anfitrion, documento_id, periodo, origenResumen]
     );
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error('Error al obtener Resumenes Diario SUNAT de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno obteniendo Resumenes Diario SUNAT de transporte.',
+    });
   }
 };
 
@@ -2810,5 +3567,6 @@ module.exports = {
   generarTicketPDFEncomiendaExpertcont,
   generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
-  consultarResumenCPEexpertcontTransporte
+  consultarResumenCPEexpertcontTransporte,
+  obtenerResumenesCPEexpertcontTransporte
 };

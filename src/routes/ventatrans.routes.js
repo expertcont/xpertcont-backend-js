@@ -21,7 +21,8 @@ const {
   generarTicketPDFEncomiendaExpertcont,
   generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
-  consultarResumenCPEexpertcontTransporte
+  consultarResumenCPEexpertcontTransporte,
+  obtenerResumenesCPEexpertcontTransporte
 } = require('../controllers/ventatrans.controllers');
 
 router.post('/mve_transventa', crearVentaTrans);
@@ -30,6 +31,7 @@ router.post('/mve_transventa/ticket/encomienda', generarTicketPDFEncomiendaExper
 router.post('/mve_transventa/ticket/encomienda/admin', generarTicketAdminPDFEncomiendaExpertcont);
 router.post('/mve_transventa/cpe/resumen', generarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/ticket', consultarResumenCPEexpertcontTransporte);
+router.get('/mve_transventa/cpe/resumen/:periodo/:id_anfitrion/:documento_id', obtenerResumenesCPEexpertcontTransporte);
 
 router.get(
   '/mve_transventa/encomienda/clonar/:periodo/:id_anfitrion/:documento_id',
