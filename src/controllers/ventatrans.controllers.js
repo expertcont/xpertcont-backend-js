@@ -65,6 +65,68 @@ const columnasVentaTrans = `
   ctrl_mod_us
 `;
 
+const columnasVentaTransDesde = (alias) => `
+  CAST(${alias}.r_fecemi AS VARCHAR(50)) AS r_fecemi,
+  ${alias}.r_cod,
+  ${alias}.r_serie,
+  ${alias}.r_numero,
+  ${alias}.elemento,
+  ${alias}.tipo_operacion,
+  ${alias}.r_cod_ref,
+  ${alias}.r_serie_ref,
+  ${alias}.r_numero_ref,
+  CAST(${alias}.r_fecemi_ref AS VARCHAR(50)) AS r_fecemi_ref,
+  ${alias}.cliente_id_doc AS id_documento,
+  ${alias}.cliente_id_doc,
+  ${alias}.cliente,
+  ${alias}.cliente_documento_id AS cliente_documento,
+  ${alias}.cliente_documento_id,
+  ${alias}.cliente_telefono,
+  ${alias}.cliente_direccion_fact,
+  ${alias}.id_punto_venta,
+  ${alias}.cliente_zona AS remitente_zona,
+  ${alias}.cliente_zona,
+  ${alias}.cliente_direccion AS remitente_direccion,
+  ${alias}.cliente_direccion,
+  ${alias}.id_ruta,
+  ${alias}.descripcion,
+  ${alias}.placa,
+  ${alias}.licencia,
+  ${alias}.asiento,
+  ${alias}.pasajero_edad,
+  ${alias}.destinatario_id_doc,
+  ${alias}.destinatario,
+  ${alias}.destinatario_documento_id AS destinatario_documento,
+  ${alias}.destinatario_documento_id,
+  ${alias}.destinatario_telefono,
+  ${alias}.id_punto_venta_dest,
+  ${alias}.destinatario_zona,
+  ${alias}.destinatario_direccion,
+  CAST(${alias}.entrega_fecha AS VARCHAR(50)) AS entrega_fecha,
+  ${alias}.entrega_documento_id AS entrega_documento,
+  ${alias}.entrega_documento_id,
+  ${alias}.entrega_nombres,
+  ${alias}.entrega_ctrl_us,
+  1 AS cantidad,
+  ${alias}.precio_neto AS precio_unitario,
+  ${alias}.precio_neto,
+  ${alias}.r_gravado,
+  ${alias}.r_exonerado,
+  ${alias}.r_igv,
+  ${alias}.r_monto_total,
+  ${alias}.porc_igv,
+  ${alias}.condicion_pago,
+  CAST(${alias}.llegada_aprox AS VARCHAR(50)) AS llegada_aprox,
+  ${alias}.numero_rdi,
+  ${alias}.r_vfirmado,
+  ${alias}.cdr_descripcion,
+  ${alias}.estado_sunat,
+  ${alias}.ctrl_crea,
+  ${alias}.ctrl_crea_us,
+  ${alias}.ctrl_mod,
+  ${alias}.ctrl_mod_us
+`;
+
 const joinNombreRuta = `
   LEFT JOIN (
     SELECT id_usuario AS ruta_id_usuario,
@@ -1692,30 +1754,39 @@ const obtenerVentasTrans = async (req, res) => {
 
   try {
     let query = `
-      SELECT ${columnasVentaTrans},
+      SELECT ${columnasVentaTransDesde('tv')},
              ruta.nombre_ruta,
              rdi.estado AS rdi_estado,
              rdi.ticket AS rdi_ticket
-        FROM mve_transventa
-        ${joinNombreRuta}
+        FROM mve_transventa tv
+        LEFT JOIN (
+          SELECT id_usuario AS ruta_id_usuario,
+                 documento_id AS ruta_documento_id,
+                 id_ruta AS ruta_id_ruta,
+                 nombre AS nombre_ruta
+            FROM mve_transruta
+        ) ruta
+          ON ruta.ruta_id_usuario = tv.id_usuario
+         AND ruta.ruta_documento_id = tv.documento_id
+         AND ruta.ruta_id_ruta = tv.id_ruta
         LEFT JOIN public.mve_rdi_sunat rdi
-          ON rdi.id_usuario = mve_transventa.id_usuario
-         AND rdi.documento_id = mve_transventa.documento_id
-         AND rdi.numero_rdi = mve_transventa.numero_rdi
-       WHERE periodo = $1
-         AND id_usuario = $2
-         AND documento_id = $3
+          ON rdi.id_usuario = tv.id_usuario
+         AND rdi.documento_id = tv.documento_id
+         AND rdi.numero_rdi = tv.numero_rdi
+       WHERE tv.periodo = $1
+         AND tv.id_usuario = $2
+         AND tv.documento_id = $3
     `;
 
     const params = [periodo, id_anfitrion, documento_id];
 
     if (dia !== '*') {
-      query += ` AND r_fecemi = $4 `;
+      query += ` AND tv.r_fecemi = $4 `;
       params.push(`${periodo}-${dia}`);
     }
 
     query += `
-      ORDER BY r_fecemi DESC, r_serie, r_numero DESC, elemento
+      ORDER BY tv.r_fecemi DESC, tv.r_serie, tv.r_numero DESC, tv.elemento
     `;
 
     const result = await pool.query(query, params);
