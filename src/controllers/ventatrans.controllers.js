@@ -2,6 +2,24 @@ const pool = require('../db');
 const fetch = require('node-fetch');
 
 const normalizarTexto = (valor) => (valor || '').toString().trim();
+const SUNAT_API_BASE_URL = 'https://expertcont-api-sunat.up.railway.app';
+const TICKET_ENCOMIENDA_ENDPOINT = '/cpesunatticketencomienda/v2';
+const TICKET_ENCOMIENDA_ADMIN_ENDPOINT = '/cpesunatticketencomienda';
+const TICKET_ENCOMIENDA_ENDPOINTS_PERMITIDOS = [
+  TICKET_ENCOMIENDA_ENDPOINT,
+  TICKET_ENCOMIENDA_ADMIN_ENDPOINT,
+];
+
+const resolverEndpointTicketEncomienda = (endpointSolicitado, endpointDefault = TICKET_ENCOMIENDA_ENDPOINT) => {
+  const endpointNormalizado = normalizarTexto(endpointSolicitado);
+  const endpointPath = endpointNormalizado.startsWith(SUNAT_API_BASE_URL)
+    ? endpointNormalizado.slice(SUNAT_API_BASE_URL.length)
+    : endpointNormalizado;
+
+  return TICKET_ENCOMIENDA_ENDPOINTS_PERMITIDOS.includes(endpointPath)
+    ? endpointPath
+    : endpointDefault;
+};
 
 const columnasVentaTrans = `
   CAST(r_fecemi AS VARCHAR(50)) AS r_fecemi,
@@ -1428,7 +1446,8 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
   p_r_cod,
   p_r_serie,
   p_r_numero,
-  p_elemento
+  p_elemento,
+  endpointPdf = TICKET_ENCOMIENDA_ENDPOINT
 ) => {
   const datosQuery = await pool.query(
     `
@@ -1488,6 +1507,8 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
   const total = toNumber(venta.r_monto_total || venta.precio_neto);
 
   return JSON.stringify({
+    rubro: 'TRANS_ENCOMIENDA',
+    endpoint_pdf: endpointPdf,
     empresa: {
       ruc: datos.documento_id,
       razon_social: datos.razon_social,
@@ -1564,6 +1585,8 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
       titulo: 'ENCOMIENDA',
       mostrar_origen_destino: true,
       mostrar_qr: true,
+      endpoint_pdf: endpointPdf,
+      rubro: 'TRANS_ENCOMIENDA',
     },
     items: [
       {
@@ -2578,7 +2601,7 @@ const generarCPEexpertcontTransporte = async (req, res) => {
 const generarTicketPDFEncomiendaExpertcont = async (
   req,
   res,
-  endpointTicket = 'https://expertcont-api-sunat.up.railway.app/cpesunatticketencomienda/v2'
+  endpointTicket = TICKET_ENCOMIENDA_ENDPOINT
 ) => {
   const {
     p_periodo,
@@ -2595,7 +2618,10 @@ const generarTicketPDFEncomiendaExpertcont = async (
     r_cod,
     r_serie,
     r_numero,
-    elemento
+    elemento,
+    p_endpoint_pdf,
+    endpoint_pdf,
+    endpoint
   } = req.body;
 
   const periodoFinal = p_periodo || periodo;
@@ -2605,6 +2631,10 @@ const generarTicketPDFEncomiendaExpertcont = async (
   const rSerieFinal = p_r_serie || r_serie;
   const rNumeroFinal = p_r_numero || r_numero;
   const elementoFinal = p_elemento ?? elemento ?? 1;
+  const endpointPdfFinal = resolverEndpointTicketEncomienda(
+    p_endpoint_pdf || endpoint_pdf || endpoint,
+    endpointTicket
+  );
 
   if (
     !periodoFinal ||
@@ -2629,10 +2659,11 @@ const generarTicketPDFEncomiendaExpertcont = async (
       rCodFinal,
       rSerieFinal,
       rNumeroFinal,
-      elementoFinal
+      elementoFinal,
+      endpointPdfFinal
     );
 
-    const apiResponse = await fetch(endpointTicket, {
+    const apiResponse = await fetch(`${SUNAT_API_BASE_URL}${endpointPdfFinal}`, {
       method: 'POST',
       body: jsonString,
       headers: {
@@ -2668,7 +2699,7 @@ const generarTicketAdminPDFEncomiendaExpertcont = async (req, res) => {
   await generarTicketPDFEncomiendaExpertcont(
     req,
     res,
-    'https://expertcont-api-sunat.up.railway.app/cpesunatticketencomienda'
+    TICKET_ENCOMIENDA_ADMIN_ENDPOINT
   );
 };
 
