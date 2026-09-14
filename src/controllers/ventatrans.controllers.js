@@ -971,18 +971,21 @@ const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtr
 // muestra solo esa caja. En invitado normal respeta sus agencias permitidas.
 const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
-  const filtrosFechaVenta = [];
+  const filtrosVentaOrigen = [];
+  const filtrosVentaDestino = [];
   const filtrosFechaCaja = [];
 
   if (filtro.fecha) {
     params.push(filtro.fecha);
-    filtrosFechaVenta.push(`AND tv.r_fecemi = $${params.length}::date`);
+    filtrosVentaOrigen.push(`AND tv.r_fecemi = $${params.length}::date`);
+    filtrosVentaDestino.push(`AND tv.entrega_fecha::date = $${params.length}::date`);
     filtrosFechaCaja.push(`AND c.fecha::date = $${params.length}::date`);
   }
 
   if (filtro.id_usuario_operacion) {
     params.push(filtro.id_usuario_operacion);
-    filtrosFechaVenta.push(`AND tv.ctrl_crea_us = $${params.length}`);
+    filtrosVentaOrigen.push(`AND tv.ctrl_crea_us = $${params.length}`);
+    filtrosVentaDestino.push(`AND tv.entrega_ctrl_us = $${params.length}`);
     filtrosFechaCaja.push(`AND c.id_invitado = $${params.length}`);
   }
 
@@ -1005,7 +1008,6 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
          AND tv.id_usuario = $2
          AND tv.documento_id = $3
          AND tv.tipo_operacion = 'E'
-         ${filtrosFechaVenta.join('\n')}
     )
     SELECT
       pv.id_punto_venta,
@@ -1033,6 +1035,7 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
       FROM ventas tv
       WHERE tv.id_punto_venta = pv.id_punto_venta
         AND NOT (${condicionPorCobrarSql})
+        ${filtrosVentaOrigen.join('\n')}
     ) origen_total ON TRUE
     LEFT JOIN LATERAL (
       SELECT
@@ -1042,6 +1045,7 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
       WHERE tv.id_punto_venta = pv.id_punto_venta
         AND ${condicionPorCobrarSql}
         AND tv.entrega_fecha IS NULL
+        ${filtrosVentaOrigen.join('\n')}
     ) por_pagar ON TRUE
     LEFT JOIN LATERAL (
       SELECT
@@ -1051,6 +1055,7 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
       WHERE tv.id_punto_venta_dest = pv.id_punto_venta
         AND ${condicionPorCobrarSql}
         AND tv.entrega_fecha IS NOT NULL
+        ${filtrosVentaDestino.join('\n')}
     ) salidas ON TRUE
     LEFT JOIN LATERAL (
       SELECT COALESCE(SUM(c.importe * COALESCE(c.registrado, 1)), 0)::numeric AS monto

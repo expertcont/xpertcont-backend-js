@@ -821,7 +821,7 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
       SELECT *
         FROM (
           SELECT
-            tv.r_fecemi::timestamp AS fecha_caja,
+            TO_CHAR(COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp), 'YYYY-MM-DD HH24:MI') AS fecha_caja,
             'ORIGEN'::varchar AS tipo_ingreso,
             tv.id_punto_venta AS id_punto_venta_caja,
             punto_caja.nombre AS punto_venta_caja_nombre,
@@ -862,7 +862,7 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
           UNION ALL
 
           SELECT
-            tv.entrega_fecha::timestamp AS fecha_caja,
+            TO_CHAR(tv.entrega_fecha::timestamp, 'YYYY-MM-DD HH24:MI') AS fecha_caja,
             'DESTINO_POR_COBRAR'::varchar AS tipo_ingreso,
             tv.id_punto_venta_dest AS id_punto_venta_caja,
             punto_caja.nombre AS punto_venta_caja_nombre,
