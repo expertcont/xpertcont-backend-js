@@ -897,8 +897,8 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             COALESCE(tv.registrado, 1)::integer AS registrado,
             false AS contabiliza,
             CASE
-              WHEN COALESCE(tv.registrado, 1) = 0 THEN 'Anulado - no aplica'
-              ELSE 'Cobrar en Destino'
+              WHEN COALESCE(tv.registrado, 1) = 0 THEN 'Anulado'
+              ELSE 'Por Cobrar'
             END::varchar AS observacion_caja
           FROM mve_transventa tv
           LEFT JOIN mad_punto_venta punto_caja
