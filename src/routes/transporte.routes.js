@@ -43,6 +43,20 @@ const {
   eliminarZonaTransporte
 } = require('../controllers/transzona.controllers');
 
+const {
+  listarMotivosCaja,
+  crearMotivoCaja,
+  actualizarMotivoCaja,
+  actualizarEstadoMotivoCaja,
+  listarFormasPagoCaja,
+  listarMovimientosCaja,
+  obtenerMovimientoCaja,
+  crearMovimientoCaja,
+  actualizarMovimientoCaja,
+  anularMovimientoCaja,
+  obtenerConsolidadoCaja
+} = require('../controllers/transcaja.controllers');
+
 router.get('/mad_punto_venta/:id_anfitrion/:documento_id', listarPuntosVenta);
 router.get('/mad_punto_venta_usuario/:id_anfitrion/:documento_id', listarPuntosVentaUsuarios);
 router.get('/mad_punto_venta_usuario/:id_anfitrion/:documento_id/:id_punto_venta/:id_invitado', obtenerPuntoVentaUsuario);
@@ -74,5 +88,18 @@ router.get('/mve_transzona/:id_anfitrion/:documento_id', listarZonasTransporte);
 router.post('/mve_transzona', crearZonaTransporte);
 router.put('/mve_transzona', actualizarZonaTransporte);
 router.delete('/mve_transzona/:id_anfitrion/:documento_id/:id_punto_venta/:id_zona', eliminarZonaTransporte);
+
+router.get('/mve_transmotivo/:id_anfitrion/:documento_id', listarMotivosCaja);
+router.post('/mve_transmotivo', crearMotivoCaja);
+router.put('/mve_transmotivo/:id_anfitrion/:documento_id/:id_motivo', actualizarMotivoCaja);
+router.patch('/mve_transmotivo/:id_anfitrion/:documento_id/:id_motivo/estado', actualizarEstadoMotivoCaja);
+
+router.get('/mve_transcaja/formas-pago', listarFormasPagoCaja);
+router.get('/mve_transcaja/consolidado/:periodo/:id_anfitrion/:documento_id', obtenerConsolidadoCaja);
+router.get('/mve_transcaja/:periodo/:id_anfitrion/:documento_id', listarMovimientosCaja);
+router.get('/mve_transcaja/:periodo/:id_anfitrion/:documento_id/:id_movimiento', obtenerMovimientoCaja);
+router.post('/mve_transcaja', crearMovimientoCaja);
+router.put('/mve_transcaja/:periodo/:id_anfitrion/:documento_id/:id_movimiento', actualizarMovimientoCaja);
+router.patch('/mve_transcaja/:periodo/:id_anfitrion/:documento_id/:id_movimiento/anular', anularMovimientoCaja);
 
 module.exports = router;
