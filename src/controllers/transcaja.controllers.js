@@ -790,11 +790,13 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
     const params = [id_anfitrion, documento_id, periodo];
     const filtrosVentaOrigen = [];
     const filtrosVentaDestino = [];
+    const filtrosVentaDestinoPendiente = [];
 
     if (id_punto_venta) {
       params.push(normalizarCodigo(id_punto_venta));
       filtrosVentaOrigen.push(`AND tv.id_punto_venta = $${params.length}`);
       filtrosVentaDestino.push(`AND tv.id_punto_venta_dest = $${params.length}`);
+      filtrosVentaDestinoPendiente.push(`AND tv.id_punto_venta_dest = $${params.length}`);
     }
 
     if (id_invitado) {
@@ -803,18 +805,21 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
       filtrosVentaOrigen.push(`AND tv.ctrl_crea_us = $${params.length}`);
       filtrosVentaDestino.push(filtroPuntoVentaAutorizado('tv', params.length, 'id_punto_venta_dest'));
       filtrosVentaDestino.push(`AND tv.entrega_ctrl_us = $${params.length}`);
+      filtrosVentaDestinoPendiente.push(filtroPuntoVentaAutorizado('tv', params.length, 'id_punto_venta_dest'));
     }
 
     if (fecha_desde) {
       params.push(fecha_desde);
       filtrosVentaOrigen.push(`AND tv.r_fecemi >= $${params.length}::date`);
       filtrosVentaDestino.push(`AND tv.entrega_fecha::date >= $${params.length}::date`);
+      filtrosVentaDestinoPendiente.push(`AND tv.r_fecemi >= $${params.length}::date`);
     }
 
     if (fecha_hasta) {
       params.push(fecha_hasta);
       filtrosVentaOrigen.push(`AND tv.r_fecemi <= $${params.length}::date`);
       filtrosVentaDestino.push(`AND tv.entrega_fecha::date <= $${params.length}::date`);
+      filtrosVentaDestinoPendiente.push(`AND tv.r_fecemi <= $${params.length}::date`);
     }
 
     const result = await pool.query(`
@@ -838,7 +843,10 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             tv.cliente,
             tv.destinatario,
             tv.descripcion,
-            tv.ctrl_crea_us AS id_operador_caja
+            tv.ctrl_crea_us AS id_operador_caja,
+            COALESCE(tv.registrado, 1)::integer AS registrado,
+            (COALESCE(tv.registrado, 1) = 1)::boolean AS contabiliza,
+            CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 'Anulado' ELSE '' END::varchar AS observacion_caja
           FROM mve_transventa tv
           LEFT JOIN mad_punto_venta punto_caja
             ON punto_caja.id_usuario = tv.id_usuario
@@ -879,7 +887,10 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             tv.cliente,
             tv.destinatario,
             tv.descripcion,
-            tv.entrega_ctrl_us AS id_operador_caja
+            tv.entrega_ctrl_us AS id_operador_caja,
+            COALESCE(tv.registrado, 1)::integer AS registrado,
+            (COALESCE(tv.registrado, 1) = 1)::boolean AS contabiliza,
+            CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 'Anulado' ELSE '' END::varchar AS observacion_caja
           FROM mve_transventa tv
           LEFT JOIN mad_punto_venta punto_caja
             ON punto_caja.id_usuario = tv.id_usuario
@@ -900,6 +911,54 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             AND ${condicionPorCobrarVentaSql}
             AND tv.entrega_fecha IS NOT NULL
             ${filtrosVentaDestino.join('\n')}
+
+          UNION ALL
+
+          SELECT
+            TO_CHAR(COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp), 'YYYY-MM-DD HH24:MI') AS fecha_caja,
+            'DESTINO_POR_COBRAR_PENDIENTE'::varchar AS tipo_ingreso,
+            tv.id_punto_venta_dest AS id_punto_venta_caja,
+            punto_caja.nombre AS punto_venta_caja_nombre,
+            tv.id_punto_venta AS id_punto_venta_origen,
+            punto_origen.nombre AS punto_venta_origen_nombre,
+            tv.id_punto_venta_dest,
+            punto_destino.nombre AS punto_venta_dest_nombre,
+            tv.r_cod,
+            tv.r_serie,
+            tv.r_numero,
+            tv.elemento,
+            tv.condicion_pago,
+            tv.r_monto_total,
+            tv.cliente,
+            tv.destinatario,
+            tv.descripcion,
+            tv.ctrl_crea_us AS id_operador_caja,
+            COALESCE(tv.registrado, 1)::integer AS registrado,
+            false AS contabiliza,
+            CASE
+              WHEN COALESCE(tv.registrado, 1) = 0 THEN 'Anulado - no contabiliza'
+              ELSE 'No contabiliza'
+            END::varchar AS observacion_caja
+          FROM mve_transventa tv
+          LEFT JOIN mad_punto_venta punto_caja
+            ON punto_caja.id_usuario = tv.id_usuario
+           AND punto_caja.documento_id = tv.documento_id
+           AND punto_caja.id_punto_venta = tv.id_punto_venta_dest
+          LEFT JOIN mad_punto_venta punto_origen
+            ON punto_origen.id_usuario = tv.id_usuario
+           AND punto_origen.documento_id = tv.documento_id
+           AND punto_origen.id_punto_venta = tv.id_punto_venta
+          LEFT JOIN mad_punto_venta punto_destino
+            ON punto_destino.id_usuario = tv.id_usuario
+           AND punto_destino.documento_id = tv.documento_id
+           AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
+          WHERE tv.id_usuario = $1
+            AND tv.documento_id = $2
+            AND tv.periodo = $3
+            AND tv.tipo_operacion = 'E'
+            AND ${condicionPorCobrarVentaSql}
+            AND tv.entrega_fecha IS NULL
+            ${filtrosVentaDestinoPendiente.join('\n')}
         ) ingresos
        ORDER BY fecha_caja DESC, r_serie, r_numero DESC, elemento
     `, params);
