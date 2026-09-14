@@ -1784,6 +1784,7 @@ const crearVentaTrans = async (req, res) => {
 
 const obtenerVentasTrans = async (req, res) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
+  const idPuntoVenta = normalizarTexto(req.params.id_punto_venta || req.query?.id_punto_venta);
 
   if (!periodo || !id_anfitrion || !documento_id || dia === undefined) {
     return res.status(400).json({
@@ -1821,8 +1822,13 @@ const obtenerVentasTrans = async (req, res) => {
     const params = [periodo, id_anfitrion, documento_id];
 
     if (dia !== '*') {
-      query += ` AND tv.r_fecemi = $4 `;
       params.push(`${periodo}-${dia}`);
+      query += ` AND tv.r_fecemi = $${params.length} `;
+    }
+
+    if (idPuntoVenta) {
+      params.push(idPuntoVenta);
+      query += ` AND tv.id_punto_venta = $${params.length} `;
     }
 
     query += `

@@ -86,6 +86,11 @@ router.get(
 );
 
 router.get(
+  '/mve_transventa/:periodo/:id_anfitrion/:documento_id/:dia/:id_punto_venta',
+  obtenerVentasTrans
+);
+
+router.get(
   '/mve_transventa/:periodo/:id_anfitrion/:documento_id/:dia',
   obtenerVentasTrans
 );
