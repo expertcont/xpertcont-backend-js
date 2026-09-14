@@ -7,6 +7,8 @@ const toNumber = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+const condicionPagoVentaSql = "COALESCE(NULLIF(REGEXP_REPLACE(UPPER(COALESCE(tv.condicion_pago, '')), '[^A-Z]', '', 'g'), ''), 'PAGADO')";
+const condicionPorCobrarVentaSql = `${condicionPagoVentaSql} = 'PORCOBRAR'`;
 
 const columnasMovimientoCaja = `
   c.id_usuario,
@@ -104,7 +106,7 @@ const validarPuntoVenta = async ({ id_usuario, documento_id, id_punto_venta, id_
   }
 };
 
-const filtroPuntoVentaAutorizado = (alias, paramIndex) => `
+const filtroPuntoVentaAutorizado = (alias, paramIndex, columnaPuntoVenta = 'id_punto_venta') => `
   AND (
     ${alias}.id_usuario = $${paramIndex}
     OR EXISTS (
@@ -118,7 +120,7 @@ const filtroPuntoVentaAutorizado = (alias, paramIndex) => `
         FROM mad_punto_venta_usuario pvu
        WHERE pvu.id_usuario = ${alias}.id_usuario
          AND pvu.documento_id = ${alias}.documento_id
-         AND pvu.id_punto_venta = ${alias}.id_punto_venta
+         AND pvu.id_punto_venta = ${alias}.${columnaPuntoVenta}
          AND pvu.id_invitado = $${paramIndex}
          AND pvu.activo = TRUE
     )
@@ -660,30 +662,35 @@ const obtenerConsolidadoCaja = async (req, res) => {
 
   try {
     const params = [id_anfitrion, documento_id, periodo];
-    const filtrosVenta = [];
+    const filtrosVentaOrigen = [];
+    const filtrosVentaDestino = [];
     const filtrosCaja = [];
 
     if (id_punto_venta) {
       params.push(normalizarCodigo(id_punto_venta));
-      filtrosVenta.push(`AND tv.id_punto_venta = $${params.length}`);
+      filtrosVentaOrigen.push(`AND tv.id_punto_venta = $${params.length}`);
+      filtrosVentaDestino.push(`AND tv.id_punto_venta_dest = $${params.length}`);
       filtrosCaja.push(`AND c.id_punto_venta = $${params.length}`);
     }
 
     if (id_invitado) {
       params.push(normalizarTexto(id_invitado));
-      filtrosVenta.push(filtroPuntoVentaAutorizado('tv', params.length));
+      filtrosVentaOrigen.push(filtroPuntoVentaAutorizado('tv', params.length));
+      filtrosVentaDestino.push(filtroPuntoVentaAutorizado('tv', params.length, 'id_punto_venta_dest'));
       filtrosCaja.push(filtroPuntoVentaAutorizado('c', params.length));
     }
 
     if (fecha_desde) {
       params.push(fecha_desde);
-      filtrosVenta.push(`AND tv.r_fecemi >= $${params.length}::date`);
+      filtrosVentaOrigen.push(`AND tv.r_fecemi >= $${params.length}::date`);
+      filtrosVentaDestino.push(`AND tv.entrega_fecha::date >= $${params.length}::date`);
       filtrosCaja.push(`AND c.fecha::date >= $${params.length}::date`);
     }
 
     if (fecha_hasta) {
       params.push(fecha_hasta);
-      filtrosVenta.push(`AND tv.r_fecemi <= $${params.length}::date`);
+      filtrosVentaOrigen.push(`AND tv.r_fecemi <= $${params.length}::date`);
+      filtrosVentaDestino.push(`AND tv.entrega_fecha::date <= $${params.length}::date`);
       filtrosCaja.push(`AND c.fecha::date <= $${params.length}::date`);
     }
 
@@ -706,7 +713,26 @@ const obtenerConsolidadoCaja = async (req, res) => {
           AND tv.documento_id = $2
           AND tv.periodo = $3
           AND tv.tipo_operacion = 'E'
-          ${filtrosVenta.join('\n')}
+          AND NOT (${condicionPorCobrarVentaSql})
+          ${filtrosVentaOrigen.join('\n')}
+
+        UNION ALL
+
+        SELECT
+          tv.entrega_fecha::timestamp AS fecha,
+          tv.id_punto_venta_dest AS id_punto_venta,
+          'I'::char(1) AS tipo_movimiento,
+          COALESCE(tv.r_monto_total, 0)::numeric AS importe,
+          COALESCE(tv.registrado, 1)::integer AS registrado,
+          'ENCOMIENDA_POR_COBRAR_ENTREGADA'::varchar AS origen
+        FROM mve_transventa tv
+        WHERE tv.id_usuario = $1
+          AND tv.documento_id = $2
+          AND tv.periodo = $3
+          AND tv.tipo_operacion = 'E'
+          AND ${condicionPorCobrarVentaSql}
+          AND tv.entrega_fecha IS NOT NULL
+          ${filtrosVentaDestino.join('\n')}
 
         UNION ALL
 
