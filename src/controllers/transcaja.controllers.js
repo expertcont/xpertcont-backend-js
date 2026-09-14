@@ -898,7 +898,7 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             false AS contabiliza,
             CASE
               WHEN COALESCE(tv.registrado, 1) = 0 THEN 'Anulado - no aplica'
-              ELSE 'No aplica'
+              ELSE 'Cobrar en Destino'
             END::varchar AS observacion_caja
           FROM mve_transventa tv
           LEFT JOIN mad_punto_venta punto_caja
