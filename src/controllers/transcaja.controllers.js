@@ -330,6 +330,7 @@ const listarMovimientosCaja = async (req, res) => {
     if (id_invitado) {
       params.push(normalizarTexto(id_invitado));
       filtros.push(filtroPuntoVentaAutorizado('c', params.length));
+      filtros.push(`AND c.id_invitado = $${params.length}`);
     }
 
     if (tipo_movimiento) {
@@ -676,8 +677,11 @@ const obtenerConsolidadoCaja = async (req, res) => {
     if (id_invitado) {
       params.push(normalizarTexto(id_invitado));
       filtrosVentaOrigen.push(filtroPuntoVentaAutorizado('tv', params.length));
+      filtrosVentaOrigen.push(`AND tv.ctrl_crea_us = $${params.length}`);
       filtrosVentaDestino.push(filtroPuntoVentaAutorizado('tv', params.length, 'id_punto_venta_dest'));
+      filtrosVentaDestino.push(`AND tv.entrega_ctrl_us = $${params.length}`);
       filtrosCaja.push(filtroPuntoVentaAutorizado('c', params.length));
+      filtrosCaja.push(`AND c.id_invitado = $${params.length}`);
     }
 
     if (fecha_desde) {
