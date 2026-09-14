@@ -778,6 +778,138 @@ const obtenerConsolidadoCaja = async (req, res) => {
   }
 };
 
+const listarIngresosEncomiendasCaja = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id } = req.params;
+  const { id_punto_venta, fecha_desde, fecha_hasta, id_invitado } = req.query;
+
+  if (!periodo || !id_anfitrion || !documento_id) {
+    return res.status(400).json({ success: false, message: 'Faltan parametros requeridos para ingresos de caja' });
+  }
+
+  try {
+    const params = [id_anfitrion, documento_id, periodo];
+    const filtrosVentaOrigen = [];
+    const filtrosVentaDestino = [];
+
+    if (id_punto_venta) {
+      params.push(normalizarCodigo(id_punto_venta));
+      filtrosVentaOrigen.push(`AND tv.id_punto_venta = $${params.length}`);
+      filtrosVentaDestino.push(`AND tv.id_punto_venta_dest = $${params.length}`);
+    }
+
+    if (id_invitado) {
+      params.push(normalizarTexto(id_invitado));
+      filtrosVentaOrigen.push(filtroPuntoVentaAutorizado('tv', params.length));
+      filtrosVentaOrigen.push(`AND tv.ctrl_crea_us = $${params.length}`);
+      filtrosVentaDestino.push(filtroPuntoVentaAutorizado('tv', params.length, 'id_punto_venta_dest'));
+      filtrosVentaDestino.push(`AND tv.entrega_ctrl_us = $${params.length}`);
+    }
+
+    if (fecha_desde) {
+      params.push(fecha_desde);
+      filtrosVentaOrigen.push(`AND tv.r_fecemi >= $${params.length}::date`);
+      filtrosVentaDestino.push(`AND tv.entrega_fecha::date >= $${params.length}::date`);
+    }
+
+    if (fecha_hasta) {
+      params.push(fecha_hasta);
+      filtrosVentaOrigen.push(`AND tv.r_fecemi <= $${params.length}::date`);
+      filtrosVentaDestino.push(`AND tv.entrega_fecha::date <= $${params.length}::date`);
+    }
+
+    const result = await pool.query(`
+      SELECT *
+        FROM (
+          SELECT
+            tv.r_fecemi::timestamp AS fecha_caja,
+            'ORIGEN'::varchar AS tipo_ingreso,
+            tv.id_punto_venta AS id_punto_venta_caja,
+            punto_caja.nombre AS punto_venta_caja_nombre,
+            tv.id_punto_venta AS id_punto_venta_origen,
+            punto_origen.nombre AS punto_venta_origen_nombre,
+            tv.id_punto_venta_dest,
+            punto_destino.nombre AS punto_venta_dest_nombre,
+            tv.r_cod,
+            tv.r_serie,
+            tv.r_numero,
+            tv.elemento,
+            tv.condicion_pago,
+            tv.r_monto_total,
+            tv.cliente,
+            tv.destinatario,
+            tv.descripcion,
+            tv.ctrl_crea_us AS id_operador_caja
+          FROM mve_transventa tv
+          LEFT JOIN mad_punto_venta punto_caja
+            ON punto_caja.id_usuario = tv.id_usuario
+           AND punto_caja.documento_id = tv.documento_id
+           AND punto_caja.id_punto_venta = tv.id_punto_venta
+          LEFT JOIN mad_punto_venta punto_origen
+            ON punto_origen.id_usuario = tv.id_usuario
+           AND punto_origen.documento_id = tv.documento_id
+           AND punto_origen.id_punto_venta = tv.id_punto_venta
+          LEFT JOIN mad_punto_venta punto_destino
+            ON punto_destino.id_usuario = tv.id_usuario
+           AND punto_destino.documento_id = tv.documento_id
+           AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
+          WHERE tv.id_usuario = $1
+            AND tv.documento_id = $2
+            AND tv.periodo = $3
+            AND tv.tipo_operacion = 'E'
+            AND NOT (${condicionPorCobrarVentaSql})
+            ${filtrosVentaOrigen.join('\n')}
+
+          UNION ALL
+
+          SELECT
+            tv.entrega_fecha::timestamp AS fecha_caja,
+            'DESTINO_POR_COBRAR'::varchar AS tipo_ingreso,
+            tv.id_punto_venta_dest AS id_punto_venta_caja,
+            punto_caja.nombre AS punto_venta_caja_nombre,
+            tv.id_punto_venta AS id_punto_venta_origen,
+            punto_origen.nombre AS punto_venta_origen_nombre,
+            tv.id_punto_venta_dest,
+            punto_destino.nombre AS punto_venta_dest_nombre,
+            tv.r_cod,
+            tv.r_serie,
+            tv.r_numero,
+            tv.elemento,
+            tv.condicion_pago,
+            tv.r_monto_total,
+            tv.cliente,
+            tv.destinatario,
+            tv.descripcion,
+            tv.entrega_ctrl_us AS id_operador_caja
+          FROM mve_transventa tv
+          LEFT JOIN mad_punto_venta punto_caja
+            ON punto_caja.id_usuario = tv.id_usuario
+           AND punto_caja.documento_id = tv.documento_id
+           AND punto_caja.id_punto_venta = tv.id_punto_venta_dest
+          LEFT JOIN mad_punto_venta punto_origen
+            ON punto_origen.id_usuario = tv.id_usuario
+           AND punto_origen.documento_id = tv.documento_id
+           AND punto_origen.id_punto_venta = tv.id_punto_venta
+          LEFT JOIN mad_punto_venta punto_destino
+            ON punto_destino.id_usuario = tv.id_usuario
+           AND punto_destino.documento_id = tv.documento_id
+           AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
+          WHERE tv.id_usuario = $1
+            AND tv.documento_id = $2
+            AND tv.periodo = $3
+            AND tv.tipo_operacion = 'E'
+            AND ${condicionPorCobrarVentaSql}
+            AND tv.entrega_fecha IS NOT NULL
+            ${filtrosVentaDestino.join('\n')}
+        ) ingresos
+       ORDER BY fecha_caja DESC, r_serie, r_numero DESC, elemento
+    `, params);
+
+    return res.status(200).json({ success: true, data: result.rows });
+  } catch (error) {
+    return responderError(res, error, 'Error al obtener ingresos de encomiendas de caja:');
+  }
+};
+
 module.exports = {
   listarMotivosCaja,
   crearMotivoCaja,
@@ -789,5 +921,6 @@ module.exports = {
   crearMovimientoCaja,
   actualizarMovimientoCaja,
   anularMovimientoCaja,
-  obtenerConsolidadoCaja
+  obtenerConsolidadoCaja,
+  listarIngresosEncomiendasCaja
 };

@@ -54,7 +54,8 @@ const {
   crearMovimientoCaja,
   actualizarMovimientoCaja,
   anularMovimientoCaja,
-  obtenerConsolidadoCaja
+  obtenerConsolidadoCaja,
+  listarIngresosEncomiendasCaja
 } = require('../controllers/transcaja.controllers');
 
 router.get('/mad_punto_venta/:id_anfitrion/:documento_id', listarPuntosVenta);
@@ -96,6 +97,7 @@ router.patch('/mve_transmotivo/:id_anfitrion/:documento_id/:id_motivo/estado', a
 
 router.get('/mve_transcaja/formas-pago', listarFormasPagoCaja);
 router.get('/mve_transcaja/consolidado/:periodo/:id_anfitrion/:documento_id', obtenerConsolidadoCaja);
+router.get('/mve_transcaja/ingresos/:periodo/:id_anfitrion/:documento_id', listarIngresosEncomiendasCaja);
 router.get('/mve_transcaja/:periodo/:id_anfitrion/:documento_id', listarMovimientosCaja);
 router.get('/mve_transcaja/:periodo/:id_anfitrion/:documento_id/:id_movimiento', obtenerMovimientoCaja);
 router.post('/mve_transcaja', crearMovimientoCaja);
