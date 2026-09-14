@@ -265,6 +265,14 @@ const obtenerUltimosPeriodos = (periodo, cantidad = 3) => {
   });
 };
 
+const obtenerFechaServidorLima = async () => {
+  const result = await pool.query(`
+    SELECT TO_CHAR((now() AT TIME ZONE 'America/Lima')::date, 'YYYY-MM-DD') AS fecha
+  `);
+
+  return result.rows[0]?.fecha || '';
+};
+
 const generarNumeroVentaTrans = async ({
   id_anfitrion,
   documento_id,
@@ -1716,9 +1724,18 @@ const crearVentaTrans = async (req, res) => {
 
   if (tipoOperacionBody === 'E') {
     try {
+      const dataEncomienda = { ...req.body };
+
+      if (dataEncomienda.fecha_servidor === true) {
+        const fechaServidor = await obtenerFechaServidorLima();
+        dataEncomienda.r_fecemi = fechaServidor.startsWith(`${dataEncomienda.periodo}-`)
+          ? fechaServidor
+          : `${dataEncomienda.periodo}-01`;
+      }
+
       const result = await pool.query(
         'SELECT public.fve_transventa_grabar_encomienda($1::jsonb) AS data',
-        [req.body]
+        [dataEncomienda]
       );
 
       return res.status(200).json({
@@ -2118,6 +2135,43 @@ const actualizarVentaTrans = async (req, res) => {
         r_monto_total,
         porc_igv,
       };
+
+    if (normalizarTexto(r_fecemi)) {
+      const fechaActualQuery = await pool.query(`
+        SELECT CAST(r_fecemi AS VARCHAR(10)) AS r_fecemi,
+               numero_rdi,
+               r_vfirmado
+          FROM mve_transventa
+         WHERE periodo = $1
+           AND id_usuario = $2
+           AND documento_id = $3
+           AND r_cod = $4
+           AND r_serie = $5
+           AND r_numero = $6
+           AND elemento = $7
+      `, [
+        periodo, idUsuarioFinal, documento_id,
+        r_cod, r_serie, r_numero, elemento,
+      ]);
+
+      if (fechaActualQuery.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Operacion de transporte no encontrada'
+        });
+      }
+
+      const fechaActual = fechaActualQuery.rows[0];
+      const fechaNueva = String(r_fecemi).slice(0, 10);
+      const tieneEnvioSunat = Boolean(normalizarTexto(fechaActual.numero_rdi) || normalizarTexto(fechaActual.r_vfirmado));
+
+      if (tieneEnvioSunat && fechaNueva !== fechaActual.r_fecemi) {
+        return res.status(409).json({
+          success: false,
+          message: 'No se puede modificar la fecha de una encomienda enviada a SUNAT o incluida en RDI'
+        });
+      }
+    }
 
     const query = `
       UPDATE mve_transventa

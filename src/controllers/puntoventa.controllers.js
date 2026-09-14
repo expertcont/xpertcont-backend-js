@@ -349,6 +349,7 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
     id_anfitrion,
     documento_id,
     id_punto_venta,
+    id_punto_venta_anterior,
     id_invitado,
     nombres,
     fecha_ingreso,
@@ -363,7 +364,9 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
     ultimo_login
   } = req.body;
 
-  if (!id_anfitrion || !documento_id || !id_punto_venta || !id_invitado) {
+  const idPuntoVentaAnterior = id_punto_venta_anterior || id_punto_venta;
+
+  if (!id_anfitrion || !documento_id || !id_punto_venta || !idPuntoVentaAnterior || !id_invitado) {
     return res.status(400).json({
       success: false,
       message: 'Faltan parametros requeridos para actualizar usuario por punto de venta'
@@ -374,17 +377,18 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
     const result = await pool.query(`
       WITH registro AS (
         UPDATE mad_punto_venta_usuario
-           SET fecha_ingreso = COALESCE(NULLIF($5, '')::timestamp, fecha_ingreso),
-               nombres = COALESCE($6, nombres),
-               activo = COALESCE($7::boolean, activo),
-               sin_restriccion = COALESCE($8::boolean, sin_restriccion),
-               turno1_inicio = NULLIF($9, '')::time,
-               turno1_fin = NULLIF($10, '')::time,
-               turno2_inicio = NULLIF($11, '')::time,
-               turno2_fin = NULLIF($12, '')::time,
-               turno3_inicio = NULLIF($13, '')::time,
-               turno3_fin = NULLIF($14, '')::time,
-               ultimo_login = COALESCE(NULLIF($15, '')::timestamp, ultimo_login)
+           SET id_punto_venta = $5,
+               fecha_ingreso = COALESCE(NULLIF($6, '')::timestamp, fecha_ingreso),
+               nombres = COALESCE($7, nombres),
+               activo = COALESCE($8::boolean, activo),
+               sin_restriccion = COALESCE($9::boolean, sin_restriccion),
+               turno1_inicio = NULLIF($10, '')::time,
+               turno1_fin = NULLIF($11, '')::time,
+               turno2_inicio = NULLIF($12, '')::time,
+               turno2_fin = NULLIF($13, '')::time,
+               turno3_inicio = NULLIF($14, '')::time,
+               turno3_fin = NULLIF($15, '')::time,
+               ultimo_login = COALESCE(NULLIF($16, '')::timestamp, ultimo_login)
          WHERE id_usuario = $1
            AND documento_id = $2
            AND id_punto_venta = $3
@@ -415,8 +419,9 @@ const actualizarPuntoVentaUsuario = async (req, res) => {
     `, [
       id_anfitrion,
       documento_id,
-      id_punto_venta,
+      idPuntoVentaAnterior,
       id_invitado,
+      id_punto_venta,
       fecha_ingreso || null,
       nombres || null,
       activo,
