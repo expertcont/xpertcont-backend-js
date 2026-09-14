@@ -74,15 +74,28 @@ const validarPuntoVenta = async ({ id_usuario, documento_id, id_punto_venta, id_
   const result = await pool.query(`
     SELECT pv.id_punto_venta
       FROM mad_punto_venta pv
-      LEFT JOIN mad_punto_venta_usuario pvu
-        ON pvu.id_usuario = pv.id_usuario
-       AND pvu.documento_id = pv.documento_id
-       AND pvu.id_punto_venta = pv.id_punto_venta
-       AND pvu.id_invitado = $4
      WHERE pv.id_usuario = $1
        AND pv.documento_id = $2
        AND pv.id_punto_venta = $3
-       AND ($4 IS NULL OR $4 = '' OR pvu.id_punto_venta IS NOT NULL)
+       AND pv.activo = TRUE
+       AND (
+         $1 = $4
+         OR EXISTS (
+           SELECT 1
+             FROM mad_usuario mu
+            WHERE mu.id_usuario = $4
+              AND mu.super = '1'
+         )
+         OR EXISTS (
+           SELECT 1
+             FROM mad_punto_venta_usuario pvu
+            WHERE pvu.id_usuario = pv.id_usuario
+              AND pvu.documento_id = pv.documento_id
+              AND pvu.id_punto_venta = pv.id_punto_venta
+              AND pvu.id_invitado = $4
+              AND pvu.activo = TRUE
+         )
+       )
      LIMIT 1
   `, [id_usuario, documento_id, id_punto_venta, id_invitado || null]);
 
@@ -90,6 +103,27 @@ const validarPuntoVenta = async ({ id_usuario, documento_id, id_punto_venta, id_
     throw crearError('Punto de venta no valido o no autorizado', 403);
   }
 };
+
+const filtroPuntoVentaAutorizado = (alias, paramIndex) => `
+  AND (
+    ${alias}.id_usuario = $${paramIndex}
+    OR EXISTS (
+      SELECT 1
+        FROM mad_usuario mu
+       WHERE mu.id_usuario = $${paramIndex}
+         AND mu.super = '1'
+    )
+    OR EXISTS (
+      SELECT 1
+        FROM mad_punto_venta_usuario pvu
+       WHERE pvu.id_usuario = ${alias}.id_usuario
+         AND pvu.documento_id = ${alias}.documento_id
+         AND pvu.id_punto_venta = ${alias}.id_punto_venta
+         AND pvu.id_invitado = $${paramIndex}
+         AND pvu.activo = TRUE
+    )
+  )
+`;
 
 const validarMotivo = async ({ id_usuario, documento_id, id_motivo, tipo_movimiento, exigirActivo = true }) => {
   const result = await pool.query(`
@@ -293,16 +327,7 @@ const listarMovimientosCaja = async (req, res) => {
 
     if (id_invitado) {
       params.push(normalizarTexto(id_invitado));
-      filtros.push(`
-        AND EXISTS (
-          SELECT 1
-            FROM mad_punto_venta_usuario pvu
-           WHERE pvu.id_usuario = c.id_usuario
-             AND pvu.documento_id = c.documento_id
-             AND pvu.id_punto_venta = c.id_punto_venta
-             AND pvu.id_invitado = $${params.length}
-        )
-      `);
+      filtros.push(filtroPuntoVentaAutorizado('c', params.length));
     }
 
     if (tipo_movimiento) {
@@ -646,26 +671,8 @@ const obtenerConsolidadoCaja = async (req, res) => {
 
     if (id_invitado) {
       params.push(normalizarTexto(id_invitado));
-      filtrosVenta.push(`
-        AND EXISTS (
-          SELECT 1
-            FROM mad_punto_venta_usuario pvu
-           WHERE pvu.id_usuario = tv.id_usuario
-             AND pvu.documento_id = tv.documento_id
-             AND pvu.id_punto_venta = tv.id_punto_venta
-             AND pvu.id_invitado = $${params.length}
-        )
-      `);
-      filtrosCaja.push(`
-        AND EXISTS (
-          SELECT 1
-            FROM mad_punto_venta_usuario pvu
-           WHERE pvu.id_usuario = c.id_usuario
-             AND pvu.documento_id = c.documento_id
-             AND pvu.id_punto_venta = c.id_punto_venta
-             AND pvu.id_invitado = $${params.length}
-        )
-      `);
+      filtrosVenta.push(filtroPuntoVentaAutorizado('tv', params.length));
+      filtrosCaja.push(filtroPuntoVentaAutorizado('c', params.length));
     }
 
     if (fecha_desde) {
