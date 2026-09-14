@@ -611,15 +611,18 @@ const condicionPorCobrarSql = `${condicionPagoSql} = 'PORCOBRAR'`;
 const obtenerResumenDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
   const filtros = [];
+  const filtrosCaja = [];
 
   if (filtro.fecha) {
     params.push(filtro.fecha);
     filtros.push(`AND tv.r_fecemi = $${params.length}::date`);
+    filtrosCaja.push(`AND c.fecha::date = $${params.length}::date`);
   }
 
   if (filtro.id_usuario_operacion) {
     params.push(filtro.id_usuario_operacion);
     filtros.push(`AND tv.ctrl_crea_us = $${params.length}`);
+    filtrosCaja.push(`AND c.id_invitado = $${params.length}`);
   }
 
   let filtroAgenciaOrigen = '';
@@ -635,6 +638,7 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
     filtroMontoTotal = `tv.id_punto_venta = $${params.length}`;
     filtroEfectivoAgencia = `(tv.id_punto_venta = $${params.length} OR (tv.entrega_fecha IS NOT NULL AND tv.id_punto_venta_dest = $${params.length}))`;
     filtroPendienteCobroEntrega = `tv.id_punto_venta_dest = $${params.length}`;
+    filtrosCaja.push(`AND c.id_punto_venta = $${params.length}`);
   }
 
   if (Array.isArray(filtro.id_puntos_venta) && filtro.id_puntos_venta.length > 0) {
@@ -644,6 +648,7 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
     filtroMontoTotal = `tv.id_punto_venta = ANY($${params.length}::varchar[])`;
     filtroEfectivoAgencia = `(tv.id_punto_venta = ANY($${params.length}::varchar[]) OR (tv.entrega_fecha IS NOT NULL AND tv.id_punto_venta_dest = ANY($${params.length}::varchar[])))`;
     filtroPendienteCobroEntrega = `tv.id_punto_venta_dest = ANY($${params.length}::varchar[])`;
+    filtrosCaja.push(`AND c.id_punto_venta = ANY($${params.length}::varchar[])`);
   }
 
   const result = await pool.query(`
@@ -692,7 +697,16 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
         WHERE tv.tipo_operacion = 'E'
           AND ${filtroEfectivoAgencia}
           AND NOT (${condicionPorCobrarSql})
-      ), 0)::numeric AS monto_efectivo_agencia
+      ), 0)::numeric AS monto_efectivo_agencia,
+      (
+        SELECT COALESCE(SUM(c.importe * COALESCE(c.registrado, 1)), 0)::numeric
+          FROM mve_transcaja c
+         WHERE c.periodo = $1
+           AND c.id_usuario = $2
+           AND c.documento_id = $3
+           AND c.tipo_movimiento = 'S'
+           ${filtrosCaja.join('\n')}
+      ) AS monto_caja_manual
     FROM base tv
   `, params);
 
@@ -715,7 +729,13 @@ const obtenerResumenDashboardTransporteData = async (filtro) => {
     monto_efectivo_porpagar_entregado: Number(row.monto_efectivo_destino_entregado || 0),
     monto_por_cobrar: Number(row.monto_por_cobrar_pendiente_entrega || 0),
     monto_por_cobrar_pendiente_entrega: Number(row.monto_por_cobrar_pendiente_entrega || 0),
-    monto_efectivo_agencia: Number(row.monto_efectivo_origen_agencia || 0) + Number(row.monto_efectivo_destino_entregado || 0),
+    monto_caja_manual: Number(row.monto_caja_manual || 0),
+    monto_efectivo_agencia: Math.max(
+      0,
+      Number(row.monto_efectivo_origen_agencia || 0) +
+      Number(row.monto_efectivo_destino_entregado || 0) -
+      Number(row.monto_caja_manual || 0)
+    ),
     monto_boletos: Number(row.monto_boletos || 0),
     monto_total: Number(row.monto_total || 0),
   };
@@ -951,16 +971,19 @@ const obtenerComparativoMensualEncomiendasDashboardTransporteData = async (filtr
 // muestra solo esa caja. En invitado normal respeta sus agencias permitidas.
 const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
   const params = [filtro.periodo, filtro.id_anfitrion, filtro.documento_id];
-  const filtrosFecha = [];
+  const filtrosFechaVenta = [];
+  const filtrosFechaCaja = [];
 
   if (filtro.fecha) {
     params.push(filtro.fecha);
-    filtrosFecha.push(`AND tv.r_fecemi = $${params.length}::date`);
+    filtrosFechaVenta.push(`AND tv.r_fecemi = $${params.length}::date`);
+    filtrosFechaCaja.push(`AND c.fecha::date = $${params.length}::date`);
   }
 
   if (filtro.id_usuario_operacion) {
     params.push(filtro.id_usuario_operacion);
-    filtrosFecha.push(`AND tv.ctrl_crea_us = $${params.length}`);
+    filtrosFechaVenta.push(`AND tv.ctrl_crea_us = $${params.length}`);
+    filtrosFechaCaja.push(`AND c.id_invitado = $${params.length}`);
   }
 
   const filtrosPuntoVenta = [];
@@ -982,7 +1005,7 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
          AND tv.id_usuario = $2
          AND tv.documento_id = $3
          AND tv.tipo_operacion = 'E'
-         ${filtrosFecha.join('\n')}
+         ${filtrosFechaVenta.join('\n')}
     )
     SELECT
       pv.id_punto_venta,
@@ -993,12 +1016,13 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
       COALESCE(por_pagar.monto, 0)::numeric AS monto_por_pagar,
       COALESCE(salidas.encomiendas, 0)::integer AS encomiendas_salidas_dinero,
       COALESCE(salidas.monto, 0)::numeric AS monto_salidas_dinero,
+      COALESCE(caja_manual.monto, 0)::numeric AS monto_caja_manual,
       GREATEST(
-        COALESCE(origen_total.monto, 0) + COALESCE(salidas.monto, 0),
+        COALESCE(origen_total.monto, 0) + COALESCE(salidas.monto, 0) - COALESCE(caja_manual.monto, 0),
         0
       )::numeric AS monto_recaudado,
       GREATEST(
-        COALESCE(origen_total.monto, 0) + COALESCE(salidas.monto, 0),
+        COALESCE(origen_total.monto, 0) + COALESCE(salidas.monto, 0) - COALESCE(caja_manual.monto, 0),
         0
       )::numeric AS monto_efectivo
     FROM mad_punto_venta pv
@@ -1028,6 +1052,16 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
         AND ${condicionPorCobrarSql}
         AND tv.entrega_fecha IS NOT NULL
     ) salidas ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(SUM(c.importe * COALESCE(c.registrado, 1)), 0)::numeric AS monto
+        FROM mve_transcaja c
+       WHERE c.id_usuario = pv.id_usuario
+         AND c.documento_id = pv.documento_id
+         AND c.periodo = $1
+         AND c.id_punto_venta = pv.id_punto_venta
+         AND c.tipo_movimiento = 'S'
+         ${filtrosFechaCaja.join('\n')}
+    ) caja_manual ON TRUE
     WHERE pv.id_usuario = $2
       AND pv.documento_id = $3
       AND pv.activo = TRUE
@@ -1044,6 +1078,7 @@ const obtenerRecaudacionAgenciasDashboardTransporteData = async (filtro) => {
     monto_por_pagar: Number(item.monto_por_pagar || 0),
     encomiendas_salidas_dinero: Number(item.encomiendas_salidas_dinero || 0),
     monto_salidas_dinero: Number(item.monto_salidas_dinero || 0),
+    monto_caja_manual: Number(item.monto_caja_manual || 0),
     encomiendas_destino_entregadas: Number(item.encomiendas_salidas_dinero || 0),
     monto_destino_entregado: Number(item.monto_salidas_dinero || 0),
     monto_recaudado: Number(item.monto_recaudado || 0),
