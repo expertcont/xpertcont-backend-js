@@ -80,7 +80,11 @@ const listarRutasEncomienda = async (req, res) => {
              r.id_punto_venta,
              r.id_punto_venta_dest,
              po.nombre AS punto_venta_nombre,
-             pd.nombre AS punto_venta_dest_nombre
+             po.direccion AS punto_venta_direccion,
+             po.id_ubigeo AS punto_venta_ubigeo,
+             pd.nombre AS punto_venta_dest_nombre,
+             pd.direccion AS punto_venta_dest_direccion,
+             pd.id_ubigeo AS punto_venta_dest_ubigeo
         FROM mve_transruta r
         LEFT JOIN mad_punto_venta po
           ON po.id_usuario = r.id_usuario

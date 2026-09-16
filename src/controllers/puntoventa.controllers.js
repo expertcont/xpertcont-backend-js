@@ -24,6 +24,10 @@ const columnasPuntoVentaUsuario = `
   pvu.documento_id,
   pvu.id_punto_venta,
   pv.nombre AS punto_venta_nombre,
+  pv.nombre AS nombre,
+  pv.direccion,
+  pv.id_ubigeo,
+  pv.id_ubigeo AS ubigeo,
   pvu.id_invitado,
   pvu.nombres,
   pvu.fecha_ingreso,
@@ -82,7 +86,11 @@ const listarPuntosVentaUsuario = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT pv.id_punto_venta,
-             pv.nombre
+             pv.nombre,
+             pv.nombre AS punto_venta_nombre,
+             pv.direccion,
+             pv.id_ubigeo,
+             pv.id_ubigeo AS ubigeo
         FROM mad_punto_venta pv
        WHERE pv.id_usuario = $1
          AND pv.documento_id = $2
