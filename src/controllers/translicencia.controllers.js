@@ -17,13 +17,15 @@ const listarLicenciasTransporte = async (req, res) => {
       SELECT id_usuario,
              documento_id,
              licencia,
-             nombre,
+             nombres,
+             apellidos,
+             TRIM(CONCAT(COALESCE(nombres, ''), ' ', COALESCE(apellidos, ''))) AS nombre,
              dni,
              descripcion
         FROM mve_translicencia
        WHERE id_usuario = $1
          AND documento_id = $2
-       ORDER BY nombre, licencia
+       ORDER BY apellidos, nombres, licencia
     `, [id_anfitrion, documento_id]);
 
     return res.status(200).json({ success: true, data: result.rows });
@@ -41,7 +43,8 @@ const crearLicenciaTransporte = async (req, res) => {
     id_anfitrion,
     documento_id,
     licencia,
-    nombre,
+    nombres,
+    apellidos,
     dni,
     descripcion
   } = req.body;
@@ -59,17 +62,20 @@ const crearLicenciaTransporte = async (req, res) => {
         id_usuario,
         documento_id,
         licencia,
-        nombre,
+        nombres,
+        apellidos,
         dni,
         descripcion
       )
-      VALUES ($1,$2,$3,$4,$5,$6)
-      RETURNING *
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      RETURNING *,
+        TRIM(CONCAT(COALESCE(nombres, ''), ' ', COALESCE(apellidos, ''))) AS nombre
     `, [
       id_anfitrion,
       documento_id,
       normalizarLicencia(licencia),
-      nombre || null,
+      nombres || null,
+      apellidos || null,
       dni || null,
       descripcion || null
     ]);
@@ -89,7 +95,8 @@ const actualizarLicenciaTransporte = async (req, res) => {
     id_anfitrion,
     documento_id,
     licencia,
-    nombre,
+    nombres,
+    apellidos,
     dni,
     descripcion
   } = req.body;
@@ -104,18 +111,21 @@ const actualizarLicenciaTransporte = async (req, res) => {
   try {
     const result = await pool.query(`
       UPDATE mve_translicencia
-         SET nombre = COALESCE($4, nombre),
-             dni = COALESCE($5, dni),
-             descripcion = COALESCE($6, descripcion)
+         SET nombres = $4,
+             apellidos = $5,
+             dni = $6,
+             descripcion = $7
        WHERE id_usuario = $1
          AND documento_id = $2
          AND licencia = $3
-       RETURNING *
+       RETURNING *,
+        TRIM(CONCAT(COALESCE(nombres, ''), ' ', COALESCE(apellidos, ''))) AS nombre
     `, [
       id_anfitrion,
       documento_id,
       normalizarLicencia(licencia),
-      nombre || null,
+      nombres || null,
+      apellidos || null,
       dni || null,
       descripcion || null
     ]);
