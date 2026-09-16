@@ -2644,6 +2644,894 @@ const generarCPEexpertcontTransporte = async (req, res) => {
   }
 };
 
+const normalizarEncomiendasGrem = (body = {}) => {
+  const encomiendas = Array.isArray(body.encomiendas) && body.encomiendas.length > 0
+    ? body.encomiendas
+    : [{
+        r_cod: body.p_r_cod || body.r_cod,
+        r_serie: body.p_r_serie || body.r_serie,
+        r_numero: body.p_r_numero || body.r_numero,
+        elemento: body.p_elemento || body.elemento || 1,
+      }];
+
+  return encomiendas
+    .map((item) => ({
+      r_cod: normalizarTexto(item.r_cod),
+      r_serie: normalizarTexto(item.r_serie),
+      r_numero: normalizarTexto(item.r_numero),
+      elemento: Number(item.elemento || 1),
+    }))
+    .filter((item) => item.r_cod && item.r_serie && item.r_numero && Number.isFinite(item.elemento));
+};
+
+const obtenerVentasGremTransporte = async ({ periodo, idUsuario, documentoId, encomiendas }) => {
+  const params = [periodo, idUsuario, documentoId];
+  const condiciones = encomiendas.map((item) => {
+    params.push(item.r_cod, item.r_serie, item.r_numero, item.elemento);
+    const base = params.length - 3;
+    return `(tv.r_cod = $${base} AND tv.r_serie = $${base + 1} AND tv.r_numero = $${base + 2} AND tv.elemento = $${base + 3})`;
+  });
+
+  const result = await pool.query(
+    `
+      SELECT ${columnasVentaTransDesde('tv')},
+             ruta.nombre AS nombre_ruta,
+             punto_origen.nombre AS punto_venta_nombre,
+             punto_origen.direccion AS punto_venta_direccion,
+             punto_origen.id_ubigeo AS punto_venta_ubigeo,
+             punto_destino.nombre AS punto_venta_dest_nombre,
+             punto_destino.direccion AS punto_venta_dest_direccion,
+             punto_destino.id_ubigeo AS punto_venta_dest_ubigeo
+        FROM mve_transventa tv
+        LEFT JOIN mve_transruta ruta
+          ON ruta.id_usuario = tv.id_usuario
+         AND ruta.documento_id = tv.documento_id
+         AND ruta.id_ruta = tv.id_ruta
+        LEFT JOIN mad_punto_venta punto_origen
+          ON punto_origen.id_usuario = tv.id_usuario
+         AND punto_origen.documento_id = tv.documento_id
+         AND punto_origen.id_punto_venta = tv.id_punto_venta
+        LEFT JOIN mad_punto_venta punto_destino
+          ON punto_destino.id_usuario = tv.id_usuario
+         AND punto_destino.documento_id = tv.documento_id
+         AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
+       WHERE tv.periodo = $1
+         AND tv.id_usuario = $2
+         AND tv.documento_id = $3
+         AND tv.tipo_operacion = 'E'
+         AND (${condiciones.join(' OR ')})
+       ORDER BY tv.r_fecemi, tv.r_serie, tv.r_numero, tv.elemento
+    `,
+    params
+  );
+
+  return result.rows;
+};
+
+const generarNumeroGremTransporte = async ({
+  idUsuario,
+  documentoId,
+  periodo,
+  serie,
+}) => {
+  const result = await pool.query(
+    `
+      SELECT LPAD((COALESCE(MAX(numero::integer), 0) + 1)::text, 10, '0') AS numero
+        FROM public.mve_transgrem
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND periodo = $3
+         AND cod = '31'
+         AND serie = $4
+         AND numero ~ '^[0-9]+$'
+    `,
+    [idUsuario, documentoId, periodo, serie]
+  );
+
+  return result.rows[0]?.numero || '0000000001';
+};
+
+const validarPayloadGremMinimo = (guia = {}) => {
+  const requeridos = [
+    ['serie', 'serie'],
+    ['fecha_traslado', 'fecha de traslado'],
+    ['motivo_traslado_id', 'motivo de traslado'],
+    ['modalidad_traslado_id', 'modalidad de traslado'],
+    ['partida_ubigeo', 'ubigeo de partida'],
+    ['partida_direccion', 'direccion de partida'],
+    ['llegada_ubigeo', 'ubigeo de llegada'],
+    ['llegada_direccion', 'direccion de llegada'],
+    ['transportista_placa_numero', 'placa del vehiculo'],
+    ['conductor_documento_id', 'documento del conductor'],
+    ['conductor_nombres', 'nombres del conductor'],
+    ['conductor_apellidos', 'apellidos del conductor'],
+    ['conductor_licencia', 'licencia del conductor'],
+  ];
+
+  const faltantes = requeridos
+    .filter(([key]) => !normalizarTexto(guia[key]))
+    .map(([, label]) => label);
+
+  if (!toNumber(guia.peso_total, 0)) {
+    faltantes.push('peso total');
+  }
+
+  if (!toNumber(guia.numero_bultos, 0)) {
+    faltantes.push('numero de bultos');
+  }
+
+  if (faltantes.length > 0) {
+    const error = new Error(`Faltan datos minimos para GRE Transportista: ${faltantes.join(', ')}`);
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
+const listarGremTransporte = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id } = req.params;
+
+  if (!periodo || !id_anfitrion || !documento_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para listar GREM',
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          g.id_usuario,
+          g.documento_id,
+          g.periodo,
+          g.cod,
+          g.serie,
+          g.numero,
+          CAST(g.fecha_emision AS varchar(10)) AS fecha_emision,
+          CAST(g.hora_emision AS varchar(12)) AS hora_emision,
+          CAST(g.fecha_traslado AS varchar(10)) AS fecha_traslado,
+          g.guia_motivo_id,
+          g.guia_modalidad_id,
+          g.partida_ubigeo,
+          g.partida_direccion,
+          g.llegada_ubigeo,
+          g.llegada_direccion,
+          g.peso_total,
+          g.conductor_dni,
+          g.conductor_nombres,
+          g.conductor_apellidos,
+          g.conductor_licencia,
+          g.vehiculo_placa,
+          g.destinatario_tipo,
+          g.destinatario_ruc_dni,
+          g.destinatario_razon_social,
+          g.vfirmado,
+          g.glosa,
+          g.ref_cod,
+          g.ref_serie,
+          g.ref_numero,
+          CAST(g.ctrl_crea AS varchar(30)) AS ctrl_crea,
+          CAST(g.ctrl_mod AS varchar(30)) AS ctrl_mod,
+          COALESCE(COUNT(d.*), 0)::integer AS cantidad_encomiendas,
+          COALESCE(
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'item', d.item,
+                'cantidad', d.cantidad,
+                'descripcion', d.descripcion,
+                'r_periodo', d.r_periodo,
+                'r_cod', d.r_cod,
+                'r_serie', d.r_serie,
+                'r_numero', d.r_numero,
+                'elemento', COALESCE(tv.elemento, 1),
+                'destinatario', tv.destinatario,
+                'cliente', tv.cliente,
+                'r_monto_total', tv.r_monto_total,
+                'precio_neto', tv.precio_neto
+              )
+              ORDER BY d.item
+            ) FILTER (WHERE d.item IS NOT NULL),
+            '[]'::json
+          ) AS detalles
+        FROM public.mve_transgrem g
+        LEFT JOIN public.mve_transgremdet d
+          ON d.id_usuario = g.id_usuario
+         AND d.documento_id = g.documento_id
+         AND d.periodo = g.periodo
+         AND d.cod = g.cod
+         AND d.serie = g.serie
+         AND d.numero = g.numero
+        LEFT JOIN public.mve_transventa tv
+          ON tv.id_usuario = d.id_usuario
+         AND tv.documento_id = d.documento_id
+         AND tv.periodo = d.r_periodo
+         AND tv.r_cod = d.r_cod
+         AND tv.r_serie = d.r_serie
+         AND tv.r_numero = d.r_numero
+        WHERE g.id_usuario = $1
+          AND g.documento_id = $2
+          AND g.periodo = $3
+        GROUP BY
+          g.id_usuario,
+          g.documento_id,
+          g.periodo,
+          g.cod,
+          g.serie,
+          g.numero
+        ORDER BY g.fecha_traslado DESC NULLS LAST, g.ctrl_crea DESC NULLS LAST, g.serie DESC, g.numero DESC
+      `,
+      [id_anfitrion, documento_id, periodo]
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error('Error listando GREM transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno listando GREM de transporte',
+      mensaje_usuario: error.code === '42P01'
+        ? 'Falta aplicar las tablas mve_transgrem/mve_transgremdet.'
+        : 'No se pudo listar las GREM.',
+    });
+  }
+};
+
+const generarPayloadGremTransporte = async ({
+  periodo,
+  idUsuario,
+  documentoId,
+  guia = {},
+  encomiendas = [],
+}) => {
+  if (!periodo || !idUsuario || !documentoId) {
+    throw new Error('Faltan parametros requeridos para generar GRE Transportista');
+  }
+
+  const seleccion = normalizarEncomiendasGrem({ encomiendas });
+  if (seleccion.length === 0) {
+    throw new Error('Debe seleccionar al menos una encomienda para la GRE Transportista');
+  }
+
+  const datosQuery = await pool.query(
+    `
+      SELECT *
+        FROM mad_usuariocontabilidad
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND tipo = 'ADMIN'
+    `,
+    [idUsuario, documentoId]
+  );
+
+  if (datosQuery.rows.length === 0) {
+    throw new Error('No se encontraron datos de empresa para generar GRE Transportista');
+  }
+
+  const ventas = await obtenerVentasGremTransporte({
+    periodo,
+    idUsuario,
+    documentoId,
+    encomiendas: seleccion,
+  });
+
+  if (ventas.length !== seleccion.length) {
+    throw new Error('Una o mas encomiendas seleccionadas no existen o no son de tipo encomienda');
+  }
+
+  const primera = ventas[0];
+  const empresa = datosQuery.rows[0];
+  const fechaTraslado = normalizarTexto(guia.fecha_traslado) || toIsoDate(primera.r_fecemi);
+  const serie = normalizarTexto(guia.serie) || 'V001';
+  const numero = normalizarTexto(guia.numero) || null;
+  const pesoTotal = toNumber(guia.peso_total, ventas.length);
+  const numeroBultos = Number(guia.numero_bultos || ventas.length);
+
+  const detalles = ventas.map((venta, index) => ({
+    item: index + 1,
+    documento_relacionado: {
+      tipo_documento: venta.r_cod_ref || venta.r_cod,
+      serie: venta.r_serie_ref || venta.r_serie,
+      numero: venta.r_numero_ref || venta.r_numero,
+      fecha_emision: toIsoDate(venta.r_fecemi),
+    },
+    descripcion: venta.descripcion || 'ENCOMIENDA',
+    cantidad: toNumber(venta.cantidad, 1),
+    unidad_medida: 'NIU',
+    peso: toNumber(venta.peso_total, 0) || null,
+    remitente: {
+      tipo_documento: venta.cliente_id_doc || '1',
+      numero_documento: venta.cliente_documento_id || venta.cliente_documento || '',
+      razon_social: venta.cliente || '',
+      direccion: venta.remitente_direccion || venta.cliente_direccion || '',
+      telefono: venta.cliente_telefono || '',
+    },
+    destinatario: {
+      tipo_documento: venta.destinatario_id_doc || '1',
+      numero_documento: venta.destinatario_documento_id || venta.destinatario_documento || '',
+      razon_social: venta.destinatario || '',
+      direccion: venta.destinatario_direccion || '',
+      telefono: venta.destinatario_telefono || '',
+    },
+    origen: {
+      id_punto_venta: venta.id_punto_venta,
+      nombre: venta.punto_venta_nombre || venta.id_punto_venta,
+      ubigeo: venta.punto_venta_ubigeo || '',
+      direccion: venta.punto_venta_direccion || venta.remitente_direccion || '',
+    },
+    destino: {
+      id_punto_venta: venta.id_punto_venta_dest,
+      nombre: venta.punto_venta_dest_nombre || venta.id_punto_venta_dest,
+      ubigeo: venta.punto_venta_dest_ubigeo || '',
+      direccion: venta.punto_venta_dest_direccion || venta.destinatario_direccion || '',
+    },
+    monto_flete: toNumber(venta.r_monto_total || venta.precio_neto),
+  }));
+
+  const payload = {
+    rubro: 'TRANS_GREM',
+    empresa: {
+      documento_id: empresa.documento_id,
+      razon_social: empresa.razon_social,
+      nombre_comercial: empresa.nombre_comercial,
+      direccion: empresa.direccion,
+      ubigeo: empresa.ubigeo,
+      distrito: empresa.distrito,
+      provincia: empresa.provincia,
+      departamento: empresa.departamento,
+      modo: empresa.modo,
+    },
+    guia: {
+      codigo: '31',
+      serie,
+      numero,
+      fecha_emision: toIsoDate(new Date()),
+      fecha_traslado: fechaTraslado,
+      hora_emision: toIsoTime(new Date()),
+      motivo_traslado_id: normalizarTexto(guia.motivo_traslado_id) || '01',
+      modalidad_traslado_id: normalizarTexto(guia.modalidad_traslado_id) || '01',
+      peso_total: pesoTotal,
+      numero_bultos: Number.isFinite(numeroBultos) ? numeroBultos : ventas.length,
+      observacion: normalizarTexto(guia.observacion),
+      partida_ubigeo: normalizarTexto(guia.partida_ubigeo) || primera.punto_venta_ubigeo || '',
+      partida_direccion: normalizarTexto(guia.partida_direccion) || primera.punto_venta_direccion || primera.remitente_direccion || '',
+      llegada_ubigeo: normalizarTexto(guia.llegada_ubigeo) || primera.punto_venta_dest_ubigeo || '',
+      llegada_direccion: normalizarTexto(guia.llegada_direccion) || primera.punto_venta_dest_direccion || primera.destinatario_direccion || '',
+      transportista_placa_numero: normalizarTexto(guia.placa) || primera.placa || '',
+      conductor_documento_id: normalizarTexto(guia.conductor_documento_id),
+      conductor_nombres: normalizarTexto(guia.conductor_nombres),
+      conductor_apellidos: normalizarTexto(guia.conductor_apellidos),
+      conductor_licencia: normalizarTexto(guia.licencia) || primera.licencia || '',
+    },
+    resumen: {
+      cantidad_encomiendas: ventas.length,
+      ruta: primera.nombre_ruta || primera.id_ruta || '',
+      id_ruta: primera.id_ruta,
+      id_punto_venta: primera.id_punto_venta,
+      id_punto_venta_dest: primera.id_punto_venta_dest,
+      monto_total_flete: ventas.reduce((total, venta) => total + toNumber(venta.r_monto_total || venta.precio_neto), 0),
+    },
+    detalles,
+  };
+
+  validarPayloadGremMinimo(payload.guia);
+
+  // GREM transportista es independiente del CPE/RDI de la boleta. Este payload
+  // agrupa las encomiendas seleccionadas para que el backend API SUNAT genere XML 31.
+  return payload;
+};
+
+const responderPayloadGremTransporte = async (req, res) => {
+  try {
+    const periodo = normalizarTexto(req.body.periodo || req.body.p_periodo);
+    const idUsuario = normalizarTexto(req.body.id_usuario || req.body.id_anfitrion || req.body.p_id_usuario);
+    const documentoId = normalizarTexto(req.body.documento_id || req.body.p_documento_id);
+    const payload = await generarPayloadGremTransporte({
+      periodo,
+      idUsuario,
+      documentoId,
+      guia: req.body.guia || {},
+      encomiendas: req.body.encomiendas || [],
+    });
+
+    return res.status(200).json({ success: true, payload });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message || 'No se pudo generar payload GRE Transportista',
+    });
+  }
+};
+
+const obtenerUbigeosGremTransporte = async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `
+        SELECT
+          id_catalogo AS codigo,
+          nombre AS descripcion,
+          '-'::varchar(2) AS auxiliar
+        FROM public.mct_ubigeo
+        ORDER BY nombre
+      `
+    );
+
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error obteniendo ubigeos para GREM transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno obteniendo ubigeos de transporte.',
+    });
+  }
+};
+
+const grabarGremTransporte = async (req, res) => {
+  const periodo = normalizarTexto(req.body.periodo || req.body.p_periodo);
+  const idUsuario = normalizarTexto(req.body.id_usuario || req.body.id_anfitrion || req.body.p_id_usuario);
+  const documentoId = normalizarTexto(req.body.documento_id || req.body.p_documento_id);
+  const encomiendas = normalizarEncomiendasGrem(req.body);
+
+  try {
+    const payload = await generarPayloadGremTransporte({
+      periodo,
+      idUsuario,
+      documentoId,
+      guia: req.body.guia || {},
+      encomiendas,
+    });
+
+    const serie = payload.guia.serie || 'V001';
+    const numero = payload.guia.numero || await generarNumeroGremTransporte({
+      idUsuario,
+      documentoId,
+      periodo,
+      serie,
+    });
+
+    payload.guia.numero = numero;
+
+    await guardarGremTransporteLocal({
+      periodo,
+      idUsuario,
+      documentoId,
+      encomiendas,
+      payload,
+      grem: {
+        codigo: '31',
+        serie,
+        numero,
+        codigo_hash: null,
+        respuesta_sunat_descripcion: req.body.guia?.observacion || 'GREM grabada localmente',
+      },
+      ctrlModUs: req.body.id_invitado || req.body.ctrl_mod_us || null,
+    });
+
+    return res.status(200).json({
+      success: true,
+      titulo_usuario: 'GREM grabada',
+      mensaje_usuario: `GREM ${serie}-${numero} grabada correctamente.`,
+      grem_cod: '31',
+      grem_serie: serie,
+      grem_numero: numero,
+      payload,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'No se pudo grabar la GREM',
+      mensaje_usuario: error.message || 'No se pudo grabar la GREM.',
+    });
+  }
+};
+
+const actualizarGremTransporteEncomiendas = async ({
+  periodo,
+  idUsuario,
+  documentoId,
+  encomiendas,
+  grem,
+  ctrlModUs,
+}) => {
+  const params = [
+    periodo,
+    idUsuario,
+    documentoId,
+    grem.codigo || '31',
+    grem.serie,
+    grem.numero,
+    grem.codigo_hash || null,
+    (grem.respuesta_sunat_descripcion || '').substring(0, 250),
+    ctrlModUs || null,
+  ];
+
+  const condiciones = encomiendas.map((item) => {
+    params.push(item.r_cod, item.r_serie, item.r_numero, item.elemento);
+    const base = params.length - 3;
+    return `(r_cod = $${base} AND r_serie = $${base + 1} AND r_numero = $${base + 2} AND elemento = $${base + 3})`;
+  });
+
+  await pool.query(
+    `
+      UPDATE mve_transventa
+         SET grem_cod = $4,
+             grem_serie = $5,
+             grem_numero = $6,
+             grem_vfirmado = COALESCE($7, grem_vfirmado),
+             grem_cdr_descripcion = $8,
+             ctrl_mod = CURRENT_TIMESTAMP,
+             ctrl_mod_us = COALESCE($9, ctrl_mod_us)
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND (${condiciones.join(' OR ')})
+    `,
+    params
+  );
+};
+
+const guardarGremTransporteLocal = async ({
+  periodo,
+  idUsuario,
+  documentoId,
+  encomiendas,
+  payload,
+  grem,
+  ctrlModUs,
+}) => {
+  const client = await pool.connect();
+  const guia = payload.guia || {};
+  const detalles = payload.detalles || [];
+  const primerDetalle = detalles[0] || {};
+  const usuarioAuditoria = ctrlModUs || null;
+
+  try {
+    await client.query('BEGIN');
+
+    await client.query(
+      `
+        INSERT INTO public.mve_transgrem AS grem_head (
+          id_usuario,
+          documento_id,
+          periodo,
+          cod,
+          serie,
+          numero,
+          fecha_emision,
+          hora_emision,
+          fecha_traslado,
+          guia_motivo_id,
+          guia_modalidad_id,
+          partida_ubigeo,
+          partida_direccion,
+          llegada_ubigeo,
+          llegada_direccion,
+          peso_total,
+          conductor_dni,
+          conductor_nombres,
+          conductor_apellidos,
+          conductor_licencia,
+          vehiculo_placa,
+          destinatario_tipo,
+          destinatario_ruc_dni,
+          destinatario_razon_social,
+          vfirmado,
+          glosa,
+          ctrl_crea,
+          ctrl_crea_us,
+          ctrl_mod,
+          ctrl_mod_us,
+          ref_cod,
+          ref_serie,
+          ref_numero,
+          libre
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6,
+          NULLIF($7, '')::date,
+          NULLIF($8, '')::time,
+          NULLIF($9, '')::date,
+          $10, $11, $12, $13, $14, $15,
+          $16, $17, $18, $19, $20, $21,
+          $22, $23, $24, $25, $26,
+          CURRENT_TIMESTAMP, $27, CURRENT_TIMESTAMP, $27,
+          $28, $29, $30, $31
+        )
+        ON CONFLICT (id_usuario, documento_id, periodo, cod, serie, numero)
+        DO UPDATE SET
+          fecha_emision = EXCLUDED.fecha_emision,
+          hora_emision = EXCLUDED.hora_emision,
+          fecha_traslado = EXCLUDED.fecha_traslado,
+          guia_motivo_id = EXCLUDED.guia_motivo_id,
+          guia_modalidad_id = EXCLUDED.guia_modalidad_id,
+          partida_ubigeo = EXCLUDED.partida_ubigeo,
+          partida_direccion = EXCLUDED.partida_direccion,
+          llegada_ubigeo = EXCLUDED.llegada_ubigeo,
+          llegada_direccion = EXCLUDED.llegada_direccion,
+          peso_total = EXCLUDED.peso_total,
+          conductor_dni = EXCLUDED.conductor_dni,
+          conductor_nombres = EXCLUDED.conductor_nombres,
+          conductor_apellidos = EXCLUDED.conductor_apellidos,
+          conductor_licencia = EXCLUDED.conductor_licencia,
+          vehiculo_placa = EXCLUDED.vehiculo_placa,
+          destinatario_tipo = EXCLUDED.destinatario_tipo,
+          destinatario_ruc_dni = EXCLUDED.destinatario_ruc_dni,
+          destinatario_razon_social = EXCLUDED.destinatario_razon_social,
+          vfirmado = COALESCE(EXCLUDED.vfirmado, grem_head.vfirmado),
+          glosa = EXCLUDED.glosa,
+          ctrl_mod = CURRENT_TIMESTAMP,
+          ctrl_mod_us = EXCLUDED.ctrl_mod_us,
+          ref_cod = EXCLUDED.ref_cod,
+          ref_serie = EXCLUDED.ref_serie,
+          ref_numero = EXCLUDED.ref_numero,
+          libre = EXCLUDED.libre
+      `,
+      [
+        idUsuario,
+        documentoId,
+        periodo,
+        grem.codigo || guia.codigo || '31',
+        grem.serie || guia.serie,
+        grem.numero || guia.numero,
+        guia.fecha_emision || null,
+        guia.hora_emision || null,
+        guia.fecha_traslado || null,
+        guia.motivo_traslado_id || null,
+        guia.modalidad_traslado_id || null,
+        guia.partida_ubigeo || null,
+        guia.partida_direccion || null,
+        guia.llegada_ubigeo || null,
+        guia.llegada_direccion || null,
+        toNumber(guia.peso_total, 0),
+        guia.conductor_documento_id || null,
+        guia.conductor_nombres || null,
+        guia.conductor_apellidos || null,
+        guia.conductor_licencia || null,
+        guia.transportista_placa_numero || null,
+        primerDetalle.destinatario?.tipo_documento || null,
+        primerDetalle.destinatario?.numero_documento || null,
+        primerDetalle.destinatario?.razon_social || null,
+        grem.codigo_hash || null,
+        (grem.respuesta_sunat_descripcion || guia.observacion || '').substring(0, 400),
+        usuarioAuditoria,
+        primerDetalle.documento_relacionado?.tipo_documento || null,
+        primerDetalle.documento_relacionado?.serie || null,
+        primerDetalle.documento_relacionado?.numero || null,
+        null,
+      ]
+    );
+
+    await client.query(
+      `
+        DELETE FROM public.mve_transgremdet
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND periodo = $3
+           AND cod = $4
+           AND serie = $5
+           AND numero = $6
+      `,
+      [
+        idUsuario,
+        documentoId,
+        periodo,
+        grem.codigo || guia.codigo || '31',
+        grem.serie || guia.serie,
+        grem.numero || guia.numero,
+      ]
+    );
+
+    for (const [index, item] of encomiendas.entries()) {
+      const detalle = detalles[index] || {};
+      await client.query(
+        `
+          INSERT INTO public.mve_transgremdet (
+            id_usuario,
+            documento_id,
+            periodo,
+            cod,
+            serie,
+            numero,
+            item,
+            cantidad,
+            descripcion,
+            id_producto,
+            cont_und,
+            r_periodo,
+            r_cod,
+            r_serie,
+            r_numero,
+            ctrl_crea,
+            ctrl_crea_us,
+            ctrl_mod,
+            ctrl_mod_us
+          )
+          VALUES (
+            $1, $2, $3, $4, $5, $6, $7,
+            $8, $9, $10, $11,
+            $12, $13, $14, $15,
+            CURRENT_TIMESTAMP, $16, CURRENT_TIMESTAMP, $16
+          )
+        `,
+        [
+          idUsuario,
+          documentoId,
+          periodo,
+          grem.codigo || guia.codigo || '31',
+          grem.serie || guia.serie,
+          grem.numero || guia.numero,
+          detalle.item || index + 1,
+          toNumber(detalle.cantidad, 1),
+          (detalle.descripcion || 'ENCOMIENDA').substring(0, 300),
+          detalle.id_producto || null,
+          detalle.unidad_medida || null,
+          periodo,
+          item.r_cod,
+          item.r_serie,
+          item.r_numero,
+          usuarioAuditoria,
+        ]
+      );
+    }
+
+    const params = [
+      periodo,
+      idUsuario,
+      documentoId,
+      grem.codigo || guia.codigo || '31',
+      grem.serie || guia.serie,
+      grem.numero || guia.numero,
+      grem.codigo_hash || null,
+      (grem.respuesta_sunat_descripcion || '').substring(0, 250),
+      usuarioAuditoria,
+    ];
+
+    const condiciones = encomiendas.map((item) => {
+      params.push(item.r_cod, item.r_serie, item.r_numero, item.elemento);
+      const base = params.length - 3;
+      return `(r_cod = $${base} AND r_serie = $${base + 1} AND r_numero = $${base + 2} AND elemento = $${base + 3})`;
+    });
+
+    await client.query(
+      `
+        UPDATE mve_transventa
+           SET grem_cod = $4,
+               grem_serie = $5,
+               grem_numero = $6,
+               grem_vfirmado = COALESCE($7, grem_vfirmado),
+               grem_cdr_descripcion = $8,
+               ctrl_mod = CURRENT_TIMESTAMP,
+               ctrl_mod_us = COALESCE($9, ctrl_mod_us)
+         WHERE periodo = $1
+           AND id_usuario = $2
+           AND documento_id = $3
+           AND (${condiciones.join(' OR ')})
+      `,
+      params
+    );
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const generarGremSunatTransporte = async (req, res) => {
+  const periodo = normalizarTexto(req.body.periodo || req.body.p_periodo);
+  const idUsuario = normalizarTexto(req.body.id_usuario || req.body.id_anfitrion || req.body.p_id_usuario);
+  const documentoId = normalizarTexto(req.body.documento_id || req.body.p_documento_id);
+  const encomiendas = normalizarEncomiendasGrem(req.body);
+
+  try {
+    const payload = await generarPayloadGremTransporte({
+      periodo,
+      idUsuario,
+      documentoId,
+      guia: req.body.guia || {},
+      encomiendas,
+    });
+
+    if (!payload.guia.numero) {
+      payload.guia.numero = await generarNumeroGremTransporte({
+        idUsuario,
+        documentoId,
+        periodo,
+        serie: payload.guia.serie || 'V001',
+      });
+    }
+
+    if (req.body.solo_payload) {
+      return res.status(200).json({ success: true, payload });
+    }
+
+    const apiResponse = await fetch(`${SUNAT_API_BASE_URL}/gretranssunat`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 90000,
+    });
+    const responseData = await leerRespuestaSunat(apiResponse);
+    const dataSunat = responseData?.data || responseData;
+
+    if (!apiResponse.ok) {
+      const errorNormalizado = normalizarErrorSunatTransporte(responseData, 'Error enviando GRE Transportista');
+      return res.status(apiResponse.status).json(errorNormalizado);
+    }
+
+    const codigoHash = dataSunat.codigo_hash || dataSunat.hash || null;
+    const numeroGrem = dataSunat.numero || payload.guia.numero;
+    let persistenciaAdvertencia = null;
+
+    try {
+      await guardarGremTransporteLocal({
+        periodo,
+        idUsuario,
+        documentoId,
+        encomiendas,
+        payload,
+        grem: {
+          codigo: '31',
+          serie: dataSunat.serie || payload.guia.serie,
+          numero: numeroGrem,
+          codigo_hash: codigoHash,
+          respuesta_sunat_descripcion: dataSunat.respuesta_sunat_descripcion || dataSunat.mensaje || '',
+        },
+        ctrlModUs: req.body.id_invitado || req.body.ctrl_mod_us || null,
+      });
+    } catch (persistenciaError) {
+      try {
+        await actualizarGremTransporteEncomiendas({
+          periodo,
+          idUsuario,
+          documentoId,
+          encomiendas,
+          grem: {
+            codigo: '31',
+            serie: dataSunat.serie || payload.guia.serie,
+            numero: numeroGrem,
+            codigo_hash: codigoHash,
+            respuesta_sunat_descripcion: dataSunat.respuesta_sunat_descripcion || dataSunat.mensaje || '',
+          },
+          ctrlModUs: req.body.id_invitado || req.body.ctrl_mod_us || null,
+        });
+        persistenciaAdvertencia = ['42P01', '42703'].includes(persistenciaError.code)
+          ? 'GRE enviada y marcada en encomiendas, pero falta aplicar las tablas mve_transgrem/mve_transgremdet.'
+          : `GRE enviada y marcada en encomiendas, pero no se guardo cabecera/detalle GREM: ${persistenciaError.message}`;
+      } catch (fallbackError) {
+        persistenciaAdvertencia = fallbackError.code === '42703'
+          ? 'GRE enviada, pero faltan columnas grem_* en mve_transventa para guardar la referencia.'
+          : `GRE enviada, pero no se pudo guardar referencia local: ${fallbackError.message}`;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      titulo_usuario: 'GRE Transportista enviada',
+      mensaje_usuario: dataSunat.mensaje_usuario || dataSunat.respuesta_sunat_descripcion || 'GRE Transportista procesada por SUNAT.',
+      respuesta_sunat_descripcion: dataSunat.respuesta_sunat_descripcion || dataSunat.mensaje || '',
+      ruta_xml: dataSunat.ruta_xml,
+      ruta_cdr: dataSunat.ruta_cdr,
+      ruta_pdf: dataSunat.ruta_pdf,
+      codigo_hash: codigoHash,
+      grem_cod: '31',
+      grem_serie: dataSunat.serie || payload.guia.serie,
+      grem_numero: numeroGrem,
+      persistencia_advertencia: persistenciaAdvertencia,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Error interno procesando GRE Transportista',
+      mensaje_usuario: error.message || 'No se pudo procesar la GRE Transportista.',
+    });
+  }
+};
+
 const generarTicketPDFEncomiendaExpertcont = async (
   req,
   res,
@@ -3765,7 +4653,12 @@ module.exports = {
   obtenerComparativoMensualEncomiendasDashboardTransporte,
   obtenerUsuariosDashboardTransporte,
   obtenerDashboardTransporte,
+  listarGremTransporte,
+  obtenerUbigeosGremTransporte,
+  grabarGremTransporte,
   generarCPEexpertcontTransporte,
+  responderPayloadGremTransporte,
+  generarGremSunatTransporte,
   generarTicketPDFEncomiendaExpertcont,
   generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
