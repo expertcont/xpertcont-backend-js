@@ -2821,7 +2821,16 @@ const normalizarPayloadGremSunat = (payload) => {
     fechaTraslado,
     hora_emision: horaEmision,
     horaEmision,
+    hora: horaEmision,
   };
+
+  payload.fecha_emision = fechaEmision;
+  payload.fechaEmision = fechaEmision;
+  payload.fecha_traslado = fechaTraslado;
+  payload.fechaTraslado = fechaTraslado;
+  payload.hora_emision = horaEmision;
+  payload.horaEmision = horaEmision;
+  payload.hora = horaEmision;
 
   return payload;
 };
