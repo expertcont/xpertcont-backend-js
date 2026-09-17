@@ -114,23 +114,11 @@ CREATE TABLE IF NOT EXISTS public.mve_transgremdet (
   id_producto VARCHAR(20),
   cont_und VARCHAR(20),
 
-  -- Destinatario declarado por item
-  destinatario_tipo VARCHAR(2),
-  destinatario_documento VARCHAR(20),
-  destinatario_nombre VARCHAR(200),
-
-  -- Comprobante relacionado declarado por item
-  comprobante_cod VARCHAR(2),
-  comprobante_serie VARCHAR(5),
-  comprobante_numero VARCHAR(22),
-  comprobante_fecha DATE,
-
   -- Referencia a la encomienda en mve_transventa
   r_periodo VARCHAR(10) NOT NULL,
   r_cod VARCHAR(2) NOT NULL,
   r_serie VARCHAR(5) NOT NULL,
   r_numero VARCHAR(22) NOT NULL,
-  r_elemento INTEGER,
 
   -- Auditoria
   ctrl_crea TIMESTAMP(5) WITHOUT TIME ZONE,
@@ -149,13 +137,3 @@ CREATE TABLE IF NOT EXISTS public.mve_transgremdet (
     item
     )
 );
-
-ALTER TABLE public.mve_transgremdet
-  ADD COLUMN IF NOT EXISTS destinatario_tipo VARCHAR(2),
-  ADD COLUMN IF NOT EXISTS destinatario_documento VARCHAR(20),
-  ADD COLUMN IF NOT EXISTS destinatario_nombre VARCHAR(200),
-  ADD COLUMN IF NOT EXISTS comprobante_cod VARCHAR(2),
-  ADD COLUMN IF NOT EXISTS comprobante_serie VARCHAR(5),
-  ADD COLUMN IF NOT EXISTS comprobante_numero VARCHAR(22),
-  ADD COLUMN IF NOT EXISTS comprobante_fecha DATE,
-  ADD COLUMN IF NOT EXISTS r_elemento INTEGER;
