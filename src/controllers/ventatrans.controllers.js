@@ -224,6 +224,13 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(numeric) ? numeric : fallback;
 };
 
+const tipoDocumentoIdentidadTransporte = (documento, fallback = '1') => {
+  const digits = normalizarTexto(documento).replace(/\D/g, '');
+  if (digits.length === 11) return '6';
+  if (digits.length === 8) return '1';
+  return normalizarTexto(fallback) || '1';
+};
+
 const normalizarErrorSunatTransporte = (responseData, fallbackMessage = 'Error en la API SUNAT') => {
   const data = responseData?.error || responseData?.data || responseData || {};
   const nivel = data.nivel || 'ERROR';
@@ -2807,6 +2814,66 @@ const validarPayloadGremMinimo = (guia = {}) => {
   }
 };
 
+const validarDetallesGremMinimos = (detalles = []) => {
+  const faltantes = [];
+
+  detalles.forEach((detalle) => {
+    const documento = detalle.documento_relacionado || {};
+    const documentoLabel = [
+      documento.tipo_documento,
+      documento.serie,
+      documento.numero,
+    ].filter(Boolean).join('-') || `item ${detalle.item || '?'}`;
+
+    if (!normalizarTexto(detalle.remitente?.numero_documento)) {
+      faltantes.push(`${documentoLabel}: documento de identidad del remitente`);
+    }
+
+    if (!normalizarTexto(detalle.remitente?.razon_social)) {
+      faltantes.push(`${documentoLabel}: nombre del remitente`);
+    }
+
+    if (!normalizarTexto(detalle.destinatario?.numero_documento)) {
+      faltantes.push(`${documentoLabel}: documento de identidad del destinatario`);
+    }
+
+    if (!normalizarTexto(detalle.destinatario?.razon_social)) {
+      faltantes.push(`${documentoLabel}: nombre del destinatario`);
+    }
+  });
+
+  if (faltantes.length > 0) {
+    const error = new Error(`Faltan datos para GRE Transportista: ${faltantes.join('; ')}`);
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
+const obtenerRemitentesGrem = (detalles = []) => {
+  const remitentesMap = new Map();
+
+  detalles.forEach((detalle) => {
+    const remitente = detalle.remitente || {};
+    const numeroDocumento = normalizarTexto(remitente.numero_documento);
+    if (!numeroDocumento) return;
+
+    const tipoDocumento = normalizarTexto(remitente.tipo_documento) || tipoDocumentoIdentidadTransporte(numeroDocumento);
+    const key = `${tipoDocumento}-${numeroDocumento}`;
+
+    if (!remitentesMap.has(key)) {
+      remitentesMap.set(key, {
+        tipo_documento: tipoDocumento,
+        numero_documento: numeroDocumento,
+        razon_social: normalizarTexto(remitente.razon_social),
+        direccion: normalizarTexto(remitente.direccion),
+        telefono: normalizarTexto(remitente.telefono),
+      });
+    }
+  });
+
+  return Array.from(remitentesMap.values());
+};
+
 const normalizarPayloadGremSunat = (payload) => {
   const guia = payload.guia || {};
   const fechaEmision = toIsoDate(guia.fecha_emision || guia.fechaEmision || new Date());
@@ -3122,46 +3189,69 @@ const generarPayloadGremTransporte = async ({
   const pesoTotal = toNumber(guia.peso_total, ventas.length);
   const numeroBultos = Number(guia.numero_bultos || ventas.length);
 
-  const detalles = ventas.map((venta, index) => ({
-    item: index + 1,
-    documento_relacionado: {
-      tipo_documento: venta.r_cod_ref || venta.r_cod,
-      serie: venta.r_serie_ref || venta.r_serie,
-      numero: venta.r_numero_ref || venta.r_numero,
-      fecha_emision: toIsoDate(venta.r_fecemi),
-    },
-    descripcion: venta.descripcion || 'ENCOMIENDA',
-    cantidad: toNumber(venta.cantidad, 1),
-    unidad_medida: 'NIU',
-    peso: toNumber(venta.peso_total, 0) || null,
-    remitente: {
-      tipo_documento: venta.cliente_id_doc || '1',
-      numero_documento: venta.cliente_documento_id || venta.cliente_documento || '',
-      razon_social: venta.cliente || '',
-      direccion: venta.remitente_direccion || venta.cliente_direccion || '',
-      telefono: venta.cliente_telefono || '',
-    },
-    destinatario: {
-      tipo_documento: venta.destinatario_id_doc || '1',
-      numero_documento: venta.destinatario_documento_id || venta.destinatario_documento || '',
-      razon_social: venta.destinatario || '',
-      direccion: venta.destinatario_direccion || '',
-      telefono: venta.destinatario_telefono || '',
-    },
-    origen: {
-      id_punto_venta: venta.id_punto_venta,
-      nombre: venta.punto_venta_nombre || venta.id_punto_venta,
-      ubigeo: venta.punto_venta_ubigeo || '',
-      direccion: venta.punto_venta_direccion || venta.remitente_direccion || '',
-    },
-    destino: {
-      id_punto_venta: venta.id_punto_venta_dest,
-      nombre: venta.punto_venta_dest_nombre || venta.id_punto_venta_dest,
-      ubigeo: venta.punto_venta_dest_ubigeo || '',
-      direccion: venta.punto_venta_dest_direccion || venta.destinatario_direccion || '',
-    },
-    monto_flete: toNumber(venta.r_monto_total || venta.precio_neto),
-  }));
+  const detalles = ventas.map((venta, index) => {
+    const remitenteDocumento = normalizarTexto(venta.cliente_documento_id || venta.cliente_documento);
+    const destinatarioDocumento = normalizarTexto(venta.destinatario_documento_id || venta.destinatario_documento);
+    const comprobanteRelacionado = [
+      venta.r_cod_ref || venta.r_cod,
+      venta.r_serie_ref || venta.r_serie,
+      venta.r_numero_ref || venta.r_numero,
+    ].filter(Boolean).join('-');
+    const descripcionBase = normalizarTexto(venta.descripcion) || 'ENCOMIENDA';
+    const descripcionDetalle = [
+      descripcionBase,
+      comprobanteRelacionado ? `Comp: ${comprobanteRelacionado}` : '',
+      remitenteDocumento || venta.cliente ? `Rem: ${[remitenteDocumento, venta.cliente].filter(Boolean).join(' ')}` : '',
+      destinatarioDocumento || venta.destinatario ? `Dest: ${[destinatarioDocumento, venta.destinatario].filter(Boolean).join(' ')}` : '',
+      `Flete: ${toNumber(venta.r_monto_total || venta.precio_neto).toFixed(2)}`,
+    ].filter(Boolean).join(' | ');
+
+    return {
+      item: index + 1,
+      documento_relacionado: {
+        tipo_documento: venta.r_cod_ref || venta.r_cod,
+        serie: venta.r_serie_ref || venta.r_serie,
+        numero: venta.r_numero_ref || venta.r_numero,
+        fecha_emision: toIsoDate(venta.r_fecemi),
+      },
+      descripcion: descripcionDetalle,
+      descripcion_bien: descripcionBase,
+      cantidad: toNumber(venta.cantidad, 1),
+      unidad_medida: 'NIU',
+      peso: toNumber(venta.peso_total, 0) || null,
+      remitente: {
+        tipo_documento: normalizarTexto(venta.cliente_id_doc) || tipoDocumentoIdentidadTransporte(remitenteDocumento),
+        numero_documento: remitenteDocumento,
+        razon_social: normalizarTexto(venta.cliente),
+        direccion: normalizarTexto(venta.remitente_direccion || venta.cliente_direccion),
+        telefono: normalizarTexto(venta.cliente_telefono),
+      },
+      destinatario: {
+        tipo_documento: normalizarTexto(venta.destinatario_id_doc) || tipoDocumentoIdentidadTransporte(destinatarioDocumento),
+        numero_documento: destinatarioDocumento,
+        razon_social: normalizarTexto(venta.destinatario),
+        direccion: normalizarTexto(venta.destinatario_direccion),
+        telefono: normalizarTexto(venta.destinatario_telefono),
+      },
+      origen: {
+        id_punto_venta: venta.id_punto_venta,
+        nombre: venta.punto_venta_nombre || venta.id_punto_venta,
+        ubigeo: venta.punto_venta_ubigeo || '',
+        direccion: venta.punto_venta_direccion || venta.remitente_direccion || '',
+      },
+      destino: {
+        id_punto_venta: venta.id_punto_venta_dest,
+        nombre: venta.punto_venta_dest_nombre || venta.id_punto_venta_dest,
+        ubigeo: venta.punto_venta_dest_ubigeo || '',
+        direccion: venta.punto_venta_dest_direccion || venta.destinatario_direccion || '',
+      },
+      monto_flete: toNumber(venta.r_monto_total || venta.precio_neto),
+    };
+  });
+
+  validarDetallesGremMinimos(detalles);
+  const remitentes = obtenerRemitentesGrem(detalles);
+  const remitentesMultiples = remitentes.length > 1;
 
   const payload = {
     rubro: 'TRANS_GREM',
@@ -3185,6 +3275,9 @@ const generarPayloadGremTransporte = async ({
       hora_emision: toIsoTime(new Date()),
       motivo_traslado_id: '13',
       modalidad_traslado_id: '01',
+      remitentes_multiples: remitentesMultiples,
+      resumen_mas_20_remitentes: remitentes.length > 20,
+      cantidad_remitentes: remitentes.length,
       peso_total: pesoTotal,
       numero_bultos: Number.isFinite(numeroBultos) ? numeroBultos : ventas.length,
       observacion: normalizarTexto(guia.observacion),
@@ -3205,7 +3298,11 @@ const generarPayloadGremTransporte = async ({
       id_punto_venta: primera.id_punto_venta,
       id_punto_venta_dest: primera.id_punto_venta_dest,
       monto_total_flete: ventas.reduce((total, venta) => total + toNumber(venta.r_monto_total || venta.precio_neto), 0),
+      cantidad_remitentes: remitentes.length,
+      remitentes_multiples: remitentesMultiples,
+      resumen_mas_20_remitentes: remitentes.length > 20,
     },
+    remitentes,
     detalles,
   };
 
