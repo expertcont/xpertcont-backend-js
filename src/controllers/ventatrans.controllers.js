@@ -160,6 +160,21 @@ const joinNombreRuta = `
 
 const validarTipoOperacion = (tipoOperacion) => ['B', 'E'].includes(tipoOperacion);
 
+const normalizarSerieGremTransporte = (serie) => {
+  const serieNormalizada = normalizarTexto(serie).toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+  if (!serieNormalizada) return 'V001';
+
+  const serieRemitente = serieNormalizada.match(/^T(\d{3})$/);
+  if (serieRemitente) return `V${serieRemitente[1]}`;
+
+  if (/^V\d{3}$/.test(serieNormalizada)) return serieNormalizada;
+
+  const error = new Error('La serie de la GRE Transportista debe tener formato V###, por ejemplo V001.');
+  error.statusCode = 400;
+  throw error;
+};
+
 const toIsoDate = (value) => {
   if (!value) return '';
   if (value instanceof Date) {
@@ -2716,7 +2731,7 @@ const generarNumeroGremTransporte = async ({
 }) => {
   const result = await pool.query(
     `
-      SELECT LPAD((COALESCE(MAX(numero::integer), 0) + 1)::text, 10, '0') AS numero
+      SELECT LPAD((COALESCE(MAX(numero::integer), 0) + 1)::text, 8, '0') AS numero
         FROM public.mve_transgrem
        WHERE id_usuario = $1
          AND documento_id = $2
@@ -3031,7 +3046,7 @@ const generarPayloadGremTransporte = async ({
   const primera = ventas[0];
   const empresa = datosQuery.rows[0];
   const fechaTraslado = normalizarTexto(guia.fecha_traslado) || toIsoDate(primera.r_fecemi);
-  const serie = normalizarTexto(guia.serie) || 'V001';
+  const serie = normalizarSerieGremTransporte(guia.serie);
   const numero = normalizarTexto(guia.numero) || null;
   const pesoTotal = toNumber(guia.peso_total, ventas.length);
   const numeroBultos = Number(guia.numero_bultos || ventas.length);
@@ -3190,7 +3205,8 @@ const grabarGremTransporte = async (req, res) => {
       encomiendas,
     });
 
-    const serie = payload.guia.serie || 'V001';
+    const serie = normalizarSerieGremTransporte(payload.guia.serie);
+    payload.guia.serie = serie;
     const numero = payload.guia.numero || await generarNumeroGremTransporte({
       idUsuario,
       documentoId,
@@ -3595,7 +3611,7 @@ const generarGremSunatTransporte = async (req, res) => {
         idUsuario,
         documentoId,
         periodo,
-        serie: payload.guia.serie || 'V001',
+        serie: normalizarSerieGremTransporte(payload.guia.serie),
       });
     }
 
