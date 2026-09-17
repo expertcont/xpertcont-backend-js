@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS public.mve_transgremdet (
   descripcion VARCHAR(300),
   id_producto VARCHAR(20),
   cont_und VARCHAR(20),
+  monto_flete NUMERIC(14,2),
 
   -- Referencia a la encomienda en mve_transventa
   r_periodo VARCHAR(10) NOT NULL,
@@ -137,3 +138,6 @@ CREATE TABLE IF NOT EXISTS public.mve_transgremdet (
     item
     )
 );
+
+ALTER TABLE public.mve_transgremdet
+  ADD COLUMN IF NOT EXISTS monto_flete NUMERIC(14,2);

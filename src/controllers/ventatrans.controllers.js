@@ -2823,6 +2823,7 @@ const listarGremTransporte = async (req, res) => {
                 'r_cod', d.r_cod,
                 'r_serie', d.r_serie,
                 'r_numero', d.r_numero,
+                'monto_flete', COALESCE(d.monto_flete, tv.r_monto_total, tv.precio_neto),
                 'destinatario_tipo', tv.destinatario_id_doc,
                 'destinatario_documento', tv.destinatario_documento_id,
                 'destinatario_nombre', tv.destinatario,
@@ -2922,6 +2923,7 @@ const listarGremTransporte = async (req, res) => {
                     'r_cod', d.r_cod,
                     'r_serie', d.r_serie,
                     'r_numero', d.r_numero,
+                    'monto_flete', COALESCE(d.monto_flete, tv.r_monto_total, tv.precio_neto),
                     'elemento', COALESCE(tv.elemento, 1),
                     'destinatario', tv.destinatario,
                     'cliente', tv.cliente,
@@ -3489,6 +3491,7 @@ const guardarGremTransporteLocal = async ({
             descripcion,
             id_producto,
             cont_und,
+            monto_flete,
             r_periodo,
             r_cod,
             r_serie,
@@ -3501,8 +3504,8 @@ const guardarGremTransporteLocal = async ({
           VALUES (
             $1, $2, $3, $4, $5, $6, $7,
             $8, $9, $10, $11,
-            $12, $13, $14, $15,
-            CURRENT_TIMESTAMP, $16, CURRENT_TIMESTAMP, $16
+            $12, $13, $14, $15, $16,
+            CURRENT_TIMESTAMP, $17, CURRENT_TIMESTAMP, $17
           )
         `,
         [
@@ -3517,6 +3520,7 @@ const guardarGremTransporteLocal = async ({
           (detalle.descripcion || 'ENCOMIENDA').substring(0, 300),
           detalle.id_producto || null,
           detalle.unidad_medida || null,
+          toNumber(detalle.monto_flete ?? item.r_monto_total ?? item.precio_neto, 0),
           periodo,
           item.r_cod,
           item.r_serie,
