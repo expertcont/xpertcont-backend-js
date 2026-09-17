@@ -2822,6 +2822,9 @@ const normalizarPayloadGremSunat = (payload) => {
     hora_emision: horaEmision,
     horaEmision,
     hora: horaEmision,
+    issue_time: horaEmision,
+    issueTime: horaEmision,
+    IssueTime: horaEmision,
   };
 
   payload.fecha_emision = fechaEmision;
@@ -2831,8 +2834,23 @@ const normalizarPayloadGremSunat = (payload) => {
   payload.hora_emision = horaEmision;
   payload.horaEmision = horaEmision;
   payload.hora = horaEmision;
+  payload.issue_time = horaEmision;
+  payload.issueTime = horaEmision;
+  payload.IssueTime = horaEmision;
 
   return payload;
+};
+
+const validarHoraEmisionGremSunat = (payload) => {
+  const horaEmision = payload?.guia?.hora_emision || payload?.hora_emision;
+
+  if (!/^\d{2}:\d{2}:\d{2}$/.test(String(horaEmision || ''))) {
+    const error = new Error(`Hora de emision GRE invalida: ${horaEmision || 'vacia'}`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return horaEmision;
 };
 
 const listarGremTransporte = async (req, res) => {
@@ -3668,6 +3686,14 @@ const generarGremSunatTransporte = async (req, res) => {
       });
     }
     normalizarPayloadGremSunat(payload);
+    const horaEmisionGrem = validarHoraEmisionGremSunat(payload);
+
+    console.log('Payload GRE Transportista SUNAT:', {
+      guia: `${payload.guia.codigo}-${payload.guia.serie}-${payload.guia.numero}`,
+      fecha_emision: payload.guia.fecha_emision,
+      hora_emision: horaEmisionGrem,
+      fecha_traslado: payload.guia.fecha_traslado,
+    });
 
     if (req.body.solo_payload) {
       return res.status(200).json({ success: true, payload });
