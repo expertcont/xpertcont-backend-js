@@ -2823,8 +2823,15 @@ const listarGremTransporte = async (req, res) => {
                 'r_cod', d.r_cod,
                 'r_serie', d.r_serie,
                 'r_numero', d.r_numero,
-                'elemento', COALESCE(tv.elemento, 1),
-                'destinatario', tv.destinatario,
+                'elemento', COALESCE(d.r_elemento, tv.elemento, 1),
+                'destinatario_tipo', COALESCE(d.destinatario_tipo, tv.destinatario_id_doc),
+                'destinatario_documento', COALESCE(d.destinatario_documento, tv.destinatario_documento_id),
+                'destinatario_nombre', COALESCE(d.destinatario_nombre, tv.destinatario),
+                'comprobante_cod', COALESCE(d.comprobante_cod, tv.r_cod_ref, tv.r_cod),
+                'comprobante_serie', COALESCE(d.comprobante_serie, tv.r_serie_ref, tv.r_serie),
+                'comprobante_numero', COALESCE(d.comprobante_numero, tv.r_numero_ref, tv.r_numero),
+                'comprobante_fecha', COALESCE(CAST(d.comprobante_fecha AS varchar(10)), CAST(tv.r_fecemi AS varchar(10))),
+                'destinatario', COALESCE(d.destinatario_nombre, tv.destinatario),
                 'cliente', tv.cliente,
                 'r_monto_total', tv.r_monto_total,
                 'precio_neto', tv.precio_neto
@@ -2848,6 +2855,7 @@ const listarGremTransporte = async (req, res) => {
          AND tv.r_cod = d.r_cod
          AND tv.r_serie = d.r_serie
          AND tv.r_numero = d.r_numero
+         AND tv.elemento = COALESCE(d.r_elemento, tv.elemento)
         WHERE g.id_usuario = $1
           AND g.documento_id = $2
           AND g.periodo = $3
@@ -3186,9 +3194,53 @@ const guardarGremTransporteLocal = async ({
   const detalles = payload.detalles || [];
   const primerDetalle = detalles[0] || {};
   const usuarioAuditoria = ctrlModUs || null;
+  const gremCod = grem.codigo || guia.codigo || '31';
+  const gremSerie = grem.serie || guia.serie;
+  const gremNumero = grem.numero || guia.numero;
 
   try {
     await client.query('BEGIN');
+
+    const gremExistente = await client.query(
+      `
+        SELECT vfirmado
+          FROM public.mve_transgrem
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND periodo = $3
+           AND cod = $4
+           AND serie = $5
+           AND numero = $6
+         FOR UPDATE
+      `,
+      [idUsuario, documentoId, periodo, gremCod, gremSerie, gremNumero]
+    );
+
+    if (normalizarTexto(gremExistente.rows[0]?.vfirmado)) {
+      const error = new Error('No se puede editar una GREM enviada a SUNAT.');
+      error.statusCode = 409;
+      throw error;
+    }
+
+    await client.query(
+      `
+        UPDATE public.mve_transventa
+           SET grem_cod = NULL,
+               grem_serie = NULL,
+               grem_numero = NULL,
+               grem_cdr_descripcion = NULL,
+               ctrl_mod = CURRENT_TIMESTAMP,
+               ctrl_mod_us = COALESCE($7, ctrl_mod_us)
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND periodo = $3
+           AND grem_cod = $4
+           AND grem_serie = $5
+           AND grem_numero = $6
+           AND COALESCE(grem_vfirmado, '') = ''
+      `,
+      [idUsuario, documentoId, periodo, gremCod, gremSerie, gremNumero, usuarioAuditoria]
+    );
 
     await client.query(
       `
@@ -3272,9 +3324,9 @@ const guardarGremTransporteLocal = async ({
         idUsuario,
         documentoId,
         periodo,
-        grem.codigo || guia.codigo || '31',
-        grem.serie || guia.serie,
-        grem.numero || guia.numero,
+        gremCod,
+        gremSerie,
+        gremNumero,
         guia.fecha_emision || null,
         guia.hora_emision || null,
         guia.fecha_traslado || null,
@@ -3317,9 +3369,9 @@ const guardarGremTransporteLocal = async ({
         idUsuario,
         documentoId,
         periodo,
-        grem.codigo || guia.codigo || '31',
-        grem.serie || guia.serie,
-        grem.numero || guia.numero,
+        gremCod,
+        gremSerie,
+        gremNumero,
       ]
     );
 
@@ -3339,10 +3391,18 @@ const guardarGremTransporteLocal = async ({
             descripcion,
             id_producto,
             cont_und,
+            destinatario_tipo,
+            destinatario_documento,
+            destinatario_nombre,
+            comprobante_cod,
+            comprobante_serie,
+            comprobante_numero,
+            comprobante_fecha,
             r_periodo,
             r_cod,
             r_serie,
             r_numero,
+            r_elemento,
             ctrl_crea,
             ctrl_crea_us,
             ctrl_mod,
@@ -3351,26 +3411,36 @@ const guardarGremTransporteLocal = async ({
           VALUES (
             $1, $2, $3, $4, $5, $6, $7,
             $8, $9, $10, $11,
-            $12, $13, $14, $15,
-            CURRENT_TIMESTAMP, $16, CURRENT_TIMESTAMP, $16
+            $12, $13, $14,
+            $15, $16, $17, NULLIF($18, '')::date,
+            $19, $20, $21, $22, $23,
+            CURRENT_TIMESTAMP, $24, CURRENT_TIMESTAMP, $24
           )
         `,
         [
           idUsuario,
           documentoId,
           periodo,
-          grem.codigo || guia.codigo || '31',
-          grem.serie || guia.serie,
-          grem.numero || guia.numero,
+          gremCod,
+          gremSerie,
+          gremNumero,
           detalle.item || index + 1,
           toNumber(detalle.cantidad, 1),
           (detalle.descripcion || 'ENCOMIENDA').substring(0, 300),
           detalle.id_producto || null,
           detalle.unidad_medida || null,
+          detalle.destinatario?.tipo_documento || null,
+          detalle.destinatario?.numero_documento || null,
+          detalle.destinatario?.razon_social || null,
+          detalle.documento_relacionado?.tipo_documento || null,
+          detalle.documento_relacionado?.serie || null,
+          detalle.documento_relacionado?.numero || null,
+          detalle.documento_relacionado?.fecha_emision || null,
           periodo,
           item.r_cod,
           item.r_serie,
           item.r_numero,
+          item.elemento || 1,
           usuarioAuditoria,
         ]
       );
@@ -3380,9 +3450,9 @@ const guardarGremTransporteLocal = async ({
       periodo,
       idUsuario,
       documentoId,
-      grem.codigo || guia.codigo || '31',
-      grem.serie || guia.serie,
-      grem.numero || guia.numero,
+      gremCod,
+      gremSerie,
+      gremNumero,
       grem.codigo_hash || null,
       (grem.respuesta_sunat_descripcion || '').substring(0, 250),
       usuarioAuditoria,
