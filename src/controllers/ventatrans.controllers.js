@@ -3782,6 +3782,85 @@ const generarGremSunatTransporte = async (req, res) => {
   }
 };
 
+const generarGremPdfTransporte = async (req, res) => {
+  const periodo = normalizarTexto(req.body.periodo || req.body.p_periodo);
+  const idUsuario = normalizarTexto(req.body.id_usuario || req.body.id_anfitrion || req.body.p_id_usuario);
+  const documentoId = normalizarTexto(req.body.documento_id || req.body.p_documento_id);
+  const encomiendas = normalizarEncomiendasGrem(req.body);
+
+  try {
+    const payload = await generarPayloadGremTransporte({
+      periodo,
+      idUsuario,
+      documentoId,
+      guia: req.body.guia || {},
+      encomiendas,
+    });
+
+    if (!payload.guia.numero) {
+      payload.guia.numero = await generarNumeroGremTransporte({
+        idUsuario,
+        documentoId,
+        periodo,
+        serie: normalizarSerieGremTransporte(payload.guia.serie),
+      });
+    }
+
+    normalizarPayloadGremSunat(payload);
+    validarHoraEmisionGremSunat(payload);
+
+    const apiResponse = await fetch(`${SUNAT_API_BASE_URL}/gretranssunat`, {
+      method: 'POST',
+      body: JSON.stringify({
+        ...payload,
+        solo_pdf: true,
+        generar_pdf: true,
+        enviar_sunat: false,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 90000,
+    });
+    const responseData = await leerRespuestaSunat(apiResponse);
+    const dataPdf = responseData?.data || responseData;
+
+    if (!apiResponse.ok) {
+      return res.status(apiResponse.status).json({
+        success: false,
+        message: dataPdf.respuesta_sunat_descripcion || dataPdf.mensaje || dataPdf.message || 'No se pudo generar el PDF de la GRE Transportista',
+        mensaje_usuario: dataPdf.mensaje_usuario || dataPdf.respuesta_sunat_descripcion || dataPdf.mensaje || 'No se pudo generar el PDF de la GRE Transportista.',
+        ruta_pdf: dataPdf.ruta_pdf || 'error',
+      });
+    }
+
+    if (!dataPdf.ruta_pdf || dataPdf.ruta_pdf === 'error') {
+      return res.status(502).json({
+        success: false,
+        message: dataPdf.respuesta_sunat_descripcion || dataPdf.mensaje || 'El servicio no devolvio la URL del PDF.',
+        mensaje_usuario: dataPdf.mensaje_usuario || dataPdf.respuesta_sunat_descripcion || 'Se genero la solicitud, pero no se recibio la URL del PDF.',
+        ruta_pdf: 'error',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      titulo_usuario: 'PDF generado',
+      mensaje_usuario: dataPdf.mensaje_usuario || dataPdf.respuesta_sunat_descripcion || 'PDF de GRE Transportista generado correctamente.',
+      respuesta_sunat_descripcion: dataPdf.respuesta_sunat_descripcion || dataPdf.mensaje || '',
+      ruta_pdf: dataPdf.ruta_pdf,
+      grem_cod: '31',
+      grem_serie: dataPdf.serie || payload.guia.serie,
+      grem_numero: dataPdf.numero || payload.guia.numero,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Error interno generando PDF de GRE Transportista',
+      mensaje_usuario: error.message || 'No se pudo generar el PDF de la GRE Transportista.',
+      ruta_pdf: 'error',
+    });
+  }
+};
+
 const generarTicketPDFEncomiendaExpertcont = async (
   req,
   res,
@@ -4909,6 +4988,7 @@ module.exports = {
   generarCPEexpertcontTransporte,
   responderPayloadGremTransporte,
   generarGremSunatTransporte,
+  generarGremPdfTransporte,
   generarTicketPDFEncomiendaExpertcont,
   generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
