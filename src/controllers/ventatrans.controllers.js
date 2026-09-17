@@ -2823,7 +2823,6 @@ const listarGremTransporte = async (req, res) => {
                 'r_cod', d.r_cod,
                 'r_serie', d.r_serie,
                 'r_numero', d.r_numero,
-                'elemento', COALESCE(d.r_elemento, tv.elemento, 1),
                 'destinatario_tipo', COALESCE(d.destinatario_tipo, tv.destinatario_id_doc),
                 'destinatario_documento', COALESCE(d.destinatario_documento, tv.destinatario_documento_id),
                 'destinatario_nombre', COALESCE(d.destinatario_nombre, tv.destinatario),
@@ -2855,7 +2854,7 @@ const listarGremTransporte = async (req, res) => {
          AND tv.r_cod = d.r_cod
          AND tv.r_serie = d.r_serie
          AND tv.r_numero = d.r_numero
-         AND tv.elemento = COALESCE(d.r_elemento, tv.elemento)
+         AND tv.elemento = 1
         WHERE g.id_usuario = $1
           AND g.documento_id = $2
           AND g.periodo = $3
@@ -2876,6 +2875,104 @@ const listarGremTransporte = async (req, res) => {
       data: result.rows,
     });
   } catch (error) {
+    if (error.code === '42703') {
+      try {
+        const legacyResult = await pool.query(
+          `
+            SELECT
+              g.id_usuario,
+              g.documento_id,
+              g.periodo,
+              g.cod,
+              g.serie,
+              g.numero,
+              CAST(g.fecha_emision AS varchar(10)) AS fecha_emision,
+              CAST(g.hora_emision AS varchar(12)) AS hora_emision,
+              CAST(g.fecha_traslado AS varchar(10)) AS fecha_traslado,
+              g.guia_motivo_id,
+              g.guia_modalidad_id,
+              g.partida_ubigeo,
+              g.partida_direccion,
+              g.llegada_ubigeo,
+              g.llegada_direccion,
+              g.peso_total,
+              g.conductor_dni,
+              g.conductor_nombres,
+              g.conductor_apellidos,
+              g.conductor_licencia,
+              g.vehiculo_placa,
+              g.destinatario_tipo,
+              g.destinatario_ruc_dni,
+              g.destinatario_razon_social,
+              g.vfirmado,
+              g.glosa,
+              g.ref_cod,
+              g.ref_serie,
+              g.ref_numero,
+              CAST(g.ctrl_crea AS varchar(30)) AS ctrl_crea,
+              CAST(g.ctrl_mod AS varchar(30)) AS ctrl_mod,
+              COALESCE(COUNT(d.*), 0)::integer AS cantidad_encomiendas,
+              COALESCE(
+                JSON_AGG(
+                  JSON_BUILD_OBJECT(
+                    'item', d.item,
+                    'cantidad', d.cantidad,
+                    'descripcion', d.descripcion,
+                    'r_periodo', d.r_periodo,
+                    'r_cod', d.r_cod,
+                    'r_serie', d.r_serie,
+                    'r_numero', d.r_numero,
+                    'elemento', COALESCE(tv.elemento, 1),
+                    'destinatario', tv.destinatario,
+                    'cliente', tv.cliente,
+                    'r_monto_total', tv.r_monto_total,
+                    'precio_neto', tv.precio_neto
+                  )
+                  ORDER BY d.item
+                ) FILTER (WHERE d.item IS NOT NULL),
+                '[]'::json
+              ) AS detalles
+            FROM public.mve_transgrem g
+            LEFT JOIN public.mve_transgremdet d
+              ON d.id_usuario = g.id_usuario
+             AND d.documento_id = g.documento_id
+             AND d.periodo = g.periodo
+             AND d.cod = g.cod
+             AND d.serie = g.serie
+             AND d.numero = g.numero
+            LEFT JOIN public.mve_transventa tv
+              ON tv.id_usuario = d.id_usuario
+             AND tv.documento_id = d.documento_id
+             AND tv.periodo = d.r_periodo
+             AND tv.r_cod = d.r_cod
+             AND tv.r_serie = d.r_serie
+             AND tv.r_numero = d.r_numero
+            WHERE g.id_usuario = $1
+              AND g.documento_id = $2
+              AND g.periodo = $3
+            GROUP BY
+              g.id_usuario,
+              g.documento_id,
+              g.periodo,
+              g.cod,
+              g.serie,
+              g.numero
+            ORDER BY g.fecha_traslado DESC NULLS LAST, g.ctrl_crea DESC NULLS LAST, g.serie DESC, g.numero DESC
+          `,
+          [id_anfitrion, documento_id, periodo]
+        );
+
+        return res.status(200).json({
+          success: true,
+          data: legacyResult.rows,
+          migracion_pendiente: true,
+          mensaje_usuario: 'GREM listadas en modo compatible. Falta aplicar la migracion de detalle GREM extendido.',
+        });
+      } catch (legacyError) {
+        console.error('Error listando GREM transporte en modo compatible:', legacyError);
+      }
+    }
+
     console.error('Error listando GREM transporte:', error);
     return res.status(500).json({
       success: false,
@@ -3402,7 +3499,6 @@ const guardarGremTransporteLocal = async ({
             r_cod,
             r_serie,
             r_numero,
-            r_elemento,
             ctrl_crea,
             ctrl_crea_us,
             ctrl_mod,
