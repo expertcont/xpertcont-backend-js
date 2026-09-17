@@ -184,14 +184,39 @@ const toIsoDate = (value) => {
 };
 
 const toIsoTime = (value) => {
-  if (!value) return new Date().toISOString().split('T')[1].split('.')[0];
+  const horaLimaActual = () => {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'America/Lima',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+
+    const getPart = (type) => parts.find((part) => part.type === type)?.value || '00';
+    return `${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
+  };
+
+  if (!value) return horaLimaActual();
+
   if (value instanceof Date) {
-    return value.toISOString().split('T')[1].split('.')[0];
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'America/Lima',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(value);
+
+    const getPart = (type) => parts.find((part) => part.type === type)?.value || '00';
+    return `${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
   }
-  const text = String(value);
-  if (text.includes('T')) return text.split('T')[1].split('.')[0];
-  if (text.includes(' ')) return text.split(' ')[1].split('.')[0];
-  return text.split('.')[0];
+
+  const text = String(value).trim();
+  const match = text.match(/(?:^|[T\s])(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return horaLimaActual();
+
+  return `${match[1]}:${match[2]}:${match[3] || '00'}`;
 };
 
 const toNumber = (value, fallback = 0) => {
@@ -2743,7 +2768,7 @@ const generarNumeroGremTransporte = async ({
     [idUsuario, documentoId, periodo, serie]
   );
 
-  return result.rows[0]?.numero || '0000000001';
+  return result.rows[0]?.numero || '00000001';
 };
 
 const validarPayloadGremMinimo = (guia = {}) => {
@@ -2780,6 +2805,25 @@ const validarPayloadGremMinimo = (guia = {}) => {
     error.statusCode = 400;
     throw error;
   }
+};
+
+const normalizarPayloadGremSunat = (payload) => {
+  const guia = payload.guia || {};
+  const fechaEmision = toIsoDate(guia.fecha_emision || guia.fechaEmision || new Date());
+  const fechaTraslado = toIsoDate(guia.fecha_traslado || guia.fechaTraslado);
+  const horaEmision = toIsoTime(guia.hora_emision || guia.horaEmision || new Date());
+
+  payload.guia = {
+    ...guia,
+    fecha_emision: fechaEmision,
+    fechaEmision,
+    fecha_traslado: fechaTraslado,
+    fechaTraslado,
+    hora_emision: horaEmision,
+    horaEmision,
+  };
+
+  return payload;
 };
 
 const listarGremTransporte = async (req, res) => {
@@ -3142,7 +3186,7 @@ const generarPayloadGremTransporte = async ({
 
   // GREM transportista es independiente del CPE/RDI de la boleta. Este payload
   // agrupa las encomiendas seleccionadas para que el backend API SUNAT genere XML 31.
-  return payload;
+  return normalizarPayloadGremSunat(payload);
 };
 
 const responderPayloadGremTransporte = async (req, res) => {
@@ -3614,6 +3658,7 @@ const generarGremSunatTransporte = async (req, res) => {
         serie: normalizarSerieGremTransporte(payload.guia.serie),
       });
     }
+    normalizarPayloadGremSunat(payload);
 
     if (req.body.solo_payload) {
       return res.status(200).json({ success: true, payload });
