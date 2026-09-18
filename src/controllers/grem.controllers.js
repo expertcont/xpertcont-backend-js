@@ -821,7 +821,7 @@ const generarPayloadGremTransporte = async ({
         documento_id,
         razon_social,
         direccion,
-        id_ubigeo
+        ubigeo as id_ubigeo
       FROM public.mad_usuariocontabilidad
       WHERE id_usuario = $1
         AND documento_id = $2
