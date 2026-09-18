@@ -916,8 +916,8 @@ const generarPayloadGremTransporte = async ({
     id_punto_venta: venta.id_punto_venta,
     id_punto_venta_dest: venta.id_punto_venta_dest,
 
-    placa: venta.placa,
-    licencia: venta.licencia,
+    vehiculo_placa: venta.placa,
+    conductor_licencia: venta.licencia,
 
     destinatario_id_doc: venta.destinatario_id_doc,
     destinatario_documento_id:
