@@ -17,19 +17,22 @@ const {
   obtenerComparativoMensualEncomiendasDashboardTransporte,
   obtenerUsuariosDashboardTransporte,
   obtenerDashboardTransporte,
-  listarGremTransporte,
-  obtenerUbigeosGremTransporte,
-  grabarGremTransporte,
   generarCPEexpertcontTransporte,
-  responderPayloadGremTransporte,
-  generarGremSunatTransporte,
-  generarGremPdfTransporte,
   generarTicketPDFEncomiendaExpertcont,
   generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
   consultarResumenCPEexpertcontTransporte,
   obtenerResumenesCPEexpertcontTransporte
 } = require('../controllers/ventatrans.controllers');
+
+const {
+  listarGremTransporte,
+  obtenerUbigeosGremTransporte,
+  grabarGremTransporte,
+  responderPayloadGremTransporte,
+  generarGremSunatTransporte,
+  generarGremPdfTransporte,
+} = require('../controllers/grem.controllers');
 
 router.post('/mve_transventa', crearVentaTrans);
 router.post('/mve_transventa/cpe', generarCPEexpertcontTransporte);
