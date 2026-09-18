@@ -2081,8 +2081,8 @@ const generarGremPdfTransporte = async (req, res) => {
   const documentoId = normalizarTexto(req.body.documento_id || req.body.p_documento_id);
   const encomiendas = normalizarEncomiendasGrem(req.body);
   
-  console.log('generarGremPdfTransporte body: ',req.body);
   try {
+    console.log('generarPayloadGremTransporte body: ',req.body);
     const payload = await generarPayloadGremTransporte({
       periodo,
       idUsuario,
@@ -2092,6 +2092,7 @@ const generarGremPdfTransporte = async (req, res) => {
     });
 
     if (!payload.guia.numero) {
+      console.log('generarNumeroGremTransporte: ',!payload.guia.numero);
       payload.guia.numero = await generarNumeroGremTransporte({
         idUsuario,
         documentoId,
@@ -2103,6 +2104,7 @@ const generarGremPdfTransporte = async (req, res) => {
     normalizarPayloadGremSunat(payload);
     validarHoraEmisionGremSunat(payload);
 
+    console.log('`${SUNAT_API_BASE_URL}/gremsunat/trans/pdf/a4` ',req.body);
     const apiResponse = await fetch(`${SUNAT_API_BASE_URL}/gremsunat/trans/pdf/a4`, {
       method: 'POST',
       body: JSON.stringify({
