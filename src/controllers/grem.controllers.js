@@ -2080,7 +2080,8 @@ const generarGremPdfTransporte = async (req, res) => {
   const idUsuario = normalizarTexto(req.body.id_usuario || req.body.id_anfitrion || req.body.p_id_usuario);
   const documentoId = normalizarTexto(req.body.documento_id || req.body.p_documento_id);
   const encomiendas = normalizarEncomiendasGrem(req.body);
-
+  
+  console.log('generarGremPdfTransporte body: ',req.body);
   try {
     const payload = await generarPayloadGremTransporte({
       periodo,

@@ -38,10 +38,12 @@ router.post('/mve_transventa', crearVentaTrans);
 router.post('/mve_transventa/cpe', generarCPEexpertcontTransporte);
 router.get('/mve_transventa/grem/:periodo/:id_anfitrion/:documento_id', listarGremTransporte);
 router.get('/mve_transventa/grem/ubigeos/listado', obtenerUbigeosGremTransporte);
+
 router.post('/mve_transventa/grem/grabar', grabarGremTransporte);
 router.post('/mve_transventa/grem/payload', responderPayloadGremTransporte);
 router.post('/mve_transventa/grem/pdf', generarGremPdfTransporte);
 router.post('/mve_transventa/grem/sunat', generarGremSunatTransporte);
+
 router.post('/mve_transventa/ticket/encomienda', generarTicketPDFEncomiendaExpertcont);
 router.post('/mve_transventa/ticket/encomienda/admin', generarTicketAdminPDFEncomiendaExpertcont);
 router.post('/mve_transventa/cpe/resumen', generarResumenCPEexpertcontTransporte);
