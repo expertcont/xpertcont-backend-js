@@ -773,6 +773,7 @@ const listarGremTransporte = async (req, res) => {
   }
 };
 
+
 const generarPayloadGremTransporte = async ({
   periodo,          // PERIODO DE LA GREM
   idUsuario,
@@ -821,7 +822,7 @@ const generarPayloadGremTransporte = async ({
         documento_id,
         razon_social,
         direccion,
-        ubigeo as id_ubigeo
+        id_ubigeo
       FROM public.mad_usuariocontabilidad
       WHERE id_usuario = $1
         AND documento_id = $2
@@ -877,6 +878,30 @@ const generarPayloadGremTransporte = async ({
 
   /*
    * ------------------------------------------------------
+   * MODALIDAD DE TRASLADO (catálogo 18 SUNAT)
+   * ------------------------------------------------------
+   *
+   * Si guia.guia_modalidad_id no viene explícito:
+   *   - Si hay datos de un transportista tercero (guia.transp_ruc),
+   *     asumimos '01' (transporte contratado a un tercero).
+   *   - Si no, asumimos '02' (la propia transportista traslada con
+   *     vehículo y conductor propios), que es el caso normal de esta
+   *     empresa.
+   *
+   * ⚠️ Verifica el código exacto contra el catálogo 18 de SUNAT antes
+   * de confiar en esta heurística a ciegas; si ya lo sabes, mándalo
+   * explícito en guia.guia_modalidad_id y esto no se usa.
+   */
+  const guiaModalidadIdExplicita = normalizarTexto(
+    guia.guia_modalidad_id
+  );
+
+  const guiaModalidadId =
+    guiaModalidadIdExplicita ||
+    (normalizarTexto(guia.transp_ruc) ? '01' : '02');
+
+  /*
+   * ------------------------------------------------------
    * DETALLE
    * ------------------------------------------------------
    *
@@ -916,8 +941,8 @@ const generarPayloadGremTransporte = async ({
     id_punto_venta: venta.id_punto_venta,
     id_punto_venta_dest: venta.id_punto_venta_dest,
 
-    vehiculo_placa: venta.placa,
-    conductor_licencia: venta.licencia,
+    placa: venta.placa,
+    licencia: venta.licencia,
 
     destinatario_id_doc: venta.destinatario_id_doc,
     destinatario_documento_id:
@@ -945,6 +970,27 @@ const generarPayloadGremTransporte = async ({
       razon_social: empresaDb.razon_social,
       direccion: empresaDb.direccion,
       id_ubigeo: empresaDb.id_ubigeo,
+
+      /*
+       * Alias con los nombres que espera el generador de XML
+       * consolidado (gremresumengeneraxml.js y sus módulos), para
+       * que el mismo payload le sirva tanto al armado de PDF (que
+       * usa documento_id/direccion) como al armado de XML (que usa
+       * ruc/domicilio_fiscal) sin necesidad de un adaptador aparte.
+       */
+      ruc: empresaDb.documento_id,
+      domicilio_fiscal: empresaDb.direccion,
+
+      /*
+       * La tabla mad_usuariocontabilidad no trae distrito/provincia/
+       * departamento por separado todavía. Si en algún momento se
+       * agregan esas columnas al SELECT de arriba, quedan recogidas
+       * aquí automáticamente; mientras tanto van vacías (nunca
+       * "undefined" literal en el XML).
+       */
+      distrito: empresaDb.distrito || '',
+      provincia: empresaDb.provincia || '',
+      departamento: empresaDb.departamento || '',
     },
 
     guia: {
@@ -974,9 +1020,7 @@ const generarPayloadGremTransporte = async ({
         normalizarTexto(guia.guia_motivo_id) ||
         '13',
 
-      guia_modalidad_id:
-        normalizarTexto(guia.guia_modalidad_id) ||
-        '01',
+      guia_modalidad_id: guiaModalidadId,
 
       partida_ubigeo:
         normalizarTexto(guia.partida_ubigeo) ||
@@ -1035,10 +1079,37 @@ const generarPayloadGremTransporte = async ({
         normalizarTexto(guia.placa) ||
         normalizarTexto(primera.placa),
 
+      // Solo se usan si guia_modalidad_id resultó '01' (transporte
+      // contratado a un tercero). En el caso normal de esta empresa
+      // (modalidad '02') quedan vacíos y no se usan.
+      transp_ruc: normalizarTexto(guia.transp_ruc),
+      transp_razon_social: normalizarTexto(
+        guia.transp_razon_social
+      ),
+      transp_mtc: normalizarTexto(guia.transp_mtc),
+
       glosa:
         normalizarTexto(
           guia.glosa || guia.observacion
         ),
+
+      /*
+       * Agencia destinataria (DeliveryCustomerParty global del XML
+       * consolidado). Si no viene explícita, cae en el RUC/razón
+       * social de la propia transportista.
+       */
+      agencia_destino_tipo:
+        normalizarTexto(guia.agencia_destino_tipo) ||
+        '6',
+
+      agencia_destino_documento_id:
+        normalizarTexto(
+          guia.agencia_destino_documento_id
+        ) || empresaDb.documento_id,
+
+      agencia_destino_nombre: normalizarTexto(
+        guia.agencia_destino_nombre
+      ),
 
       /*
        * Campos calculados para decidir qué generador XML usar.
@@ -1051,6 +1122,14 @@ const generarPayloadGremTransporte = async ({
     },
 
     detalles,
+
+    /*
+     * Alias: el generador de XML consolidado (gremresumengeneraxml.js)
+     * espera data.items. Apunta al mismo array que detalles (no es
+     * una copia), así el PDF sigue usando "detalles" sin cambios y
+     * el XML usa "items" sin necesidad de un paso de adaptación.
+     */
+    items: detalles,
   };
 
   validarPayloadGremMinimo(payload.guia);
@@ -2082,7 +2161,7 @@ const generarGremPdfTransporte = async (req, res) => {
   const encomiendas = normalizarEncomiendasGrem(req.body);
   
   try {
-    console.log('generarPayloadGremTransporte body: ',req.body);
+    //console.log('generarPayloadGremTransporte body: ',req.body);
     const payload = await generarPayloadGremTransporte({
       periodo,
       idUsuario,
@@ -2092,7 +2171,7 @@ const generarGremPdfTransporte = async (req, res) => {
     });
 
     if (!payload.guia.numero) {
-      console.log('generarNumeroGremTransporte: ',!payload.guia.numero);
+      //console.log('generarNumeroGremTransporte: ',!payload.guia.numero);
       payload.guia.numero = await generarNumeroGremTransporte({
         idUsuario,
         documentoId,
@@ -2104,7 +2183,7 @@ const generarGremPdfTransporte = async (req, res) => {
     normalizarPayloadGremSunat(payload);
     validarHoraEmisionGremSunat(payload);
 
-    console.log('`${SUNAT_API_BASE_URL}/gremsunat/trans/pdf/a4` ',req.body);
+    //console.log('`${SUNAT_API_BASE_URL}/gremsunat/trans/pdf/a4` ',req.body);
     const apiResponse = await fetch(`${SUNAT_API_BASE_URL}/gremsunat/trans/pdf/a4`, {
       method: 'POST',
       body: JSON.stringify({
