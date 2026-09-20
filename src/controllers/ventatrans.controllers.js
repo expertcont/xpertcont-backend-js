@@ -2,6 +2,7 @@
 const fetch = require('node-fetch');
 
 const normalizarTexto = (valor) => (valor || '').toString().trim();
+const limitarCdrDescripcionTransporte = (valor) => normalizarTexto(valor).substring(0, 100);
 const SUNAT_API_BASE_URL = 'https://expertcont-api-sunat.up.railway.app';
 const TICKET_ENCOMIENDA_ENDPOINT = '/cpesunatticketencomienda/v2';
 const TICKET_ENCOMIENDA_ADMIN_ENDPOINT = '/cpesunatticketencomienda';
@@ -2588,7 +2589,7 @@ const generarCPEexpertcontTransporte = async (req, res) => {
           rSerieFinal,
           rNumeroFinal,
           elementoFinal,
-          errorNormalizado.respuesta_sunat_descripcion,
+          limitarCdrDescripcionTransporte(errorNormalizado.respuesta_sunat_descripcion),
           req.body.id_invitado || req.body.ctrl_mod_us || null
         ]
       );
@@ -2637,7 +2638,7 @@ const generarCPEexpertcontTransporte = async (req, res) => {
           rNumeroFinal,
           elementoFinal,
           codigo_hash,
-          (respuesta_sunat_descripcion || '').substring(0, 100),
+          limitarCdrDescripcionTransporte(respuesta_sunat_descripcion),
           req.body.id_invitado || req.body.ctrl_mod_us || null
         ]
       );
