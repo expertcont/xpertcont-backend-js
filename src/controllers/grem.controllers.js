@@ -610,6 +610,8 @@ const listarGremTransporte = async (req, res) => {
           g.guia_modalidad_id,
           g.id_punto_venta,
           g.id_punto_venta_dest,
+          punto_origen.nombre AS partida_agencia_nombre,
+          punto_destino.nombre AS llegada_agencia_nombre,
           g.partida_ubigeo,
           g.partida_direccion,
           g.llegada_ubigeo,
@@ -674,6 +676,14 @@ const listarGremTransporte = async (req, res) => {
          AND tv.r_serie = d.r_serie
          AND tv.r_numero = d.r_numero
          AND tv.elemento = 1
+        LEFT JOIN public.mad_punto_venta punto_origen
+          ON punto_origen.id_usuario = g.id_usuario
+         AND punto_origen.documento_id = g.documento_id
+         AND punto_origen.id_punto_venta = g.id_punto_venta
+        LEFT JOIN public.mad_punto_venta punto_destino
+          ON punto_destino.id_usuario = g.id_usuario
+         AND punto_destino.documento_id = g.documento_id
+         AND punto_destino.id_punto_venta = g.id_punto_venta_dest
         WHERE g.id_usuario = $1
           AND g.documento_id = $2
           AND g.periodo = $3
@@ -683,7 +693,9 @@ const listarGremTransporte = async (req, res) => {
           g.periodo,
           g.cod,
           g.serie,
-          g.numero
+          g.numero,
+          punto_origen.nombre,
+          punto_destino.nombre
         ORDER BY g.fecha_traslado DESC NULLS LAST, g.ctrl_crea DESC NULLS LAST, g.serie DESC, g.numero DESC
       `,
       [id_anfitrion, documento_id, periodo]
