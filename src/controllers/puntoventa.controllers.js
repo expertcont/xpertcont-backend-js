@@ -533,7 +533,7 @@ const crearPuntoVenta = async (req, res) => {
         telefono, activo, ctrl_crea, ctrl_crea_us,
         serie
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_TIMESTAMP,$9,$10)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,CURRENT_TIMESTAMP,$10,$11)
       RETURNING ${columnasPuntoVenta}
     `, [
       id_anfitrion,
