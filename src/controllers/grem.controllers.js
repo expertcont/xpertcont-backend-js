@@ -4,6 +4,35 @@ const fetch = require('node-fetch');
 const normalizarTexto = (valor) => (valor || '').toString().trim();
 const SUNAT_API_BASE_URL = 'https://expertcont-api-sunat.up.railway.app';
 
+const agregarRutasDescargaGrem = (req, rows = []) => {
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+  return rows.map((row) => {
+    if (!normalizarTexto(row.vfirmado)) {
+      return row;
+    }
+
+    const ruc = normalizarTexto(row.documento_id);
+    const cod = normalizarTexto(row.cod || '31');
+    const serie = normalizarTexto(row.serie);
+    const numero = normalizarTexto(row.numero);
+
+    if (!ruc || !cod || !serie || !numero) {
+      return row;
+    }
+
+    const nombre = `${ruc}-${cod}-${serie}-${numero}`;
+    const descargasBase = `${baseUrl}/descargas/${ruc}`;
+
+    return {
+      ...row,
+      ruta_xml: `${descargasBase}/${nombre}.xml`,
+      ruta_cdr: `${descargasBase}/R-${nombre}.xml`,
+      ruta_pdf: `${descargasBase}/${nombre}.pdf`,
+    };
+  });
+};
+
 const normalizarSerieGremTransporte = (serie) => {
   const serieNormalizada = normalizarTexto(serie).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -579,6 +608,8 @@ const listarGremTransporte = async (req, res) => {
           CAST(g.fecha_traslado AS varchar(10)) AS fecha_traslado,
           g.guia_motivo_id,
           g.guia_modalidad_id,
+          g.id_punto_venta,
+          g.id_punto_venta_dest,
           g.partida_ubigeo,
           g.partida_direccion,
           g.llegada_ubigeo,
@@ -660,7 +691,7 @@ const listarGremTransporte = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: result.rows,
+      data: agregarRutasDescargaGrem(req, result.rows),
     });
   } catch (error) {
     if (error.code === '42703') {
@@ -679,6 +710,8 @@ const listarGremTransporte = async (req, res) => {
               CAST(g.fecha_traslado AS varchar(10)) AS fecha_traslado,
               g.guia_motivo_id,
               g.guia_modalidad_id,
+              NULL::varchar AS id_punto_venta,
+              NULL::varchar AS id_punto_venta_dest,
               g.partida_ubigeo,
               g.partida_direccion,
               g.llegada_ubigeo,
@@ -753,7 +786,7 @@ const listarGremTransporte = async (req, res) => {
 
         return res.status(200).json({
           success: true,
-          data: legacyResult.rows,
+          data: agregarRutasDescargaGrem(req, legacyResult.rows),
           migracion_pendiente: true,
           mensaje_usuario: 'GREM listadas en modo compatible. Falta aplicar la migracion de detalle GREM extendido.',
         });
@@ -1021,6 +1054,18 @@ const generarPayloadGremTransporte = async ({
         '13',
 
       guia_modalidad_id: guiaModalidadId,
+
+      id_punto_venta:
+        normalizarTexto(guia.id_punto_venta) ||
+        normalizarTexto(guia.partida_agencia_id) ||
+        primera.id_punto_venta ||
+        '',
+
+      id_punto_venta_dest:
+        normalizarTexto(guia.id_punto_venta_dest) ||
+        normalizarTexto(guia.llegada_agencia_id) ||
+        primera.id_punto_venta_dest ||
+        '',
 
       partida_ubigeo:
         normalizarTexto(guia.partida_ubigeo) ||
@@ -1506,6 +1551,9 @@ const guardarGremTransporteLocal = async ({
           guia_motivo_id,
           guia_modalidad_id,
 
+          id_punto_venta,
+          id_punto_venta_dest,
+
           partida_ubigeo,
           partida_direccion,
 
@@ -1561,30 +1609,33 @@ const guardarGremTransporteLocal = async ({
           $15,
 
           $16,
-
           $17,
+
           $18,
+
           $19,
           $20,
-
           $21,
-
           $22,
-          $23,
-          $24,
 
+          $23,
+
+          $24,
           $25,
           $26,
 
-          CURRENT_TIMESTAMP,
           $27,
-
-          CURRENT_TIMESTAMP,
-          $27,
-
           $28,
+
+          CURRENT_TIMESTAMP,
           $29,
-          $30
+
+          CURRENT_TIMESTAMP,
+          $29,
+
+          $30,
+          $31,
+          $32
         )
 
         ON CONFLICT (
@@ -1612,6 +1663,12 @@ const guardarGremTransporteLocal = async ({
 
           guia_modalidad_id =
             EXCLUDED.guia_modalidad_id,
+
+          id_punto_venta =
+            EXCLUDED.id_punto_venta,
+
+          id_punto_venta_dest =
+            EXCLUDED.id_punto_venta_dest,
 
           partida_ubigeo =
             EXCLUDED.partida_ubigeo,
@@ -1694,23 +1751,26 @@ const guardarGremTransporteLocal = async ({
         guia.guia_motivo_id || null,      // $10
         guia.guia_modalidad_id || null,   // $11
 
-        guia.partida_ubigeo || null,      // $12
-        guia.partida_direccion || null,   // $13
+        guia.id_punto_venta || null,      // $12
+        guia.id_punto_venta_dest || null, // $13
 
-        guia.llegada_ubigeo || null,      // $14
-        guia.llegada_direccion || null,   // $15
+        guia.partida_ubigeo || null,      // $14
+        guia.partida_direccion || null,   // $15
+
+        guia.llegada_ubigeo || null,      // $16
+        guia.llegada_direccion || null,   // $17
 
         toNumber(
           guia.peso_total,
           0
-        ),                                // $16
+        ),                                // $18
 
-        guia.conductor_dni || null,       // $17
-        guia.conductor_nombres || null,   // $18
-        guia.conductor_apellidos || null, // $19
-        guia.conductor_licencia || null,  // $20
+        guia.conductor_dni || null,       // $19
+        guia.conductor_nombres || null,   // $20
+        guia.conductor_apellidos || null, // $21
+        guia.conductor_licencia || null,  // $22
 
-        guia.vehiculo_placa || null,      // $21
+        guia.vehiculo_placa || null,      // $23
 
         /*
          * Estos campos existen en mve_transgrem.
@@ -1723,25 +1783,25 @@ const guardarGremTransporteLocal = async ({
          */
         detalles.length === 1
           ? detalles[0].destinatario_id_doc || null
-          : null,                         // $22
+          : null,                         // $24
 
         detalles.length === 1
           ? detalles[0].destinatario_documento_id || null
-          : null,                         // $23
+          : null,                         // $25
 
         detalles.length === 1
           ? detalles[0].destinatario || null
-          : null,                         // $24
+          : null,                         // $26
 
-        grem.codigo_hash || null,         // $25
+        grem.codigo_hash || null,         // $27
 
         (
           grem.respuesta_sunat_descripcion ||
           guia.glosa ||
           ''
-        ).substring(0, 400),              // $26
+        ).substring(0, 400),              // $28
 
-        usuarioAuditoria,                 // $27
+        usuarioAuditoria,                 // $29
 
         /*
          * Referencia de cabecera.
@@ -1751,15 +1811,15 @@ const guardarGremTransporteLocal = async ({
          */
         detalles.length === 1
           ? detalles[0].r_cod || null
-          : null,                         // $28
+          : null,                         // $30
 
         detalles.length === 1
           ? detalles[0].r_serie || null
-          : null,                         // $29
+          : null,                         // $31
 
         detalles.length === 1
           ? detalles[0].r_numero || null
-          : null,                         // $30
+          : null,                         // $32
       ]
     );
 

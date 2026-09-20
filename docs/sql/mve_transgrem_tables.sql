@@ -27,10 +27,12 @@ CREATE TABLE IF NOT EXISTS public.mve_transgrem (
   guia_modalidad_id VARCHAR(2),
 
   -- Partida
+  id_punto_venta VARCHAR(20),
   partida_ubigeo VARCHAR(20),
   partida_direccion VARCHAR(200),
 
   -- Llegada
+  id_punto_venta_dest VARCHAR(20),
   llegada_ubigeo VARCHAR(20),
   llegada_direccion VARCHAR(200),
 
@@ -78,6 +80,12 @@ CREATE TABLE IF NOT EXISTS public.mve_transgrem (
       numero
     )
 );
+
+ALTER TABLE public.mve_transgrem
+  ADD COLUMN IF NOT EXISTS id_punto_venta VARCHAR(20);
+
+ALTER TABLE public.mve_transgrem
+  ADD COLUMN IF NOT EXISTS id_punto_venta_dest VARCHAR(20);
 
 CREATE INDEX IF NOT EXISTS mve_transgrem_fecha_idx
 ON public.mve_transgrem (
