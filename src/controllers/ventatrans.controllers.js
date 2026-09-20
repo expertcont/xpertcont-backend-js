@@ -3,6 +3,16 @@ const fetch = require('node-fetch');
 
 const normalizarTexto = (valor) => (valor || '').toString().trim();
 const limitarCdrDescripcionTransporte = (valor) => normalizarTexto(valor).substring(0, 100);
+const resolverFormaPagoSunatTransporte = (valor) => {
+  const formaPago = normalizarTexto(valor);
+  const formaPagoNormalizada = formaPago.toUpperCase();
+
+  if (!formaPago || ['CONTADO', 'PAGADO'].includes(formaPagoNormalizada)) {
+    return 'Contado';
+  }
+
+  return formaPago;
+};
 const SUNAT_API_BASE_URL = 'https://expertcont-api-sunat.up.railway.app';
 const TICKET_ENCOMIENDA_ENDPOINT = '/cpesunatticketencomienda/v2';
 const TICKET_ENCOMIENDA_ADMIN_ENDPOINT = '/cpesunatticketencomienda';
@@ -1437,6 +1447,7 @@ const generaJsonPrevioCPEexpertcontTransporte = async (
   const porcIgv = toNumber(venta.porc_igv, baseGravada > 0 ? 18 : 0);
   const tipoIgvCodigo = baseGravada > 0 ? '10' : '20';
   const precioBase = baseGravada > 0 ? baseGravada : baseExonerada || total;
+  const fechaEmision = toIsoDate(venta.r_fecemi);
   const descripcion = [
     venta.descripcion || 'SERVICIO DE TRANSPORTE DE ENCOMIENDA',
     venta.nombre_ruta ? `Ruta: ${venta.nombre_ruta}` : '',
@@ -1466,11 +1477,11 @@ const generaJsonPrevioCPEexpertcontTransporte = async (
       codigo: venta.r_cod_ref || venta.r_cod,
       serie: venta.r_serie_ref || venta.r_serie,
       numero: venta.r_numero_ref || venta.r_numero,
-      fecha_emision: toIsoDate(venta.r_fecemi),
+      fecha_emision: fechaEmision,
       hora_emision: toIsoTime(venta.ctrl_crea),
-      fecha_vencimiento: '',
+      fecha_vencimiento: fechaEmision,
       moneda_id: 'PEN',
-      forma_pago_id: venta.condicion_pago || 'Contado',
+      forma_pago_id: resolverFormaPagoSunatTransporte(venta.condicion_pago),
       efectivo2: 0,
       forma_pago2: '',
       base_gravada: baseGravada,
