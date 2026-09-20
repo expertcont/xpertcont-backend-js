@@ -171,6 +171,16 @@ const joinNombreRuta = `
 
 const validarTipoOperacion = (tipoOperacion) => ['B', 'E'].includes(tipoOperacion);
 
+const tieneBloqueoSunatTransporte = (operacion = {}) => (
+  Boolean(normalizarTexto(operacion.r_vfirmado) || normalizarTexto(operacion.numero_rdi))
+);
+
+const mensajeBloqueoSunatTransporte = (operacion = {}) => (
+  normalizarTexto(operacion.numero_rdi)
+    ? `La encomienda ya fue incluida en el RDI ${operacion.numero_rdi}. No se puede modificar ni eliminar.`
+    : 'La encomienda ya fue enviada a SUNAT. No se puede modificar ni eliminar.'
+);
+
 const toIsoDate = (value) => {
   if (!value) return '';
   if (value instanceof Date) {
@@ -2191,6 +2201,36 @@ const actualizarVentaTrans = async (req, res) => {
   }
 
   try {
+    const operacionActualQuery = await pool.query(`
+      SELECT numero_rdi, r_vfirmado
+        FROM mve_transventa
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+    `, [
+      periodo, idUsuarioFinal, documento_id,
+      r_cod, r_serie, r_numero, elemento,
+    ]);
+
+    if (operacionActualQuery.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Operacion de transporte no encontrada'
+      });
+    }
+
+    const operacionActual = operacionActualQuery.rows[0];
+    if (tieneBloqueoSunatTransporte(operacionActual)) {
+      return res.status(409).json({
+        success: false,
+        message: mensajeBloqueoSunatTransporte(operacionActual)
+      });
+    }
+
     const rutaTransporte = id_ruta ? await obtenerRutaTransporte({
       id_anfitrion: idUsuarioFinal,
       documento_id,
@@ -2241,43 +2281,6 @@ const actualizarVentaTrans = async (req, res) => {
         r_monto_total,
         porc_igv,
       };
-
-    if (normalizarTexto(r_fecemi)) {
-      const fechaActualQuery = await pool.query(`
-        SELECT CAST(r_fecemi AS VARCHAR(10)) AS r_fecemi,
-               numero_rdi,
-               r_vfirmado
-          FROM mve_transventa
-         WHERE periodo = $1
-           AND id_usuario = $2
-           AND documento_id = $3
-           AND r_cod = $4
-           AND r_serie = $5
-           AND r_numero = $6
-           AND elemento = $7
-      `, [
-        periodo, idUsuarioFinal, documento_id,
-        r_cod, r_serie, r_numero, elemento,
-      ]);
-
-      if (fechaActualQuery.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Operacion de transporte no encontrada'
-        });
-      }
-
-      const fechaActual = fechaActualQuery.rows[0];
-      const fechaNueva = String(r_fecemi).slice(0, 10);
-      const tieneEnvioSunat = Boolean(normalizarTexto(fechaActual.numero_rdi) || normalizarTexto(fechaActual.r_vfirmado));
-
-      if (tieneEnvioSunat && fechaNueva !== fechaActual.r_fecemi) {
-        return res.status(409).json({
-          success: false,
-          message: 'No se puede modificar la fecha de una encomienda enviada a SUNAT o incluida en RDI'
-        });
-      }
-    }
 
     const query = `
       UPDATE mve_transventa
@@ -2393,6 +2396,36 @@ const eliminarVentaTrans = async (req, res) => {
   }
 
   try {
+    const operacionActualQuery = await pool.query(`
+      SELECT numero_rdi, r_vfirmado
+        FROM mve_transventa
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+    `, [
+      periodo, id_anfitrion, documento_id,
+      cod, serie, num, elem
+    ]);
+
+    if (operacionActualQuery.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Operacion de transporte no encontrada'
+      });
+    }
+
+    const operacionActual = operacionActualQuery.rows[0];
+    if (tieneBloqueoSunatTransporte(operacionActual)) {
+      return res.status(409).json({
+        success: false,
+        message: mensajeBloqueoSunatTransporte(operacionActual)
+      });
+    }
+
     const query = `
       DELETE FROM mve_transventa
        WHERE periodo = $1
