@@ -357,6 +357,7 @@ const generarCorrentista = async (req, res, next) => {
             const resultadoReducido = {
                 nombre_o_razon_social: sRazonSocial,
                 r_id_doc: id_doc,
+                direccion_completa: sDireccion,
                 direccion: sDireccion
             };
             return res.json(resultadoReducido); // Aquí se detiene la ejecución si se cumple esta condición
