@@ -2077,9 +2077,12 @@ const clonarEncomienda = async (req, res) => {
 
 const listarEncomiendasPorEntregar = async (req, res) => {
   const { periodo, id_anfitrion, documento_id, id_punto_venta_dest } = req.params;
-  const { limit, periodos } = req.query;
+  const { limit, periodos, estado } = req.query;
   const limite = Math.min(Math.max(Number(limit || 150), 1), 300);
   const cantidadPeriodos = Math.min(Math.max(Number(periodos || 3), 1), 12);
+  const listarEntregadas = ['entregadas', 'entregado', 'cerradas'].includes(
+    normalizarTexto(estado).toLowerCase()
+  );
 
   if (!periodo || !id_anfitrion || !documento_id || !id_punto_venta_dest) {
     return res.status(400).json({
@@ -2124,7 +2127,7 @@ const listarEncomiendasPorEntregar = async (req, res) => {
          AND venta.documento_id = $${documentoParam}
          AND venta.id_punto_venta_dest = $${puntoVentaDestParam}
          AND venta.tipo_operacion = 'E'
-         AND venta.entrega_fecha IS NULL
+         AND venta.entrega_fecha IS ${listarEntregadas ? 'NOT NULL' : 'NULL'}
     `).join(' UNION ALL ');
 
     const query = `
@@ -2132,7 +2135,7 @@ const listarEncomiendasPorEntregar = async (req, res) => {
         FROM (
           ${selectsPorPeriodo}
         ) encomiendas
-       ORDER BY r_fecemi DESC, r_serie, r_numero DESC, elemento
+       ORDER BY ${listarEntregadas ? 'entrega_fecha DESC,' : ''} r_fecemi DESC, r_serie, r_numero DESC, elemento
        LIMIT $${limiteParam}
     `;
 
@@ -2143,7 +2146,8 @@ const listarEncomiendasPorEntregar = async (req, res) => {
       data: result.rows,
       meta: {
         periodos: periodosBusqueda,
-        cantidad_periodos: cantidadPeriodos
+        cantidad_periodos: cantidadPeriodos,
+        estado: listarEntregadas ? 'entregadas' : 'pendientes'
       }
     });
   } catch (error) {
