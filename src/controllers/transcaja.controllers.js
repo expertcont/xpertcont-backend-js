@@ -127,6 +127,44 @@ const filtroPuntoVentaAutorizado = (alias, paramIndex, columnaPuntoVenta = 'id_p
   )
 `;
 
+const resolverFiltroUsuarioCaja = async ({
+  id_anfitrion,
+  id_invitado,
+  super_usuario,
+  id_usuario_trabajo,
+  id_usuario_operacion,
+}) => {
+  const usuarioSesion = normalizarTexto(id_invitado);
+  const usuarioTrabajo = normalizarTexto(id_usuario_trabajo || id_usuario_operacion);
+
+  if (!usuarioSesion || id_anfitrion === usuarioSesion || String(super_usuario) === '1') {
+    return {
+      usuario_sesion: usuarioSesion,
+      acceso_total: true,
+      usuario_operacion: usuarioTrabajo || null,
+    };
+  }
+
+  const superQuery = await pool.query(
+    "SELECT 1 FROM mad_usuario WHERE id_usuario = $1 AND super = '1' LIMIT 1",
+    [usuarioSesion]
+  );
+
+  if (superQuery.rows.length > 0) {
+    return {
+      usuario_sesion: usuarioSesion,
+      acceso_total: true,
+      usuario_operacion: usuarioTrabajo || null,
+    };
+  }
+
+  return {
+    usuario_sesion: usuarioSesion,
+    acceso_total: false,
+    usuario_operacion: usuarioSesion,
+  };
+};
+
 const validarMotivo = async ({ id_usuario, documento_id, id_motivo, tipo_movimiento, exigirActivo = true }) => {
   const result = await pool.query(`
     SELECT id_motivo, tipo_movimiento, activo
@@ -311,7 +349,11 @@ const listarMovimientosCaja = async (req, res) => {
     id_motivo,
     id_forma_pago,
     registrado,
-    id_invitado
+    id_invitado,
+    super_usuario,
+    super: superParam,
+    id_usuario_trabajo,
+    id_usuario_operacion
   } = req.query;
 
   if (!periodo || !id_anfitrion || !documento_id) {
@@ -319,6 +361,13 @@ const listarMovimientosCaja = async (req, res) => {
   }
 
   try {
+    const filtroUsuario = await resolverFiltroUsuarioCaja({
+      id_anfitrion,
+      id_invitado,
+      super_usuario: super_usuario || superParam,
+      id_usuario_trabajo,
+      id_usuario_operacion,
+    });
     const params = [id_anfitrion, documento_id, periodo];
     const filtros = [];
 
@@ -327,9 +376,13 @@ const listarMovimientosCaja = async (req, res) => {
       filtros.push(`AND c.id_punto_venta = $${params.length}`);
     }
 
-    if (id_invitado) {
-      params.push(normalizarTexto(id_invitado));
+    if (filtroUsuario.usuario_sesion) {
+      params.push(filtroUsuario.usuario_sesion);
       filtros.push(filtroPuntoVentaAutorizado('c', params.length));
+    }
+
+    if (filtroUsuario.usuario_operacion) {
+      params.push(filtroUsuario.usuario_operacion);
       filtros.push(`AND c.id_invitado = $${params.length}`);
     }
 
@@ -655,13 +708,30 @@ const anularMovimientoCaja = async (req, res) => {
 
 const obtenerConsolidadoCaja = async (req, res) => {
   const { periodo, id_anfitrion, documento_id } = req.params;
-  const { id_punto_venta, fecha_desde, fecha_hasta, id_forma_pago, id_invitado } = req.query;
+  const {
+    id_punto_venta,
+    fecha_desde,
+    fecha_hasta,
+    id_forma_pago,
+    id_invitado,
+    super_usuario,
+    super: superParam,
+    id_usuario_trabajo,
+    id_usuario_operacion
+  } = req.query;
 
   if (!periodo || !id_anfitrion || !documento_id) {
     return res.status(400).json({ success: false, message: 'Faltan parametros requeridos para consolidado de caja' });
   }
 
   try {
+    const filtroUsuario = await resolverFiltroUsuarioCaja({
+      id_anfitrion,
+      id_invitado,
+      super_usuario: super_usuario || superParam,
+      id_usuario_trabajo,
+      id_usuario_operacion,
+    });
     const params = [id_anfitrion, documento_id, periodo];
     const filtrosVentaOrigen = [];
     const filtrosVentaDestino = [];
@@ -674,13 +744,17 @@ const obtenerConsolidadoCaja = async (req, res) => {
       filtrosCaja.push(`AND c.id_punto_venta = $${params.length}`);
     }
 
-    if (id_invitado) {
-      params.push(normalizarTexto(id_invitado));
+    if (filtroUsuario.usuario_sesion) {
+      params.push(filtroUsuario.usuario_sesion);
       filtrosVentaOrigen.push(filtroPuntoVentaAutorizado('tv', params.length));
-      filtrosVentaOrigen.push(`AND tv.ctrl_crea_us = $${params.length}`);
       filtrosVentaDestino.push(filtroPuntoVentaAutorizado('tv', params.length, 'id_punto_venta_dest'));
-      filtrosVentaDestino.push(`AND tv.entrega_ctrl_us = $${params.length}`);
       filtrosCaja.push(filtroPuntoVentaAutorizado('c', params.length));
+    }
+
+    if (filtroUsuario.usuario_operacion) {
+      params.push(filtroUsuario.usuario_operacion);
+      filtrosVentaOrigen.push(`AND tv.ctrl_crea_us = $${params.length}`);
+      filtrosVentaDestino.push(`AND tv.entrega_ctrl_us = $${params.length}`);
       filtrosCaja.push(`AND c.id_invitado = $${params.length}`);
     }
 
@@ -780,13 +854,29 @@ const obtenerConsolidadoCaja = async (req, res) => {
 
 const listarIngresosEncomiendasCaja = async (req, res) => {
   const { periodo, id_anfitrion, documento_id } = req.params;
-  const { id_punto_venta, fecha_desde, fecha_hasta, id_invitado } = req.query;
+  const {
+    id_punto_venta,
+    fecha_desde,
+    fecha_hasta,
+    id_invitado,
+    super_usuario,
+    super: superParam,
+    id_usuario_trabajo,
+    id_usuario_operacion
+  } = req.query;
 
   if (!periodo || !id_anfitrion || !documento_id) {
     return res.status(400).json({ success: false, message: 'Faltan parametros requeridos para ingresos de caja' });
   }
 
   try {
+    const filtroUsuario = await resolverFiltroUsuarioCaja({
+      id_anfitrion,
+      id_invitado,
+      super_usuario: super_usuario || superParam,
+      id_usuario_trabajo,
+      id_usuario_operacion,
+    });
     const params = [id_anfitrion, documento_id, periodo];
     const filtrosVentaOrigen = [];
     const filtrosVentaOrigenReferencia = [];
@@ -801,15 +891,20 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
       filtrosVentaDestinoPendiente.push(`AND tv.id_punto_venta_dest = $${params.length}`);
     }
 
-    if (id_invitado) {
-      params.push(normalizarTexto(id_invitado));
+    if (filtroUsuario.usuario_sesion) {
+      params.push(filtroUsuario.usuario_sesion);
       filtrosVentaOrigen.push(filtroPuntoVentaAutorizado('tv', params.length));
-      filtrosVentaOrigen.push(`AND tv.ctrl_crea_us = $${params.length}`);
       filtrosVentaOrigenReferencia.push(filtroPuntoVentaAutorizado('tv', params.length));
-      filtrosVentaOrigenReferencia.push(`AND tv.ctrl_crea_us = $${params.length}`);
       filtrosVentaDestino.push(filtroPuntoVentaAutorizado('tv', params.length, 'id_punto_venta_dest'));
-      filtrosVentaDestino.push(`AND tv.entrega_ctrl_us = $${params.length}`);
       filtrosVentaDestinoPendiente.push(filtroPuntoVentaAutorizado('tv', params.length, 'id_punto_venta_dest'));
+    }
+
+    if (filtroUsuario.usuario_operacion) {
+      params.push(filtroUsuario.usuario_operacion);
+      filtrosVentaOrigen.push(`AND tv.ctrl_crea_us = $${params.length}`);
+      filtrosVentaOrigenReferencia.push(`AND tv.ctrl_crea_us = $${params.length}`);
+      filtrosVentaDestino.push(`AND tv.entrega_ctrl_us = $${params.length}`);
+      filtrosVentaDestinoPendiente.push(`AND tv.ctrl_crea_us = $${params.length}`);
     }
 
     if (fecha_desde) {
