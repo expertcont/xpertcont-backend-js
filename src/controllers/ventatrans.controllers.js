@@ -215,10 +215,18 @@ const toIsoTime = (value) => {
   return `${match[1]}:${match[2]}:${match[3] || '00'}`;
 };
 
+const toIsoDateTimeLima = (dateValue, timeValue) => {
+  const fecha = toIsoDate(dateValue) || toIsoDate(new Date());
+  const hora = toIsoTime(timeValue);
+  return `${fecha} ${hora}`;
+};
+
 const toNumber = (value, fallback = 0) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
 };
+
+const formaPagoSunatEncomienda = () => 'Contado';
 
 const normalizarErrorSunatTransporte = (responseData, fallbackMessage = 'Error en la API SUNAT') => {
   const data = responseData?.error || responseData?.data || responseData || {};
@@ -1581,6 +1589,9 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
   }
 
   const total = toNumber(venta.r_monto_total || venta.precio_neto);
+  const fechaTicket = toIsoDate(venta.r_fecemi);
+  const horaTicket = toIsoTime();
+  const fechaHoraTicket = toIsoDateTimeLima(fechaTicket, horaTicket);
 
   return JSON.stringify({
     rubro: 'TRANS_ENCOMIENDA',
@@ -1606,10 +1617,11 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
       codigo: venta.r_cod_ref || venta.r_cod,
       serie: venta.r_serie_ref || venta.r_serie,
       numero: venta.r_numero_ref || venta.r_numero,
-      fecha_emision: toIsoDate(venta.r_fecemi),
-      hora_emision: toIsoTime(venta.ctrl_crea),
+      fecha_emision: fechaTicket,
+      hora_emision: horaTicket,
+      fecha_hora_emision: fechaHoraTicket,
       moneda_id: 'PEN',
-      forma_pago_id: venta.condicion_pago || 'PAGADO',
+      forma_pago_id: formaPagoSunatEncomienda(),
       medio_pago: 'EFECTIVO',
       total,
       r_monto_total: total,
@@ -1625,8 +1637,9 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
       r_serie: venta.r_serie,
       r_numero: venta.r_numero,
       elemento: venta.elemento,
-      r_fecemi: toIsoDate(venta.r_fecemi),
-      ctrl_crea: toIsoTime(venta.ctrl_crea),
+      r_fecemi: fechaTicket,
+      ctrl_crea: fechaHoraTicket,
+      ctrl_crea_hora: horaTicket,
       cliente: venta.cliente,
       cliente_documento_id: venta.cliente_documento_id,
       cliente_telefono: venta.cliente_telefono,
