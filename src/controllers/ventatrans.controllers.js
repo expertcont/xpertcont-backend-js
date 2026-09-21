@@ -3,16 +3,6 @@ const fetch = require('node-fetch');
 
 const normalizarTexto = (valor) => (valor || '').toString().trim();
 const limitarCdrDescripcionTransporte = (valor) => normalizarTexto(valor).substring(0, 100);
-const resolverFormaPagoSunatTransporte = (valor) => {
-  const formaPago = normalizarTexto(valor);
-  const formaPagoNormalizada = formaPago.toUpperCase();
-
-  if (!formaPago || ['CONTADO', 'PAGADO'].includes(formaPagoNormalizada)) {
-    return 'Contado';
-  }
-
-  return formaPago;
-};
 const SUNAT_API_BASE_URL = 'https://expertcont-api-sunat.up.railway.app';
 const TICKET_ENCOMIENDA_ENDPOINT = '/cpesunatticketencomienda/v2';
 const TICKET_ENCOMIENDA_ADMIN_ENDPOINT = '/cpesunatticketencomienda';
@@ -1489,9 +1479,8 @@ const generaJsonPrevioCPEexpertcontTransporte = async (
       numero: venta.r_numero_ref || venta.r_numero,
       fecha_emision: fechaEmision,
       hora_emision: toIsoTime(venta.ctrl_crea),
-      fecha_vencimiento: fechaEmision,
       moneda_id: 'PEN',
-      forma_pago_id: resolverFormaPagoSunatTransporte(venta.condicion_pago),
+      forma_pago_id: 'Contado',
       efectivo2: 0,
       forma_pago2: '',
       base_gravada: baseGravada,
@@ -1872,6 +1861,7 @@ const crearVentaTrans = async (req, res) => {
 const obtenerVentasTrans = async (req, res) => {
   const { periodo, id_anfitrion, documento_id, dia } = req.params;
   const idPuntoVenta = normalizarTexto(req.params.id_punto_venta || req.query?.id_punto_venta);
+  const estadoListado = normalizarTexto(req.query?.estado || req.query?.registrado).toLowerCase();
 
   if (!periodo || !id_anfitrion || !documento_id || dia === undefined) {
     return res.status(400).json({
@@ -1904,10 +1894,15 @@ const obtenerVentasTrans = async (req, res) => {
        WHERE tv.periodo = $1
          AND tv.id_usuario = $2
          AND tv.documento_id = $3
-         AND COALESCE(tv.registrado, 1) = 1
     `;
 
     const params = [periodo, id_anfitrion, documento_id];
+
+    if (['anulado', 'anulados', '0'].includes(estadoListado)) {
+      query += ` AND COALESCE(tv.registrado, 1) = 0 `;
+    } else if (!['todos', 'all', '*'].includes(estadoListado)) {
+      query += ` AND COALESCE(tv.registrado, 1) = 1 `;
+    }
 
     if (dia !== '*') {
       params.push(`${periodo}-${dia}`);
