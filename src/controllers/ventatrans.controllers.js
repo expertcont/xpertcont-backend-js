@@ -2476,7 +2476,6 @@ const registrarEntregaEncomienda = async (req, res) => {
     r_serie,
     r_numero,
     elemento,
-    entrega_fecha,
     entrega_documento_id,
     entrega_documento,
     entrega_nombres,
@@ -2489,8 +2488,7 @@ const registrarEntregaEncomienda = async (req, res) => {
   if (
     !periodo || !idUsuarioFinal || !documento_id ||
     !r_cod || !r_serie || !r_numero ||
-    elemento === undefined ||
-    !entrega_fecha
+    elemento === undefined
   ) {
     return res.status(400).json({
       success: false,
@@ -2501,12 +2499,12 @@ const registrarEntregaEncomienda = async (req, res) => {
   try {
     const query = `
       UPDATE mve_transventa
-         SET entrega_fecha = $8::timestamp(5),
-             entrega_documento_id = COALESCE($9, entrega_documento_id),
-             entrega_nombres = COALESCE($10, entrega_nombres),
-             entrega_ctrl_us = $11,
+         SET entrega_fecha = CURRENT_TIMESTAMP::timestamp(5),
+             entrega_documento_id = COALESCE($8, entrega_documento_id),
+             entrega_nombres = COALESCE($9, entrega_nombres),
+             entrega_ctrl_us = $10,
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = $11
+             ctrl_mod_us = $10
        WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -2515,13 +2513,14 @@ const registrarEntregaEncomienda = async (req, res) => {
          AND r_numero = $6
          AND elemento = $7
          AND tipo_operacion = 'E'
+         AND entrega_fecha IS NULL
        RETURNING ${columnasVentaTrans}
     `;
 
     const result = await pool.query(query, [
       periodo, idUsuarioFinal, documento_id,
       r_cod, r_serie, r_numero, elemento,
-      entrega_fecha, entregaDocumentoIdFinal,
+      entregaDocumentoIdFinal,
       entrega_nombres, entregaCtrlUsFinal
     ]);
 
