@@ -8,6 +8,7 @@ const {
   clonarEncomienda,
   listarEncomiendasPorEntregar,
   actualizarVentaTrans,
+  anularVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda,
   obtenerResumenDashboardTransporte,
@@ -118,6 +119,11 @@ router.get(
 );
 
 router.put('/mve_transventa', actualizarVentaTrans);
+
+router.patch(
+  '/mve_transventa/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem/anular',
+  anularVentaTrans
+);
 
 router.delete(
   '/mve_transventa/:periodo/:id_anfitrion/:documento_id/:cod/:serie/:num/:elem',

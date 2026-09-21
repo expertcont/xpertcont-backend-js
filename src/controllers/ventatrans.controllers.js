@@ -1904,6 +1904,7 @@ const obtenerVentasTrans = async (req, res) => {
        WHERE tv.periodo = $1
          AND tv.id_usuario = $2
          AND tv.documento_id = $3
+         AND COALESCE(tv.registrado, 1) = 1
     `;
 
     const params = [periodo, id_anfitrion, documento_id];
@@ -2461,6 +2462,65 @@ const eliminarVentaTrans = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al eliminar operacion de transporte:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
+const anularVentaTrans = async (req, res) => {
+  const {
+    periodo, id_anfitrion, documento_id,
+    cod, serie, num, elem
+  } = req.params;
+  const ctrlModUs = normalizarTexto(req.body?.ctrl_mod_us || req.query?.id_invitado);
+
+  if (
+    !periodo || !id_anfitrion || !documento_id ||
+    !cod || !serie || !num || elem === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para anular operacion de transporte'
+    });
+  }
+
+  try {
+    const query = `
+      UPDATE mve_transventa
+         SET registrado = 0,
+             ctrl_mod = CURRENT_TIMESTAMP,
+             ctrl_mod_us = COALESCE($8, ctrl_mod_us)
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+       RETURNING ${columnasVentaTrans}
+    `;
+
+    const result = await pool.query(query, [
+      periodo, id_anfitrion, documento_id,
+      cod, serie, num, elem, ctrlModUs || null
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Operacion de transporte no encontrada'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al anular operacion de transporte:', error);
 
     return res.status(500).json({
       success: false,
@@ -3829,6 +3889,7 @@ module.exports = {
   clonarEncomienda,
   listarEncomiendasPorEntregar,
   actualizarVentaTrans,
+  anularVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda,
   obtenerResumenDashboardTransporte,
