@@ -1856,10 +1856,38 @@ const crearVentaTrans = async (req, res) => {
         'SELECT public.fve_transventa_grabar_encomienda($1::jsonb) AS data',
         [dataEncomienda]
       );
+      let data = result.rows[0]?.data || null;
+      const precioChofer = Number(dataEncomienda.precio_chofer || 0);
+
+      if (data && Number.isFinite(precioChofer)) {
+        const updateResult = await pool.query(`
+          UPDATE mve_transventa
+             SET precio_chofer = $8::numeric
+           WHERE periodo = $1
+             AND id_usuario = $2
+             AND documento_id = $3
+             AND r_cod = $4
+             AND r_serie = $5
+             AND r_numero = $6
+             AND elemento = $7
+           RETURNING ${columnasVentaTrans}
+        `, [
+          data.periodo || dataEncomienda.periodo,
+          data.id_usuario || dataEncomienda.id_usuario || dataEncomienda.id_anfitrion,
+          data.documento_id || dataEncomienda.documento_id,
+          data.r_cod,
+          data.r_serie,
+          data.r_numero,
+          data.elemento,
+          precioChofer,
+        ]);
+
+        data = updateResult.rows[0] || { ...data, precio_chofer: precioChofer };
+      }
 
       return res.status(200).json({
         success: true,
-        data: result.rows[0]?.data || null
+        data
       });
     } catch (error) {
       console.error('Error al crear encomienda de transporte:', error);
