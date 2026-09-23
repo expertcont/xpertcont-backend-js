@@ -797,6 +797,24 @@ const obtenerConsolidadoCaja = async (req, res) => {
         UNION ALL
 
         SELECT
+          tv.r_fecemi::timestamp AS fecha,
+          tv.id_punto_venta,
+          'S'::char(1) AS tipo_movimiento,
+          COALESCE(tv.precio_chofer, 0)::numeric AS importe,
+          COALESCE(tv.registrado, 1)::integer AS registrado,
+          'PAGO_CHOFER_ENCOMIENDA'::varchar AS origen
+        FROM mve_transventa tv
+        WHERE tv.id_usuario = $1
+          AND tv.documento_id = $2
+          AND tv.periodo = $3
+          AND tv.tipo_operacion = 'E'
+          AND NOT (${condicionPorCobrarVentaSql})
+          AND COALESCE(tv.precio_chofer, 0) > 0
+          ${filtrosVentaOrigen.join('\n')}
+
+        UNION ALL
+
+        SELECT
           tv.entrega_fecha::timestamp AS fecha,
           tv.id_punto_venta_dest AS id_punto_venta,
           'I'::char(1) AS tipo_movimiento,
@@ -810,6 +828,25 @@ const obtenerConsolidadoCaja = async (req, res) => {
           AND tv.tipo_operacion = 'E'
           AND ${condicionPorCobrarVentaSql}
           AND tv.entrega_fecha IS NOT NULL
+          ${filtrosVentaDestino.join('\n')}
+
+        UNION ALL
+
+        SELECT
+          tv.entrega_fecha::timestamp AS fecha,
+          tv.id_punto_venta_dest AS id_punto_venta,
+          'S'::char(1) AS tipo_movimiento,
+          COALESCE(tv.precio_chofer, 0)::numeric AS importe,
+          COALESCE(tv.registrado, 1)::integer AS registrado,
+          'PAGO_CHOFER_ENCOMIENDA_POR_COBRAR'::varchar AS origen
+        FROM mve_transventa tv
+        WHERE tv.id_usuario = $1
+          AND tv.documento_id = $2
+          AND tv.periodo = $3
+          AND tv.tipo_operacion = 'E'
+          AND ${condicionPorCobrarVentaSql}
+          AND tv.entrega_fecha IS NOT NULL
+          AND COALESCE(tv.precio_chofer, 0) > 0
           ${filtrosVentaDestino.join('\n')}
 
         UNION ALL
@@ -941,6 +978,7 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             tv.elemento,
             tv.condicion_pago,
             tv.r_monto_total,
+            COALESCE(tv.precio_chofer, 0)::numeric AS precio_chofer,
             tv.cliente,
             tv.destinatario,
             tv.descripcion,
@@ -985,6 +1023,7 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             tv.elemento,
             tv.condicion_pago,
             tv.r_monto_total,
+            COALESCE(tv.precio_chofer, 0)::numeric AS precio_chofer,
             tv.cliente,
             tv.destinatario,
             tv.descripcion,
@@ -1032,6 +1071,7 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             tv.elemento,
             tv.condicion_pago,
             tv.r_monto_total,
+            COALESCE(tv.precio_chofer, 0)::numeric AS precio_chofer,
             tv.cliente,
             tv.destinatario,
             tv.descripcion,
@@ -1077,6 +1117,7 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
             tv.elemento,
             tv.condicion_pago,
             tv.r_monto_total,
+            COALESCE(tv.precio_chofer, 0)::numeric AS precio_chofer,
             tv.cliente,
             tv.destinatario,
             tv.descripcion,

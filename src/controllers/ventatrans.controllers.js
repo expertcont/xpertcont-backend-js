@@ -71,6 +71,7 @@ const columnasVentaTrans = `
   r_exonerado,
   r_igv,
   r_monto_total,
+  COALESCE(precio_chofer, 0) AS precio_chofer,
   porc_igv,
   condicion_pago,
   CAST(llegada_aprox AS VARCHAR(50)) AS llegada_aprox,
@@ -133,6 +134,7 @@ const columnasVentaTransDesde = (alias) => `
   ${alias}.r_exonerado,
   ${alias}.r_igv,
   ${alias}.r_monto_total,
+  COALESCE(${alias}.precio_chofer, 0) AS precio_chofer,
   ${alias}.porc_igv,
   ${alias}.condicion_pago,
   CAST(${alias}.llegada_aprox AS VARCHAR(50)) AS llegada_aprox,
@@ -1468,6 +1470,7 @@ const generaJsonPrevioCPEexpertcontTransporte = async (
       razon_social: datos.razon_social,
       nombre_comercial: datos.razon_social,
       domicilio_fiscal: datos.direccion,
+      direccion: datos.direccion,
       ubigeo: datos.ubigeo,
       distrito: datos.distrito,
       provincia: datos.provincia,
@@ -1601,6 +1604,7 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
       razon_social: datos.razon_social,
       nombre_comercial: datos.razon_social,
       domicilio_fiscal: datos.direccion,
+      direccion: datos.direccion,
       ubigeo: datos.ubigeo,
       distrito: datos.distrito,
       provincia: datos.provincia,
@@ -2191,7 +2195,7 @@ const actualizarVentaTrans = async (req, res) => {
     destinatario_telefono, id_punto_venta_dest,
     destinatario_zona, destinatario_direccion,
     cantidad, precio_unitario, precio_neto,
-    r_gravado, r_exonerado, r_igv, r_monto_total, porc_igv,
+    r_gravado, r_exonerado, r_igv, r_monto_total, precio_chofer, porc_igv,
     condicion_pago, llegada_aprox, numero_rdi, estado_sunat,
     ctrl_mod_us
   } = req.body;
@@ -2332,13 +2336,14 @@ const actualizarVentaTrans = async (req, res) => {
              r_exonerado = COALESCE($37::numeric, r_exonerado),
              r_igv = COALESCE($38::numeric, r_igv),
              r_monto_total = COALESCE($39::numeric, r_monto_total),
-             porc_igv = COALESCE($40::numeric, porc_igv),
-             condicion_pago = COALESCE($41, condicion_pago),
-             llegada_aprox = COALESCE(NULLIF($42, '')::time, llegada_aprox),
-             numero_rdi = COALESCE($43, numero_rdi),
-             estado_sunat = COALESCE($44, estado_sunat),
+             precio_chofer = COALESCE($40::numeric, precio_chofer),
+             porc_igv = COALESCE($41::numeric, porc_igv),
+             condicion_pago = COALESCE($42, condicion_pago),
+             llegada_aprox = COALESCE(NULLIF($43, '')::time, llegada_aprox),
+             numero_rdi = COALESCE($44, numero_rdi),
+             estado_sunat = COALESCE($45, estado_sunat),
              ctrl_mod = CURRENT_TIMESTAMP,
-             ctrl_mod_us = COALESCE($45, ctrl_mod_us)
+             ctrl_mod_us = COALESCE($46, ctrl_mod_us)
       WHERE periodo = $1
          AND id_usuario = $2
          AND documento_id = $3
@@ -2368,6 +2373,7 @@ const actualizarVentaTrans = async (req, res) => {
       tributosFinales.r_exonerado,
       tributosFinales.r_igv,
       tributosFinales.r_monto_total,
+      precio_chofer,
       tributosFinales.porc_igv,
       condicion_pago, llegada_aprox, numero_rdi, estado_sunat, ctrlModUsFinal
     ];

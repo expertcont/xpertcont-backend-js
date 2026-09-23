@@ -127,7 +127,7 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         var strSQL;
         //Si es el anfitrion esta autorizado a todos sin permiso
         strSQL = "select * from (";
-        strSQL += "SELECT documento_id, razon_social from mad_usuariocontabilidad";
+        strSQL += "SELECT documento_id, razon_social, direccion from mad_usuariocontabilidad";
         strSQL += " WHERE id_usuario = '" + id_usuario + "'"; //el anfitrion y
         strSQL += " AND id_usuario = '" + id_invitado + "'"; //el auxiliar coinciden (acceso 100%)
         strSQL += " AND activo = '1'";
@@ -136,7 +136,8 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += " UNION ALL";
         
         strSQL += " SELECT mad_seguridad_contabilidad.documento_id,";
-        strSQL += " mad_usuariocontabilidad.razon_social";
+        strSQL += " mad_usuariocontabilidad.razon_social,";
+        strSQL += " mad_usuariocontabilidad.direccion";
         strSQL += " FROM ";
         strSQL += " mad_seguridad_contabilidad INNER JOIN mad_usuariocontabilidad";
         strSQL += " ON (mad_seguridad_contabilidad.documento_id = mad_usuariocontabilidad.documento_id and ";
@@ -148,7 +149,8 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += " UNION ALL";
 
         strSQL += " SELECT documento_id,";
-        strSQL += "        razon_social";
+        strSQL += "        razon_social,";
+        strSQL += "        direccion";
         strSQL += " FROM mad_usuariocontabilidad";
         strSQL += " WHERE id_usuario = '" + id_usuario + "'"; //anfitrion
         strSQL += " AND EXISTS (";
@@ -157,7 +159,7 @@ const obtenerTodosContabilidades = async (req,res,next)=> {
         strSQL += " )";
 
         strSQL += " ) as consulta";
-        strSQL += " group by consulta.documento_id,consulta.razon_social";
+        strSQL += " group by consulta.documento_id,consulta.razon_social,consulta.direccion";
         strSQL += " order by consulta.razon_social";
 
         //console.log(strSQL);
