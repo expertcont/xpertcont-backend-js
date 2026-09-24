@@ -11,6 +11,7 @@ const {
   anularVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda,
+  registrarLlegadaRealEncomienda,
   obtenerResumenDashboardTransporte,
   obtenerProductividadDashboardTransporte,
   obtenerSunatDashboardTransporte,
@@ -131,5 +132,6 @@ router.delete(
 );
 
 router.put('/mve_transventa/entrega', registrarEntregaEncomienda);
+router.put('/mve_transventa/encomienda/llegada-real', registrarLlegadaRealEncomienda);
 
 module.exports = router;

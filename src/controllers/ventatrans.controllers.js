@@ -75,6 +75,7 @@ const columnasVentaTrans = `
   porc_igv,
   condicion_pago,
   CAST(llegada_aprox AS VARCHAR(50)) AS llegada_aprox,
+  CAST(llegada_real AS VARCHAR(50)) AS llegada_real,
   numero_rdi,
   r_vfirmado,
   cdr_descripcion,
@@ -138,6 +139,7 @@ const columnasVentaTransDesde = (alias) => `
   ${alias}.porc_igv,
   ${alias}.condicion_pago,
   CAST(${alias}.llegada_aprox AS VARCHAR(50)) AS llegada_aprox,
+  CAST(${alias}.llegada_real AS VARCHAR(50)) AS llegada_real,
   ${alias}.numero_rdi,
   ${alias}.r_vfirmado,
   ${alias}.cdr_descripcion,
@@ -2654,6 +2656,78 @@ const registrarEntregaEncomienda = async (req, res) => {
   }
 };
 
+const registrarLlegadaRealEncomienda = async (req, res) => {
+  const {
+    periodo,
+    id_usuario,
+    id_anfitrion,
+    id_invitado,
+    documento_id,
+    r_cod,
+    r_serie,
+    r_numero,
+    elemento,
+    ctrl_mod_us
+  } = req.body;
+  const idUsuarioFinal = id_usuario || id_anfitrion;
+  const ctrlModUsFinal = ctrl_mod_us || id_invitado || null;
+
+  if (
+    !periodo || !idUsuarioFinal || !documento_id ||
+    !r_cod || !r_serie || !r_numero ||
+    elemento === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para registrar llegada real'
+    });
+  }
+
+  try {
+    const query = `
+      UPDATE mve_transventa
+         SET llegada_real = CURRENT_TIMESTAMP::timestamp(5),
+             ctrl_mod = CURRENT_TIMESTAMP,
+             ctrl_mod_us = COALESCE($8, ctrl_mod_us)
+       WHERE periodo = $1
+         AND id_usuario = $2
+         AND documento_id = $3
+         AND r_cod = $4
+         AND r_serie = $5
+         AND r_numero = $6
+         AND elemento = $7
+         AND tipo_operacion = 'E'
+         AND llegada_real IS NULL
+       RETURNING ${columnasVentaTrans}
+    `;
+
+    const result = await pool.query(query, [
+      periodo, idUsuarioFinal, documento_id,
+      r_cod, r_serie, r_numero, elemento,
+      ctrlModUsFinal
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Encomienda no encontrada o ya tiene llegada real registrada'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al registrar llegada real de encomienda:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
 const generarCPEexpertcontTransporte = async (req, res) => {
   const {
     p_periodo,
@@ -3937,6 +4011,7 @@ module.exports = {
   anularVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda,
+  registrarLlegadaRealEncomienda,
   obtenerResumenDashboardTransporte,
   obtenerProductividadDashboardTransporte,
   obtenerSunatDashboardTransporte,
