@@ -9,6 +9,12 @@ const toNumber = (value) => {
 };
 const condicionPagoVentaSql = "COALESCE(NULLIF(REGEXP_REPLACE(UPPER(COALESCE(tv.condicion_pago, '')), '[^A-Z]', '', 'g'), ''), 'PAGADO')";
 const condicionPorCobrarVentaSql = `${condicionPagoVentaSql} = 'PORCOBRAR'`;
+const motivoBancarioSql = `
+  CASE
+    WHEN LOWER(COALESCE(NULLIF(BTRIM(mt.bancario::text), ''), '0')) IN ('1', 't', 'true') THEN 1
+    ELSE 0
+  END
+`;
 
 const columnasMovimientoCaja = `
   c.id_usuario,
@@ -21,6 +27,7 @@ const columnasMovimientoCaja = `
   c.tipo_movimiento,
   c.id_motivo,
   mt.nombre AS motivo_nombre,
+  mt.bancario AS bancario,
   c.descripcion,
   c.importe,
   c.id_forma_pago,
@@ -219,7 +226,7 @@ const listarMotivosCaja = async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT id_usuario, documento_id, id_motivo, tipo_movimiento, nombre, activo
+      SELECT id_usuario, documento_id, id_motivo, tipo_movimiento, nombre, bancario, activo
         FROM mve_transmotivo
        WHERE id_usuario = $1
          AND documento_id = $2
@@ -785,6 +792,7 @@ const obtenerConsolidadoCaja = async (req, res) => {
           'I'::char(1) AS tipo_movimiento,
           COALESCE(tv.r_monto_total, 0)::numeric AS importe,
           COALESCE(tv.registrado, 1)::integer AS registrado,
+          0::integer AS bancario,
           'ENCOMIENDA'::varchar AS origen
         FROM mve_transventa tv
         WHERE tv.id_usuario = $1
@@ -802,6 +810,7 @@ const obtenerConsolidadoCaja = async (req, res) => {
           'S'::char(1) AS tipo_movimiento,
           COALESCE(tv.precio_chofer, 0)::numeric AS importe,
           COALESCE(tv.registrado, 1)::integer AS registrado,
+          0::integer AS bancario,
           'PAGO_CHOFER_ENCOMIENDA'::varchar AS origen
         FROM mve_transventa tv
         WHERE tv.id_usuario = $1
@@ -820,6 +829,7 @@ const obtenerConsolidadoCaja = async (req, res) => {
           'I'::char(1) AS tipo_movimiento,
           COALESCE(tv.r_monto_total, 0)::numeric AS importe,
           COALESCE(tv.registrado, 1)::integer AS registrado,
+          0::integer AS bancario,
           'ENCOMIENDA_POR_COBRAR_ENTREGADA'::varchar AS origen
         FROM mve_transventa tv
         WHERE tv.id_usuario = $1
@@ -838,6 +848,7 @@ const obtenerConsolidadoCaja = async (req, res) => {
           'S'::char(1) AS tipo_movimiento,
           COALESCE(tv.precio_chofer, 0)::numeric AS importe,
           COALESCE(tv.registrado, 1)::integer AS registrado,
+          0::integer AS bancario,
           'PAGO_CHOFER_ENCOMIENDA_POR_COBRAR'::varchar AS origen
         FROM mve_transventa tv
         WHERE tv.id_usuario = $1
@@ -857,16 +868,23 @@ const obtenerConsolidadoCaja = async (req, res) => {
           c.tipo_movimiento,
           c.importe,
           c.registrado,
+          ${motivoBancarioSql} AS bancario,
           'CAJA'::varchar AS origen
         FROM mve_transcaja c
+        LEFT JOIN mve_transmotivo mt
+          ON mt.id_usuario = c.id_usuario
+         AND mt.documento_id = c.documento_id
+         AND mt.id_motivo = c.id_motivo
         WHERE c.id_usuario = $1
           AND c.documento_id = $2
           AND c.periodo = $3
           ${filtrosCaja.join('\n')}
       )
       SELECT
+        -- total_salidas ya incluye los movimientos bancarios; el subtotal no se descuenta dos veces.
         COALESCE(SUM(CASE WHEN tipo_movimiento = 'I' THEN importe * registrado ELSE 0 END), 0)::numeric AS total_ingresos,
         COALESCE(SUM(CASE WHEN tipo_movimiento = 'S' THEN importe * registrado ELSE 0 END), 0)::numeric AS total_salidas,
+        COALESCE(SUM(CASE WHEN tipo_movimiento = 'S' AND bancario = 1 THEN importe * registrado ELSE 0 END), 0)::numeric AS total_salidas_bancarias,
         COALESCE(SUM(CASE
           WHEN tipo_movimiento = 'I' THEN importe * registrado
           WHEN tipo_movimiento = 'S' THEN (importe * registrado) * -1
@@ -881,6 +899,7 @@ const obtenerConsolidadoCaja = async (req, res) => {
       data: {
         total_ingresos: Number(data.total_ingresos || 0),
         total_salidas: Number(data.total_salidas || 0),
+        total_salidas_bancarias: Number(data.total_salidas_bancarias || 0),
         neto: Number(data.neto || 0)
       }
     });
