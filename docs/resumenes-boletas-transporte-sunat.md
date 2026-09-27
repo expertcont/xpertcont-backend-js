@@ -43,6 +43,7 @@ Backend administrativo:
 - `xpertcont-backend-js/src/routes/ventatrans.routes.js`
   - `POST /mve_transventa/cpe/resumen`
   - `POST /mve_transventa/cpe/resumen/ticket`
+  - `GET /mve_transventa/cpe/resumen/:periodo/:id_anfitrion/:documento_id`
 
 Backend API SUNAT:
 
@@ -53,6 +54,22 @@ Backend API SUNAT:
 - `xpertcont-backend-api/src/routes/cpesunat.routes.js`
   - `POST /cpesunatresumen`
   - `POST /cpesunatresumen/ticket`
+
+## Endpoint administrativo de cola de resumenes
+
+Lista los Resumenes Diario de un periodo y un rubro, para que el frontend
+muestre lo pendiente y lo envie del mas antiguo al mas nuevo.
+
+```http
+GET /mve_transventa/cpe/resumen/:periodo/:id_anfitrion/:documento_id?origen=TRANS_ENCOMIENDA
+```
+
+- `periodo` es obligatorio (`YYYY-MM`). El Resumen Diario es diario: su alcance es
+  el periodo, nunca se acumulan dias de meses distintos en el mismo resumen.
+- Ordena por `fecha ASC, secuencia ASC`, que es el orden en que se envian: del dia
+  mas antiguo pendiente al mas nuevo.
+- `origen` distingue encomiendas (`TRANS_ENCOMIENDA`) de boletos
+  (`TRANS_BOLETO`): no se mezclan.
 
 ## Endpoint administrativo de envio
 

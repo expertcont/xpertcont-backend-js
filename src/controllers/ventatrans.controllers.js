@@ -80,6 +80,7 @@ const columnasVentaTrans = `
   r_vfirmado,
   cdr_descripcion,
   estado_sunat,
+  COALESCE(registrado, 1)::integer AS registrado,
   ctrl_crea,
   ctrl_crea_us,
   ctrl_mod,
@@ -144,6 +145,7 @@ const columnasVentaTransDesde = (alias) => `
   ${alias}.r_vfirmado,
   ${alias}.cdr_descripcion,
   ${alias}.estado_sunat,
+  COALESCE(${alias}.registrado, 1)::integer AS registrado,
   ${alias}.ctrl_crea,
   ${alias}.ctrl_crea_us,
   ${alias}.ctrl_mod,
@@ -1948,7 +1950,7 @@ const obtenerVentasTrans = async (req, res) => {
 
     const params = [periodo, id_anfitrion, documento_id];
 
-    if (['anulado', 'anulados', '0'].includes(estadoListado)) {
+    if (['anulado', 'anulados', 'anuladas', '0'].includes(estadoListado)) {
       query += ` AND COALESCE(tv.registrado, 1) = 0 `;
     } else if (!['todos', 'all', '*'].includes(estadoListado)) {
       query += ` AND COALESCE(tv.registrado, 1) = 1 `;
@@ -2173,6 +2175,7 @@ const listarEncomiendasPorEntregar = async (req, res) => {
          AND venta.documento_id = $${documentoParam}
          AND venta.id_punto_venta_dest = $${puntoVentaDestParam}
          AND venta.tipo_operacion = 'E'
+         AND COALESCE(venta.registrado, 1) = 1
          AND venta.entrega_fecha IS ${listarEntregadas ? 'NOT NULL' : 'NULL'}
     `).join(' UNION ALL ');
 
@@ -3953,7 +3956,7 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           r.ticket,
           r.respuesta_codigo,
           r.respuesta_desc,
-          NULL::varchar AS nombre_archivo,
+          CONCAT(r.documento_id, '-RC-', to_char(r.fecha, 'YYYYMMDD'), '-', r.secuencia)::varchar AS nombre_archivo,
           NULL::varchar AS ruta_xml,
           NULL::varchar AS ruta_cdr,
           NULL::timestamp AS ultimo_intento,
@@ -3983,7 +3986,7 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           r.respuesta_desc,
           r.ctrl_insercion,
           r.ctrl_actualiza
-        ORDER BY r.fecha DESC, r.secuencia DESC
+        ORDER BY r.fecha ASC, r.secuencia ASC
       `,
       [id_anfitrion, documento_id, periodo, origenResumen]
     );
