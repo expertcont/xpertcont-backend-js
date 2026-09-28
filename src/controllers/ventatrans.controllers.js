@@ -361,8 +361,11 @@ const esRechazoResumenSunatTransporte = (respuesta = {}) => {
 
   return nivel === 'RECHAZADO'
     || codigo === 'RECHAZADO'
+    || codigo === '2223'
     || descripcion.includes('documento indicado no existe')
-    || descripcion.includes('comprobante a eliminar');
+    || descripcion.includes('comprobante a eliminar')
+    || descripcion.includes('ya fue enviado')
+    || descripcion.includes('ya fue presentado');
 };
 
 const obtenerUltimosPeriodos = (periodo, cantidad = 3) => {
