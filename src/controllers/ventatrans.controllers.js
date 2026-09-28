@@ -4116,7 +4116,22 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           COALESCE(r.estado_reproceso, '') AS estado_reproceso,
           r.ticket,
           r.respuesta_codigo,
-          r.respuesta_desc,
+          CASE
+            WHEN COALESCE(r.estado, '') = 'RECHAZADO'
+             AND COALESCE(r.estado_reproceso, '') = 'REPROCESADO'
+             AND rdi_reproceso.numero_rdi IS NOT NULL
+            THEN LEFT(
+              CONCAT(
+                COALESCE(r.respuesta_desc, ''),
+                CASE WHEN COALESCE(r.respuesta_desc, '') = '' THEN '' ELSE ' | ' END,
+                'REPROCESADO CORRECTAMENTE CON RDI ',
+                rdi_reproceso.numero_rdi
+              ),
+              500
+            )
+            ELSE r.respuesta_desc
+          END AS respuesta_desc,
+          rdi_reproceso.numero_rdi AS rdi_reproceso_numero,
           CONCAT(r.documento_id, '-RC-', to_char(r.fecha, 'YYYYMMDD'), '-', r.secuencia)::varchar AS nombre_archivo,
           NULL::varchar AS ruta_xml,
           NULL::varchar AS ruta_cdr,
@@ -4131,6 +4146,19 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
          AND tv.documento_id = r.documento_id
          AND tv.numero_rdi = r.numero_rdi
          AND tv.tipo_operacion = $5
+        LEFT JOIN LATERAL (
+          SELECT nr.numero_rdi
+            FROM public.mve_rdi_sunat nr
+           WHERE nr.id_usuario = r.id_usuario
+             AND nr.documento_id = r.documento_id
+             AND nr.fecha = r.fecha
+             AND nr.origen = r.origen
+             AND nr.secuencia > r.secuencia
+             AND COALESCE(nr.estado_reproceso, '') <> 'REPROCESADO'
+             AND COALESCE(nr.estado, 'PENDIENTE') IN ('ACEPTADO', 'ENVIADO', 'PENDIENTE', 'GENERADO')
+           ORDER BY nr.secuencia ASC
+           LIMIT 1
+        ) rdi_reproceso ON TRUE
         WHERE r.id_usuario = $1
           AND r.documento_id = $2
           AND to_char(r.fecha, 'YYYY-MM') = $3
@@ -4147,9 +4175,10 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           r.ticket,
           r.respuesta_codigo,
           r.respuesta_desc,
+          rdi_reproceso.numero_rdi,
           r.ctrl_insercion,
           r.ctrl_actualiza
-        ORDER BY r.fecha ASC, r.secuencia ASC
+        ORDER BY r.fecha DESC, r.secuencia DESC
       `,
       [id_anfitrion, documento_id, periodo, origenResumen, tipoOperacionResumen]
     );
