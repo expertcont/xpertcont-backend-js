@@ -348,6 +348,23 @@ const estadoSunatTransportePorNivel = (nivel) => {
   return 'E';
 };
 
+const esRechazoResumenSunatTransporte = (respuesta = {}) => {
+  const nivel = normalizarTexto(respuesta.nivel).toUpperCase();
+  const codigo = normalizarTexto(respuesta.codigo || respuesta.respuesta_codigo).toUpperCase();
+  const descripcion = normalizarTexto(
+    respuesta.respuesta_desc
+    || respuesta.respuesta_sunat_descripcion
+    || respuesta.mensaje_usuario
+    || respuesta.message
+    || respuesta.detalle_tecnico
+  ).toLowerCase();
+
+  return nivel === 'RECHAZADO'
+    || codigo === 'RECHAZADO'
+    || descripcion.includes('documento indicado no existe')
+    || descripcion.includes('comprobante a eliminar');
+};
+
 const obtenerUltimosPeriodos = (periodo, cantidad = 3) => {
   const match = String(periodo || '').match(/^(\d{4})-(\d{2})$/);
 
@@ -3297,18 +3314,36 @@ const consultarTicketRdiSunatTransporte = async ({
 
   if (!apiResponse.ok) {
     const errorNormalizado = normalizarErrorResumenSunatTransporte(responseData, 'Error consultando ticket de Resumen Diario');
+    const estadoRdiError = esRechazoResumenSunatTransporte(errorNormalizado)
+      ? 'RECHAZADO'
+      : (normalizarTexto(rdi.estado).toUpperCase() || 'ENVIADO');
+
     await actualizarRdiSunatTransporte({
       idUsuario,
       documentoId,
       numeroRdi,
-      estado: normalizarTexto(rdi.estado).toUpperCase() || 'ENVIADO',
+      estado: estadoRdiError,
       respuestaCodigo: errorNormalizado.codigo,
       respuestaDesc: errorNormalizado.respuesta_desc,
     });
 
+    if (estadoRdiError === 'RECHAZADO') {
+      await marcarOperacionesRdiSunatTransporte({
+        idUsuario,
+        documentoId,
+        numeroRdi,
+        estado: estadoRdiError,
+        respuestaDesc: errorNormalizado.respuesta_desc,
+        ticket: rdi.ticket,
+        ctrlModUs,
+      });
+    }
+
     return {
       ...errorNormalizado,
       numero_rdi: numeroRdi,
+      estado: estadoRdiError,
+      nivel: estadoRdiError,
       ticket: rdi.ticket,
     };
   }
@@ -3922,6 +3957,127 @@ const consultarResumenCPEexpertcontTransporte = async (req, res) => {
   }
 };
 
+const corregirRdiRechazadoTransporte = async (req, res) => {
+  const {
+    documento_id,
+    id_usuario,
+    id_anfitrion,
+    numero_rdi,
+    ctrl_mod_us,
+    id_invitado,
+  } = req.body;
+
+  const idUsuarioFinal = normalizarTexto(id_usuario || id_anfitrion);
+  const documentoIdFinal = normalizarTexto(documento_id);
+  const numeroRdiFinal = normalizarTexto(numero_rdi);
+  const ctrlModUsFinal = normalizarTexto(ctrl_mod_us || id_invitado) || null;
+
+  if (!idUsuarioFinal || !documentoIdFinal || !numeroRdiFinal) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para corregir el RDI rechazado',
+      mensaje_usuario: 'Faltan datos para preparar la correccion del RDI rechazado.',
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const rdiQuery = await client.query(
+      `
+        SELECT *
+          FROM public.mve_rdi_sunat
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+         FOR UPDATE
+      `,
+      [idUsuarioFinal, documentoIdFinal, numeroRdiFinal]
+    );
+    const rdi = rdiQuery.rows[0];
+
+    if (!rdi) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: `No se encontro el RDI ${numeroRdiFinal}.`,
+        mensaje_usuario: `No se encontro el RDI ${numeroRdiFinal}.`,
+      });
+    }
+
+    const estadoActual = normalizarTexto(rdi.estado).toUpperCase();
+    const rechazoDetectado = estadoActual === 'RECHAZADO'
+      || esRechazoResumenSunatTransporte({
+        nivel: estadoActual,
+        codigo: rdi.respuesta_codigo,
+        respuesta_desc: rdi.respuesta_desc,
+      });
+
+    if (!rechazoDetectado) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        success: false,
+        message: 'El RDI no esta marcado como rechazo corregible.',
+        mensaje_usuario: 'Este RDI no esta marcado como rechazo corregible. Primero consulta el ticket SUNAT para confirmar el estado.',
+      });
+    }
+
+    const liberadosQuery = await client.query(
+      `
+        UPDATE public.mve_transventa
+           SET numero_rdi = NULL,
+               r_vfirmado = NULL,
+               estado_sunat = NULL,
+               cdr_descripcion = NULL,
+               ctrl_mod = CURRENT_TIMESTAMP,
+               ctrl_mod_us = COALESCE($4, ctrl_mod_us)
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+        RETURNING r_cod, r_serie, r_numero, elemento
+      `,
+      [idUsuarioFinal, documentoIdFinal, numeroRdiFinal, ctrlModUsFinal]
+    );
+
+    const nota = `Liberado manualmente para regenerar RDI. Comprobantes liberados: ${liberadosQuery.rowCount}.`;
+
+    await client.query(
+      `
+        UPDATE public.mve_rdi_sunat
+           SET estado = 'RECHAZADO',
+               respuesta_desc = LEFT(CONCAT(COALESCE(respuesta_desc, ''), CASE WHEN COALESCE(respuesta_desc, '') = '' THEN '' ELSE ' | ' END, $4), 500),
+               ctrl_actualiza = CURRENT_TIMESTAMP
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+      `,
+      [idUsuarioFinal, documentoIdFinal, numeroRdiFinal, nota]
+    );
+
+    await client.query('COMMIT');
+
+    return res.status(200).json({
+      success: true,
+      numero_rdi: numeroRdiFinal,
+      estado: 'RECHAZADO',
+      liberados: liberadosQuery.rowCount,
+      mensaje_usuario: `${numeroRdiFinal} quedo cerrado como rechazado y se liberaron ${liberadosQuery.rowCount} comprobante(s). Vuelve a enviar el RDI del dia para generar un nuevo ticket.`,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error corrigiendo RDI rechazado de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno corrigiendo RDI rechazado.',
+      mensaje_usuario: 'No se pudo preparar la correccion del RDI rechazado.',
+    });
+  } finally {
+    client.release();
+  }
+};
+
 const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
   const { periodo, id_anfitrion, documento_id } = req.params;
   const origenResumen = normalizarTexto(req.query?.origen || 'TRANS_ENCOMIENDA').toUpperCase();
@@ -4047,5 +4203,6 @@ module.exports = {
   generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
   consultarResumenCPEexpertcontTransporte,
+  corregirRdiRechazadoTransporte,
   obtenerResumenesCPEexpertcontTransporte
 };
