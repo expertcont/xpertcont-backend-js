@@ -180,7 +180,15 @@ const mensajeBloqueoSunatTransporte = (operacion = {}) => (
 const toIsoDate = (value) => {
   if (!value) return '';
   if (value instanceof Date) {
-    return value.toISOString().split('T')[0];
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Lima',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(value);
+
+    const getPart = (type) => parts.find((part) => part.type === type)?.value || '';
+    return `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
   }
   return String(value).split('T')[0].split(' ')[0];
 };
@@ -1984,7 +1992,10 @@ const obtenerVentasTrans = async (req, res) => {
     }
 
     query += `
-      ORDER BY tv.r_fecemi DESC, tv.r_serie, tv.r_numero DESC, tv.elemento
+      ORDER BY COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp) DESC,
+               NULLIF(REGEXP_REPLACE(tv.r_numero, '\\D', '', 'g'), '')::bigint DESC NULLS LAST,
+               tv.r_serie DESC,
+               tv.elemento DESC
     `;
 
     const result = await pool.query(query, params);
@@ -4116,21 +4127,7 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           COALESCE(r.estado_reproceso, '') AS estado_reproceso,
           r.ticket,
           r.respuesta_codigo,
-          CASE
-            WHEN COALESCE(r.estado, '') = 'RECHAZADO'
-             AND COALESCE(r.estado_reproceso, '') = 'REPROCESADO'
-             AND rdi_reproceso.numero_rdi IS NOT NULL
-            THEN LEFT(
-              CONCAT(
-                COALESCE(r.respuesta_desc, ''),
-                CASE WHEN COALESCE(r.respuesta_desc, '') = '' THEN '' ELSE ' | ' END,
-                'REPROCESADO CORRECTAMENTE CON RDI ',
-                rdi_reproceso.numero_rdi
-              ),
-              500
-            )
-            ELSE r.respuesta_desc
-          END AS respuesta_desc,
+          r.respuesta_desc,
           rdi_reproceso.numero_rdi AS rdi_reproceso_numero,
           CONCAT(r.documento_id, '-RC-', to_char(r.fecha, 'YYYYMMDD'), '-', r.secuencia)::varchar AS nombre_archivo,
           NULL::varchar AS ruta_xml,
