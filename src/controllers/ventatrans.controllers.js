@@ -1873,12 +1873,11 @@ const crearVentaTrans = async (req, res) => {
   if (tipoOperacionBody === 'E') {
     try {
       const dataEncomienda = { ...req.body };
+      const fechaServidor = await obtenerFechaServidorLima();
 
-      if (dataEncomienda.fecha_servidor === true) {
-        const fechaServidor = await obtenerFechaServidorLima();
-        dataEncomienda.r_fecemi = fechaServidor.startsWith(`${dataEncomienda.periodo}-`)
-          ? fechaServidor
-          : `${dataEncomienda.periodo}-01`;
+      if (fechaServidor) {
+        dataEncomienda.r_fecemi = fechaServidor;
+        dataEncomienda.periodo = fechaServidor.slice(0, 7);
       }
 
       const result = await pool.query(
@@ -2641,11 +2640,11 @@ const registrarEntregaEncomienda = async (req, res) => {
   try {
     const query = `
       UPDATE mve_transventa
-         SET entrega_fecha = CURRENT_TIMESTAMP::timestamp(5),
+         SET entrega_fecha = (now() AT TIME ZONE 'America/Lima')::timestamp(5),
              entrega_documento_id = COALESCE($8, entrega_documento_id),
              entrega_nombres = COALESCE($9, entrega_nombres),
              entrega_ctrl_us = $10,
-             ctrl_mod = CURRENT_TIMESTAMP,
+             ctrl_mod = (now() AT TIME ZONE 'America/Lima')::timestamp(5),
              ctrl_mod_us = $10
        WHERE periodo = $1
          AND id_usuario = $2
@@ -2717,8 +2716,8 @@ const registrarLlegadaRealEncomienda = async (req, res) => {
   try {
     const query = `
       UPDATE mve_transventa
-         SET llegada_real = CURRENT_TIMESTAMP::timestamp(5),
-             ctrl_mod = CURRENT_TIMESTAMP,
+         SET llegada_real = (now() AT TIME ZONE 'America/Lima')::timestamp(5),
+             ctrl_mod = (now() AT TIME ZONE 'America/Lima')::timestamp(5),
              ctrl_mod_us = COALESCE($8, ctrl_mod_us)
        WHERE periodo = $1
          AND id_usuario = $2
