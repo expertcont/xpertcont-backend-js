@@ -232,6 +232,41 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(numeric) ? numeric : fallback;
 };
 
+const esCortesiaTributariaTransporte = (venta = {}) => (
+  toNumber(venta.precio_neto) === 0 || toNumber(venta.registrado, 1) === 0
+);
+
+const construirComprobanteResumenTransporte = (venta) => {
+  const total = toNumber(venta.r_monto_total || venta.precio_neto);
+  const cortesia = esCortesiaTributariaTransporte(venta);
+
+  return {
+    tipo_documento: venta.r_cod_ref || venta.r_cod,
+    serie: venta.r_serie_ref || venta.r_serie,
+    numero: venta.r_numero_ref || venta.r_numero,
+    cliente_numero_documento: venta.cliente_documento_id || '-',
+    cliente_tipo_documento: venta.cliente_id_doc || '0',
+    status: '1',
+    moneda_id: 'PEN',
+    total_a_pagar: cortesia ? 0 : total,
+    total_gravada: cortesia ? 0 : toNumber(venta.r_gravado),
+    total_exonerada: cortesia ? 0 : toNumber(venta.r_exonerado),
+    total_inafecta: 0,
+    total_gratuita: cortesia ? total : 0,
+    total_igv: cortesia ? 0 : toNumber(venta.r_igv),
+    tipo_operacion: venta.tipo_operacion,
+    cortesia_tributaria: cortesia,
+    origen: {
+      periodo: venta.periodo,
+      r_cod: venta.r_cod,
+      r_serie: venta.r_serie,
+      r_numero: venta.r_numero,
+      elemento: venta.elemento,
+      registrado: toNumber(venta.registrado, 1),
+    }
+  };
+};
+
 const formaPagoSunatEncomienda = () => 'Contado';
 
 const normalizarErrorSunatTransporte = (responseData, fallbackMessage = 'Error en la API SUNAT') => {
@@ -1766,45 +1801,7 @@ const generaJsonResumenCPEexpertcontTransporte = async ({
     throw new Error('No hay boletas de transporte pendientes para resumir en la fecha indicada.');
   }
 
-  const comprobantes = ventaQuery.rows.map((venta) => {
-    // Paso 3: convertir cada boleta a una linea tributaria del resumen.
-    // Equivale a las columnas monetarias del TRD:
-    // r_gravado   -> total_gravada   -> InstructionID 01.
-    // r_exonerado -> total_exonerada -> InstructionID 02.
-    // r_igv       -> total_igv       -> TaxTotal 1000 IGV VAT.
-    // Para boletos de viaje el IGV debe viajar como 0.00.
-    const baseGravada = toNumber(venta.r_gravado);
-    const baseExonerada = toNumber(venta.r_exonerado);
-    const baseInafecta = 0;
-    const baseGratuita = 0;
-    const totalIgv = toNumber(venta.r_igv);
-    const total = toNumber(venta.r_monto_total || venta.precio_neto);
-    const status = Number(venta.registrado) === 0 ? '3' : '1';
-
-    return {
-      tipo_documento: venta.r_cod_ref || venta.r_cod,
-      serie: venta.r_serie_ref || venta.r_serie,
-      numero: venta.r_numero_ref || venta.r_numero,
-      cliente_numero_documento: venta.cliente_documento_id || '-',
-      cliente_tipo_documento: venta.cliente_id_doc || '0',
-      status,
-      moneda_id: 'PEN',
-      total_a_pagar: total,
-      total_gravada: baseGravada,
-      total_exonerada: baseExonerada,
-      total_inafecta: baseInafecta,
-      total_gratuita: baseGratuita,
-      total_igv: totalIgv,
-      tipo_operacion: venta.tipo_operacion,
-      origen: {
-        periodo: venta.periodo,
-        r_cod: venta.r_cod,
-        r_serie: venta.r_serie,
-        r_numero: venta.r_numero,
-        elemento: venta.elemento,
-      }
-    };
-  });
+  const comprobantes = ventaQuery.rows.map(construirComprobanteResumenTransporte);
 
   // Paso 4: armar el payload final que reemplaza al archivo TRD.
   // El backend API SUNAT lo transformara a XML UBL SummaryDocuments.
@@ -3206,33 +3203,7 @@ const generarPayloadResumenSunatTransporteDesdeRdi = async ({
     throw new Error(`El Resumen Diario ${numeroRdi} no tiene boletas de transporte asociadas.`);
   }
 
-  const comprobantes = ventaQuery.rows.map((venta) => {
-    const total = toNumber(venta.r_monto_total || venta.precio_neto);
-
-    return {
-      tipo_documento: venta.r_cod_ref || venta.r_cod,
-      serie: venta.r_serie_ref || venta.r_serie,
-      numero: venta.r_numero_ref || venta.r_numero,
-      cliente_numero_documento: venta.cliente_documento_id || '-',
-      cliente_tipo_documento: venta.cliente_id_doc || '0',
-      status: Number(venta.registrado) === 0 ? '3' : '1',
-      moneda_id: 'PEN',
-      total_a_pagar: total,
-      total_gravada: toNumber(venta.r_gravado),
-      total_exonerada: toNumber(venta.r_exonerado),
-      total_inafecta: 0,
-      total_gratuita: 0,
-      total_igv: toNumber(venta.r_igv),
-      tipo_operacion: venta.tipo_operacion,
-      origen: {
-        periodo: venta.periodo,
-        r_cod: venta.r_cod,
-        r_serie: venta.r_serie,
-        r_numero: venta.r_numero,
-        elemento: venta.elemento,
-      }
-    };
-  });
+  const comprobantes = ventaQuery.rows.map(construirComprobanteResumenTransporte);
 
   const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
     String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
