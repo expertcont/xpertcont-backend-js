@@ -3055,7 +3055,7 @@ const obtenerPrimerRdiPendienteSunatTransporte = async ({ idUsuario, documentoId
          AND documento_id = $2
          AND fecha = $3::date
          AND origen = $4
-         AND COALESCE(estado, 'PENDIENTE') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', 'ERROR')
+         AND COALESCE(estado, 'PENDIENTE') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO')
        ORDER BY secuencia ASC
        LIMIT 1
     `,
@@ -3110,12 +3110,19 @@ const marcarOperacionesRdiSunatTransporte = async ({
     ticket ? `Ticket: ${ticket}.` : null,
     respuestaDesc || null,
   ].filter(Boolean).join(' ').substring(0, 100);
+  const marcaRdi = `RDI:${numeroRdi}`;
+  const estadoSunat = estadoSunatTransportePorNivel(estadoNormalizado);
 
   await pool.query(
     `
       UPDATE public.mve_transventa
-         SET r_vfirmado = COALESCE(r_vfirmado, $4),
+         SET r_vfirmado = CASE
+               WHEN $7 = 'ACEPTADO' THEN COALESCE(r_vfirmado, $4)
+               WHEN r_vfirmado = $4 THEN NULL
+               ELSE r_vfirmado
+             END,
              cdr_descripcion = $5,
+             estado_sunat = $8,
              ctrl_mod = CURRENT_TIMESTAMP,
              ctrl_mod_us = COALESCE($6, ctrl_mod_us)
        WHERE id_usuario = $1
@@ -3126,9 +3133,11 @@ const marcarOperacionesRdiSunatTransporte = async ({
       idUsuario,
       documentoId,
       numeroRdi,
-      `RDI:${numeroRdi}`,
+      marcaRdi,
       descripcion,
       ctrlModUs,
+      estadoNormalizado,
+      estadoSunat,
     ]
   );
 };
