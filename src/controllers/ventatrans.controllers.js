@@ -4047,7 +4047,8 @@ const corregirRdiRechazadoTransporte = async (req, res) => {
       `
         UPDATE public.mve_rdi_sunat
            SET estado = 'RECHAZADO',
-               respuesta_desc = LEFT(CONCAT(COALESCE(respuesta_desc, ''), CASE WHEN COALESCE(respuesta_desc, '') = '' THEN '' ELSE ' | ' END, $4), 500),
+               estado_reproceso = 'REPROCESADO',
+               respuesta_desc = LEFT(CONCAT(COALESCE(respuesta_desc, ''), CASE WHEN COALESCE(respuesta_desc, '') = '' THEN '' ELSE ' | ' END, $4::text), 500),
                ctrl_actualiza = CURRENT_TIMESTAMP
          WHERE id_usuario = $1
            AND documento_id = $2
@@ -4062,8 +4063,9 @@ const corregirRdiRechazadoTransporte = async (req, res) => {
       success: true,
       numero_rdi: numeroRdiFinal,
       estado: 'RECHAZADO',
+      estado_reproceso: 'REPROCESADO',
       liberados: liberadosQuery.rowCount,
-      mensaje_usuario: `${numeroRdiFinal} quedo cerrado como rechazado y se liberaron ${liberadosQuery.rowCount} comprobante(s). Vuelve a enviar el RDI del dia para generar un nuevo ticket.`,
+      mensaje_usuario: `${numeroRdiFinal} quedo como rechazado reprocesado y se liberaron ${liberadosQuery.rowCount} comprobante(s). Vuelve a enviar el RDI del dia para generar un nuevo ticket.`,
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -4108,6 +4110,7 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           r.secuencia,
           r.origen,
           COALESCE(r.estado, 'PENDIENTE') AS estado,
+          COALESCE(r.estado_reproceso, '') AS estado_reproceso,
           r.ticket,
           r.respuesta_codigo,
           r.respuesta_desc,
@@ -4137,6 +4140,7 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           r.secuencia,
           r.origen,
           r.estado,
+          r.estado_reproceso,
           r.ticket,
           r.respuesta_codigo,
           r.respuesta_desc,
