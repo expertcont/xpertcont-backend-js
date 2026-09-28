@@ -3137,17 +3137,35 @@ const marcarOperacionesRdiSunatTransporte = async ({
 };
 
 const incrementarIntentoRdiSunatTransporte = async ({ idUsuario, documentoId, numeroRdi }) => {
-  await pool.query(
-    `
-      UPDATE public.mve_rdi_sunat
-         SET estado = 'GENERADO',
-             ctrl_actualiza = CURRENT_TIMESTAMP
-       WHERE id_usuario = $1
-         AND documento_id = $2
-         AND numero_rdi = $3
-    `,
-    [idUsuario, documentoId, numeroRdi]
-  );
+  try {
+    await pool.query(
+      `
+        UPDATE public.mve_rdi_sunat
+           SET estado = 'GENERADO',
+               intentos = COALESCE(intentos, 0) + 1,
+               ultimo_intento = CURRENT_TIMESTAMP,
+               ctrl_actualiza = CURRENT_TIMESTAMP
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+      `,
+      [idUsuario, documentoId, numeroRdi]
+    );
+  } catch (error) {
+    if (error.code !== '42703') throw error;
+
+    await pool.query(
+      `
+        UPDATE public.mve_rdi_sunat
+           SET estado = 'GENERADO',
+               ctrl_actualiza = CURRENT_TIMESTAMP
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND numero_rdi = $3
+      `,
+      [idUsuario, documentoId, numeroRdi]
+    );
+  }
 };
 
 const generarPayloadResumenSunatTransporteDesdeRdi = async ({
@@ -3927,6 +3945,7 @@ const consultarResumenCPEexpertcontTransporte = async (req, res) => {
 const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
   const { periodo, id_anfitrion, documento_id } = req.params;
   const origenResumen = normalizarTexto(req.query?.origen || 'TRANS_ENCOMIENDA').toUpperCase();
+  const tipoOperacionResumen = origenResumen === 'TRANS_BOLETO' ? 'B' : 'E';
 
   if (!periodo || !id_anfitrion || !documento_id) {
     return res.status(400).json({
@@ -3969,6 +3988,7 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           ON tv.id_usuario = r.id_usuario
          AND tv.documento_id = r.documento_id
          AND tv.numero_rdi = r.numero_rdi
+         AND tv.tipo_operacion = $5
         WHERE r.id_usuario = $1
           AND r.documento_id = $2
           AND to_char(r.fecha, 'YYYY-MM') = $3
@@ -3988,12 +4008,32 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
           r.ctrl_actualiza
         ORDER BY r.fecha ASC, r.secuencia ASC
       `,
-      [id_anfitrion, documento_id, periodo, origenResumen]
+      [id_anfitrion, documento_id, periodo, origenResumen, tipoOperacionResumen]
+    );
+
+    const pendientesResult = await pool.query(
+      `
+        SELECT
+          CAST(tv.r_fecemi AS varchar(10)) AS fecha,
+          COUNT(*)::integer AS cantidad
+        FROM public.mve_transventa tv
+        WHERE tv.id_usuario = $1
+          AND tv.documento_id = $2
+          AND tv.periodo = $3
+          AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
+          AND tv.tipo_operacion = $4
+          AND COALESCE(tv.numero_rdi, '') = ''
+          AND COALESCE(tv.r_vfirmado, '') = ''
+        GROUP BY tv.r_fecemi
+        ORDER BY tv.r_fecemi ASC
+      `,
+      [id_anfitrion, documento_id, periodo, tipoOperacionResumen]
     );
 
     return res.status(200).json({
       success: true,
       data: result.rows,
+      pendientes: pendientesResult.rows,
     });
   } catch (error) {
     console.error('Error al obtener Resumenes Diario SUNAT de transporte:', error);
