@@ -2723,6 +2723,118 @@ const registrarEntregaEncomienda = async (req, res) => {
   }
 };
 
+const liberarContraEncomienda = async (req, res) => {
+  const {
+    periodo,
+    id_usuario,
+    id_anfitrion,
+    id_invitado,
+    documento_id,
+    r_cod,
+    r_serie,
+    r_numero,
+    elemento,
+    ctrl_mod_us
+  } = req.body;
+
+  const idUsuarioFinal = id_usuario || id_anfitrion;
+  const idInvitadoFinal = normalizarTexto(id_invitado || ctrl_mod_us);
+  const ctrlModUsFinal = normalizarTexto(ctrl_mod_us || id_invitado) || null;
+
+  if (
+    !periodo || !idUsuarioFinal || !idInvitadoFinal || !documento_id ||
+    !r_cod || !r_serie || !r_numero ||
+    elemento === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos para liberar la contraseña'
+    });
+  }
+
+  try {
+    const permisoQuery = await pool.query(
+      `
+        SELECT
+          ($1 = $2) AS es_anfitrion,
+          EXISTS (
+            SELECT 1
+              FROM public.mad_usuario mu
+             WHERE mu.id_usuario = $2
+               AND mu.super = '1'
+          ) AS es_super,
+          EXISTS (
+            SELECT 1
+              FROM public.mad_usuarioinvitado ui
+             WHERE ui.id_usuario = $1
+               AND ui.id_invitado = $2
+               AND COALESCE(ui.activo, '1') <> '0'
+               AND UPPER(COALESCE(NULLIF(TRIM(ui.supervisor), ''), '0')) IN ('1', 'S', 'SI', 'TRUE')
+          ) AS es_supervisor
+      `,
+      [idUsuarioFinal, idInvitadoFinal]
+    );
+
+    const permiso = permisoQuery.rows[0] || {};
+    if (!permiso.es_anfitrion && !permiso.es_super && !permiso.es_supervisor) {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo un supervisor puede liberar la contraseña de entrega'
+      });
+    }
+
+    const result = await pool.query(
+      `
+        UPDATE mve_transventa
+           SET contra = NULL,
+               ctrl_mod = CURRENT_TIMESTAMP,
+               ctrl_mod_us = COALESCE($8, ctrl_mod_us)
+         WHERE periodo = $1
+           AND id_usuario = $2
+           AND documento_id = $3
+           AND r_cod = $4
+           AND r_serie = $5
+           AND r_numero = $6
+           AND elemento = $7
+           AND tipo_operacion = 'E'
+           AND entrega_fecha IS NULL
+           AND COALESCE(contra, '') <> ''
+         RETURNING ${columnasVentaTrans}
+      `,
+      [
+        periodo,
+        idUsuarioFinal,
+        documento_id,
+        r_cod,
+        r_serie,
+        r_numero,
+        elemento,
+        ctrlModUsFinal
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Encomienda no encontrada, ya entregada o sin contraseña activa'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Contraseña liberada',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al liberar contraseña de encomienda:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno del servidor'
+    });
+  }
+};
+
 const registrarLlegadaRealEncomienda = async (req, res) => {
   const {
     periodo,
@@ -4259,6 +4371,7 @@ module.exports = {
   anularVentaTrans,
   eliminarVentaTrans,
   registrarEntregaEncomienda,
+  liberarContraEncomienda,
   registrarLlegadaRealEncomienda,
   obtenerResumenDashboardTransporte,
   obtenerProductividadDashboardTransporte,

@@ -203,6 +203,52 @@ const obtenerTodosModulos = async (req,res,next)=> {
     }
 };
 
+const obtenerNivelInvitado = async (req,res,next)=> {
+    try {
+        const {id_usuario,id_invitado} = req.params;
+
+        if (!id_usuario || !id_invitado) {
+            return res.status(400).json({
+                success: false,
+                message: 'Faltan parametros requeridos: id_usuario o id_invitado'
+            });
+        }
+
+        if (id_usuario === id_invitado) {
+            return res.json({
+                id_usuario,
+                id_invitado,
+                supervisor: '1',
+                anfitrion: '1'
+            });
+        }
+
+        const result = await pool.query(
+            `SELECT COALESCE(NULLIF(TRIM(supervisor), ''), '0') AS supervisor
+               FROM mad_usuarioinvitado
+              WHERE id_usuario = $1
+                AND id_invitado = $2
+                AND COALESCE(activo, '1') <> '0'
+              LIMIT 1`,
+            [id_usuario,id_invitado]
+        );
+
+        res.json({
+            id_usuario,
+            id_invitado,
+            supervisor: result.rows[0]?.supervisor || '0',
+            anfitrion: '0'
+        });
+    }
+    catch(error){
+        console.log(error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener nivel del invitado'
+        });
+    }
+};
+
 
 const obtenerUsuario = async (req,res,next)=> {
     try {
@@ -310,6 +356,7 @@ module.exports = {
     obtenerAnfitrion,
     obtenerTodosContabilidades,
     obtenerTodosModulos,
+    obtenerNivelInvitado,
     obtenerUsuario,
     crearUsuario,
     eliminarUsuario,

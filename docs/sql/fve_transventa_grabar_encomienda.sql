@@ -1,9 +1,9 @@
-CREATE OR REPLACE FUNCTION public.fn_mve_transventa_grabar_encomienda(p_data jsonb)
+CREATE OR REPLACE FUNCTION public.fve_transventa_grabar_encomienda(p_data jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  v_id_usuario              varchar(20);
+  v_id_usuario              varchar(50);
   v_documento_id            varchar(20);
   v_periodo                 varchar(7);
   v_r_cod                   char(2);
@@ -18,7 +18,7 @@ DECLARE
   v_destinatario_documento_id varchar(20);
   v_destinatario_id_doc     varchar(2);
 
-  v_id_ruta                 varchar(15);
+  v_id_ruta                 varchar(20);
   v_id_punto_venta          varchar(10);
   v_id_punto_venta_dest     varchar(10);
 
@@ -33,7 +33,7 @@ DECLARE
 BEGIN
   /*
     Contrato:
-      SELECT public.fn_mve_transventa_grabar_encomienda($1::jsonb);
+      SELECT public.fve_transventa_grabar_encomienda($1::jsonb);
 
     p_data debe traer, como minimo:
       id_usuario, id_invitado, documento_id, periodo, r_fecemi,
@@ -166,10 +166,12 @@ BEGIN
     placa, licencia,
     asiento, pasajero_edad,
     destinatario_id_doc, destinatario_documento_id,
-    destinatario, destinatario_telefono, destinatario_direccion,
+    destinatario, destinatario_telefono,
+    destinatario_zona,
+    destinatario_direccion,
     precio_neto,
     r_gravado, r_exonerado, r_igv, r_monto_total, precio_chofer, porc_igv,
-    condicion_pago, llegada_aprox,
+    condicion_pago, contra, llegada_aprox,
     numero_rdi, estado_sunat,
     ctrl_crea, ctrl_crea_us
   )
@@ -189,10 +191,11 @@ BEGIN
     NULLIF(p_data->>'asiento', ''), NULLIF(p_data->>'pasajero_edad', '')::integer,
     v_destinatario_id_doc, v_destinatario_documento_id,
     NULLIF(p_data->>'destinatario', ''), NULLIF(p_data->>'destinatario_telefono', ''),
+    NULLIF(p_data->>'destinatario_zona', ''),
     NULLIF(p_data->>'destinatario_direccion', ''),
     v_total,
     v_r_gravado, v_r_exonerado, v_r_igv, v_total, v_precio_chofer, v_porc_igv,
-    NULLIF(p_data->>'condicion_pago', ''), NULLIF(p_data->>'llegada_aprox', '')::time,
+    NULLIF(p_data->>'condicion_pago', ''), NULLIF(p_data->>'contra', ''), NULLIF(p_data->>'llegada_aprox', '')::time,
     NULLIF(p_data->>'numero_rdi', ''), NULLIF(p_data->>'estado_sunat', '')::char(1),
     CURRENT_TIMESTAMP, COALESCE(NULLIF(p_data->>'id_invitado', ''), NULLIF(p_data->>'ctrl_crea_us', ''))
   )
