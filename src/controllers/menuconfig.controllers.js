@@ -2,6 +2,7 @@ const pool = require('../db');
 
 const normalizar = (valor) => (valor || '').toString().trim();
 const normalizarBool = (valor) => valor === true || valor === 'true' || valor === '1' || valor === 1;
+const normalizarPermiso = (valor) => (valor === true || valor === 'true' || valor === '1' || valor === 1 || valor === 'S') ? 'S' : 'N';
 
 const columnasItem = `
   id_item,
@@ -276,6 +277,178 @@ const eliminarMenuAccion = async (req, res) => {
   }
 };
 
+const listarUsuariosMenuPermisos = async (req, res) => {
+  try {
+    const acceso = await validarAdministradorCatalogo(req, res);
+    if (!acceso) return;
+
+    const result = await pool.query(
+      `
+        SELECT ui.id_usuario,
+               ui.id_invitado,
+               COALESCE(NULLIF(TRIM(u.nombre), ''), NULLIF(TRIM(ui.nombres), ''), ui.id_invitado) AS nombres,
+               ui.fecha_ingreso,
+               ui.activo,
+               ui.supervisor,
+               COALESCE(pi.total_items, 0)::int AS permisos_items,
+               COALESCE(pa.total_acciones, 0)::int AS permisos_acciones,
+               (COALESCE(pi.total_items, 0) + COALESCE(pa.total_acciones, 0))::int AS permisos_total
+          FROM mad_usuarioinvitado ui
+          LEFT JOIN mad_usuario u
+            ON u.id_usuario = ui.id_invitado
+          LEFT JOIN (
+            SELECT id_usuario, id_invitado, COUNT(*) AS total_items
+              FROM mad_menu_permiso_item
+             WHERE permitido = 'S'
+             GROUP BY id_usuario, id_invitado
+          ) pi
+            ON pi.id_usuario = ui.id_usuario
+           AND pi.id_invitado = ui.id_invitado
+          LEFT JOIN (
+            SELECT id_usuario, id_invitado, COUNT(*) AS total_acciones
+              FROM mad_menu_permiso_accion
+             WHERE permitido = 'S'
+             GROUP BY id_usuario, id_invitado
+          ) pa
+            ON pa.id_usuario = ui.id_usuario
+           AND pa.id_invitado = ui.id_invitado
+         WHERE ui.id_usuario = $1
+         ORDER BY COALESCE(NULLIF(TRIM(u.nombre), ''), NULLIF(TRIM(ui.nombres), ''), ui.id_invitado)
+      `,
+      [acceso.idAnfitrion]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Error listando usuarios para permisos de menu:', error);
+    res.status(500).json({ success: false, message: error.message || 'Error interno' });
+  }
+};
+
+const obtenerMenuPermisosUsuario = async (req, res) => {
+  try {
+    const acceso = await validarAdministradorCatalogo(req, res);
+    if (!acceso) return;
+
+    const idInvitadoPermiso = normalizar(req.params.id_invitado_permiso);
+    if (!idInvitadoPermiso) {
+      return res.status(400).json({ success: false, message: 'Falta id_invitado_permiso' });
+    }
+
+    const [items, acciones] = await Promise.all([
+      pool.query(
+        `
+          SELECT id_item, permitido
+            FROM mad_menu_permiso_item
+           WHERE id_usuario = $1
+             AND id_invitado = $2
+        `,
+        [acceso.idAnfitrion, idInvitadoPermiso]
+      ),
+      pool.query(
+        `
+          SELECT id_accion, permitido
+            FROM mad_menu_permiso_accion
+           WHERE id_usuario = $1
+             AND id_invitado = $2
+        `,
+        [acceso.idAnfitrion, idInvitadoPermiso]
+      ),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        items: items.rows,
+        acciones: acciones.rows,
+      },
+    });
+  } catch (error) {
+    console.error('Error obteniendo permisos de menu:', error);
+    res.status(500).json({ success: false, message: error.message || 'Error interno' });
+  }
+};
+
+const guardarMenuPermisosUsuario = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const acceso = await validarAdministradorCatalogo(req, res);
+    if (!acceso) {
+      return;
+    }
+
+    const body = req.body || {};
+    const idInvitadoPermiso = normalizar(body.id_invitado_permiso);
+    const usuarioRegistro = normalizar(body.usuario_registro || acceso.idInvitado) || null;
+    const items = Array.isArray(body.items) ? body.items : [];
+    const acciones = Array.isArray(body.acciones) ? body.acciones : [];
+
+    if (!idInvitadoPermiso) {
+      return res.status(400).json({ success: false, message: 'Falta id_invitado_permiso' });
+    }
+
+    await client.query('BEGIN');
+
+    await client.query(
+      `
+        DELETE FROM mad_menu_permiso_item
+         WHERE id_usuario = $1
+           AND id_invitado = $2
+      `,
+      [acceso.idAnfitrion, idInvitadoPermiso]
+    );
+
+    await client.query(
+      `
+        DELETE FROM mad_menu_permiso_accion
+         WHERE id_usuario = $1
+           AND id_invitado = $2
+      `,
+      [acceso.idAnfitrion, idInvitadoPermiso]
+    );
+
+    for (const item of items) {
+      const idItem = normalizar(item.id_item);
+      if (!idItem) continue;
+
+      await client.query(
+        `
+          INSERT INTO mad_menu_permiso_item (
+            id_usuario, id_invitado, id_item, permitido, usuario_registro
+          )
+          VALUES ($1, $2, $3, $4, $5)
+        `,
+        [acceso.idAnfitrion, idInvitadoPermiso, idItem, normalizarPermiso(item.permitido), usuarioRegistro]
+      );
+    }
+
+    for (const accion of acciones) {
+      const idAccion = normalizar(accion.id_accion);
+      if (!idAccion) continue;
+
+      await client.query(
+        `
+          INSERT INTO mad_menu_permiso_accion (
+            id_usuario, id_invitado, id_accion, permitido, usuario_registro
+          )
+          VALUES ($1, $2, $3, $4, $5)
+        `,
+        [acceso.idAnfitrion, idInvitadoPermiso, idAccion, normalizarPermiso(accion.permitido), usuarioRegistro]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, data: { items: items.length, acciones: acciones.length } });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Error guardando permisos de menu:', error);
+    res.status(500).json({ success: false, message: error.message || 'Error interno' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   listarMenuItems,
   guardarMenuItem,
@@ -283,4 +456,7 @@ module.exports = {
   listarMenuAcciones,
   guardarMenuAccion,
   eliminarMenuAccion,
+  listarUsuariosMenuPermisos,
+  obtenerMenuPermisosUsuario,
+  guardarMenuPermisosUsuario,
 };
