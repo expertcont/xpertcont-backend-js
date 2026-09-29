@@ -57,6 +57,14 @@ const {
   obtenerConsolidadoCaja,
   listarIngresosEncomiendasCaja
 } = require('../controllers/transcaja.controllers');
+const {
+  listarMenuItems,
+  guardarMenuItem,
+  eliminarMenuItem,
+  listarMenuAcciones,
+  guardarMenuAccion,
+  eliminarMenuAccion,
+} = require('../controllers/menuconfig.controllers');
 
 router.get('/mad_punto_venta/:id_anfitrion/:documento_id', listarPuntosVenta);
 router.get('/mad_punto_venta_usuario/:id_anfitrion/:documento_id', listarPuntosVentaUsuarios);
@@ -103,5 +111,15 @@ router.get('/mve_transcaja/:periodo/:id_anfitrion/:documento_id/:id_movimiento',
 router.post('/mve_transcaja', crearMovimientoCaja);
 router.put('/mve_transcaja/:periodo/:id_anfitrion/:documento_id/:id_movimiento', actualizarMovimientoCaja);
 router.patch('/mve_transcaja/:periodo/:id_anfitrion/:documento_id/:id_movimiento/anular', anularMovimientoCaja);
+
+router.get('/mad_menu_item/:id_anfitrion/:id_invitado', listarMenuItems);
+router.post('/mad_menu_item', guardarMenuItem);
+router.put('/mad_menu_item', guardarMenuItem);
+router.delete('/mad_menu_item/:id_anfitrion/:id_invitado/:id_item', eliminarMenuItem);
+
+router.get('/mad_menu_accion/:id_anfitrion/:id_invitado', listarMenuAcciones);
+router.post('/mad_menu_accion', guardarMenuAccion);
+router.put('/mad_menu_accion', guardarMenuAccion);
+router.delete('/mad_menu_accion/:id_anfitrion/:id_invitado/:id_accion', eliminarMenuAccion);
 
 module.exports = router;
