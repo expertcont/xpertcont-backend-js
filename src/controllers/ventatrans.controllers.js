@@ -74,6 +74,7 @@ const columnasVentaTrans = `
   COALESCE(precio_chofer, 0) AS precio_chofer,
   porc_igv,
   condicion_pago,
+  contra,
   CAST(llegada_aprox AS VARCHAR(50)) AS llegada_aprox,
   TO_CHAR(llegada_real, 'YYYY-MM-DD HH24:MI:SS') AS llegada_real,
   numero_rdi,
@@ -139,6 +140,7 @@ const columnasVentaTransDesde = (alias) => `
   COALESCE(${alias}.precio_chofer, 0) AS precio_chofer,
   ${alias}.porc_igv,
   ${alias}.condicion_pago,
+  ${alias}.contra,
   CAST(${alias}.llegada_aprox AS VARCHAR(50)) AS llegada_aprox,
   TO_CHAR(${alias}.llegada_real, 'YYYY-MM-DD HH24:MI:SS') AS llegada_real,
   ${alias}.numero_rdi,
@@ -1886,11 +1888,13 @@ const crearVentaTrans = async (req, res) => {
       );
       let data = result.rows[0]?.data || null;
       const precioChofer = Number(dataEncomienda.precio_chofer || 0);
+      const contra = dataEncomienda.contra ?? null;
 
       if (data && Number.isFinite(precioChofer)) {
         const updateResult = await pool.query(`
           UPDATE mve_transventa
-             SET precio_chofer = $8::numeric
+             SET precio_chofer = $8::numeric,
+                 contra = $9
            WHERE periodo = $1
              AND id_usuario = $2
              AND documento_id = $3
@@ -1908,9 +1912,10 @@ const crearVentaTrans = async (req, res) => {
           data.r_numero,
           data.elemento,
           precioChofer,
+          contra,
         ]);
 
-        data = updateResult.rows[0] || { ...data, precio_chofer: precioChofer };
+        data = updateResult.rows[0] || { ...data, precio_chofer: precioChofer, contra };
       }
 
       return res.status(200).json({
@@ -2256,7 +2261,7 @@ const actualizarVentaTrans = async (req, res) => {
     destinatario_zona, destinatario_direccion,
     cantidad, precio_unitario, precio_neto,
     r_gravado, r_exonerado, r_igv, r_monto_total, precio_chofer, porc_igv,
-    condicion_pago, llegada_aprox, numero_rdi, estado_sunat,
+    condicion_pago, llegada_aprox, numero_rdi, estado_sunat, contra,
     ctrl_mod_us
   } = req.body;
   const idUsuarioFinal = id_usuario || id_anfitrion;
@@ -2402,6 +2407,7 @@ const actualizarVentaTrans = async (req, res) => {
              llegada_aprox = COALESCE(NULLIF($43, '')::time, llegada_aprox),
              numero_rdi = COALESCE($44, numero_rdi),
              estado_sunat = COALESCE($45, estado_sunat),
+             contra = COALESCE($47, contra),
              ctrl_mod = CURRENT_TIMESTAMP,
              ctrl_mod_us = COALESCE($46, ctrl_mod_us)
       WHERE periodo = $1
@@ -2435,7 +2441,8 @@ const actualizarVentaTrans = async (req, res) => {
       tributosFinales.r_monto_total,
       precio_chofer,
       tributosFinales.porc_igv,
-      condicion_pago, llegada_aprox, numero_rdi, estado_sunat, ctrlModUsFinal
+      condicion_pago, llegada_aprox, numero_rdi, estado_sunat, ctrlModUsFinal,
+      contra
     ];
 
     const result = await pool.query(query, params);
@@ -2620,11 +2627,13 @@ const registrarEntregaEncomienda = async (req, res) => {
     entrega_documento_id,
     entrega_documento,
     entrega_nombres,
-    entrega_ctrl_us
+    entrega_ctrl_us,
+    entrega_contra
   } = req.body;
   const idUsuarioFinal = id_usuario || id_anfitrion;
   const entregaDocumentoIdFinal = entrega_documento_id || entrega_documento;
   const entregaCtrlUsFinal = entrega_ctrl_us || id_invitado || null;
+  const entregaContraFinal = normalizarTexto(entrega_contra).toUpperCase();
 
   if (
     !periodo || !idUsuarioFinal || !documento_id ||
@@ -2655,6 +2664,7 @@ const registrarEntregaEncomienda = async (req, res) => {
          AND elemento = $7
          AND tipo_operacion = 'E'
          AND entrega_fecha IS NULL
+         AND (COALESCE(contra, '') = '' OR UPPER(contra) = $11)
        RETURNING ${columnasVentaTrans}
     `;
 
@@ -2662,10 +2672,37 @@ const registrarEntregaEncomienda = async (req, res) => {
       periodo, idUsuarioFinal, documento_id,
       r_cod, r_serie, r_numero, elemento,
       entregaDocumentoIdFinal,
-      entrega_nombres, entregaCtrlUsFinal
+      entrega_nombres, entregaCtrlUsFinal,
+      entregaContraFinal
     ]);
 
     if (result.rows.length === 0) {
+      const protegidaQuery = await pool.query(`
+        SELECT 1
+          FROM mve_transventa
+         WHERE periodo = $1
+           AND id_usuario = $2
+           AND documento_id = $3
+           AND r_cod = $4
+           AND r_serie = $5
+           AND r_numero = $6
+           AND elemento = $7
+           AND tipo_operacion = 'E'
+           AND entrega_fecha IS NULL
+           AND COALESCE(contra, '') <> ''
+         LIMIT 1
+      `, [
+        periodo, idUsuarioFinal, documento_id,
+        r_cod, r_serie, r_numero, elemento,
+      ]);
+
+      if (protegidaQuery.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: 'Contraseña de entrega incorrecta'
+        });
+      }
+
       return res.status(404).json({
         success: false,
         message: 'Encomienda no encontrada'
