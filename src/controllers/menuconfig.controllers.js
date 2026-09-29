@@ -286,7 +286,7 @@ const listarUsuariosMenuPermisos = async (req, res) => {
       `
         SELECT ui.id_usuario,
                ui.id_invitado,
-               COALESCE(NULLIF(TRIM(u.nombre), ''), NULLIF(TRIM(ui.nombres), ''), ui.id_invitado) AS nombres,
+               COALESCE(NULLIF(TRIM(ui.nombres), ''), ui.id_invitado) AS nombres,
                ui.fecha_ingreso,
                ui.activo,
                ui.supervisor,
@@ -294,8 +294,6 @@ const listarUsuariosMenuPermisos = async (req, res) => {
                COALESCE(pa.total_acciones, 0)::int AS permisos_acciones,
                (COALESCE(pi.total_items, 0) + COALESCE(pa.total_acciones, 0))::int AS permisos_total
           FROM mad_usuarioinvitado ui
-          LEFT JOIN mad_usuario u
-            ON u.id_usuario = ui.id_invitado
           LEFT JOIN (
             SELECT id_usuario, id_invitado, COUNT(*) AS total_items
               FROM mad_menu_permiso_item
@@ -313,7 +311,7 @@ const listarUsuariosMenuPermisos = async (req, res) => {
             ON pa.id_usuario = ui.id_usuario
            AND pa.id_invitado = ui.id_invitado
          WHERE ui.id_usuario = $1
-         ORDER BY COALESCE(NULLIF(TRIM(u.nombre), ''), NULLIF(TRIM(ui.nombres), ''), ui.id_invitado)
+         ORDER BY COALESCE(NULLIF(TRIM(ui.nombres), ''), ui.id_invitado)
       `,
       [acceso.idAnfitrion]
     );
