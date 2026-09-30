@@ -63,7 +63,6 @@ VALUES
   -- Acciones de entregas.
   ('11', '11-03-01', 'Marcar llegada', 'Registrar llegada real con hora servidor', 'TRANS', 'ACCION', '11-03', NULL, 1131, TRUE),
   ('11', '11-03-02', 'Registrar entrega', 'Registrar entrega al destinatario', 'TRANS', 'ACCION', '11-03', NULL, 1132, TRUE),
-  ('11', '11-03-03', 'Constancia entrega', 'Generar o enviar constancia de entrega', 'TRANS', 'ACCION', '11-03', NULL, 1133, TRUE),
 
   -- Acciones SUNAT/RDI.
   ('11', '11-06-01', 'Generar RDI', 'Generar y enviar resumen diario SUNAT', 'TRANS', 'ACCION', '11-06', NULL, 1161, TRUE),

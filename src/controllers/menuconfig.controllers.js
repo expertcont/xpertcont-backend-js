@@ -45,6 +45,48 @@ const columnasAccion = `
   activo
 `;
 
+const sincronizarAccionesEntregas = async () => {
+  await pool.query(`
+    INSERT INTO mad_menu_accion (
+      id_accion, id_item, nombre, descripcion, orden,
+      requiere_admin, requiere_supervisor, activo
+    )
+    SELECT
+      'transporte.entregas.marcar_llegada',
+      'transporte.entregas',
+      'Marcar llegada',
+      'Registrar llegada con hora servidor',
+      10,
+      FALSE,
+      FALSE,
+      TRUE
+    WHERE EXISTS (
+      SELECT 1
+        FROM mad_menu_item
+       WHERE id_item = 'transporte.entregas'
+    )
+    ON CONFLICT (id_accion) DO UPDATE
+    SET id_item = EXCLUDED.id_item,
+        nombre = EXCLUDED.nombre,
+        descripcion = EXCLUDED.descripcion,
+        orden = EXCLUDED.orden,
+        requiere_admin = EXCLUDED.requiere_admin,
+        requiere_supervisor = EXCLUDED.requiere_supervisor,
+        activo = TRUE
+  `);
+
+  await pool.query(`
+    DELETE FROM mad_menu_permiso_accion
+     WHERE id_accion = 'transporte.entregas.constancia'
+  `);
+
+  await pool.query(`
+    UPDATE mad_menu_accion
+       SET activo = FALSE
+     WHERE id_accion = 'transporte.entregas.constancia'
+  `);
+};
+
 const obtenerMenuConfig = async (req, res) => {
   try {
     const idAnfitrion = normalizar(req.params.id_anfitrion);
@@ -369,6 +411,8 @@ const listarMenuAcciones = async (req, res) => {
   try {
     const acceso = await validarAdministradorCatalogo(req, res);
     if (!acceso) return;
+
+    await sincronizarAccionesEntregas();
 
     const idItem = normalizar(req.query.id_item);
     const result = await pool.query(

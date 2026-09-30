@@ -69,6 +69,17 @@ END $$;
 DELETE FROM public.mad_menu_item
  WHERE id_item IN ('transporte.dashboard', 'transporte.reportes');
 
+DO $$
+BEGIN
+  IF to_regclass('public.mad_menu_permiso_accion') IS NOT NULL THEN
+    DELETE FROM public.mad_menu_permiso_accion
+     WHERE id_accion IN ('transporte.encomiendas.imprimir', 'transporte.boletos.imprimir');
+  END IF;
+END $$;
+
+DELETE FROM public.mad_menu_accion
+ WHERE id_accion IN ('transporte.encomiendas.imprimir', 'transporte.boletos.imprimir');
+
 -- Semilla: Transporte.
 INSERT INTO public.mad_menu_item
   (id_item, id_padre, rubro, tipo, nombre, descripcion, ruta, icono, orden, requiere_admin, requiere_supervisor, activo)
@@ -116,18 +127,15 @@ VALUES
   ('transporte.encomiendas.anular_local', 'transporte.encomiendas', 'Anular operacion', 'Anulacion administrativa sin envio SUNAT', 30, TRUE, FALSE, TRUE),
   ('transporte.encomiendas.enviar_sunat', 'transporte.encomiendas', 'Enviar SUNAT', 'Enviar comprobante a SUNAT', 40, FALSE, TRUE, TRUE),
   ('transporte.encomiendas.baja_sunat', 'transporte.encomiendas', 'Baja SUNAT', 'Registrar comunicacion de baja tributaria', 50, FALSE, TRUE, TRUE),
-  ('transporte.encomiendas.imprimir', 'transporte.encomiendas', 'Imprimir ticket', 'Generar ticket de encomienda', 60, FALSE, FALSE, TRUE),
   ('transporte.encomiendas.eliminar', 'transporte.encomiendas', 'Eliminar operacion', 'Eliminar encomienda no protegida', 70, TRUE, FALSE, TRUE),
 
   ('transporte.boletos.crear', 'transporte.boletos', 'Nuevo boleto', 'Registrar boleto', 10, FALSE, FALSE, TRUE),
   ('transporte.boletos.editar', 'transporte.boletos', 'Editar boleto', 'Modificar boleto no protegido', 20, FALSE, FALSE, TRUE),
   ('transporte.boletos.anular_local', 'transporte.boletos', 'Anular boleto', 'Anulacion administrativa sin envio SUNAT', 30, TRUE, FALSE, TRUE),
-  ('transporte.boletos.imprimir', 'transporte.boletos', 'Imprimir ticket', 'Generar ticket de boleto', 40, FALSE, FALSE, TRUE),
   ('transporte.boletos.eliminar', 'transporte.boletos', 'Eliminar boleto', 'Eliminar boleto no protegido', 50, TRUE, FALSE, TRUE),
 
   ('transporte.entregas.marcar_llegada', 'transporte.entregas', 'Marcar llegada', 'Registrar llegada con hora servidor', 10, FALSE, FALSE, TRUE),
   ('transporte.entregas.registrar_entrega', 'transporte.entregas', 'Registrar entrega', 'Registrar entrega al destinatario', 20, FALSE, FALSE, TRUE),
-  ('transporte.entregas.constancia', 'transporte.entregas', 'Constancia entrega', 'Generar o enviar constancia', 30, FALSE, FALSE, TRUE),
 
   ('transporte.sunat.rdi.generar', 'transporte.sunat.rdi', 'Generar RDI', 'Generar y enviar resumen diario', 10, FALSE, TRUE, TRUE),
   ('transporte.sunat.rdi.consultar', 'transporte.sunat.rdi', 'Consultar ticket', 'Consultar estado de ticket RDI', 20, FALSE, TRUE, TRUE),
