@@ -114,6 +114,113 @@ const guardarMenuConfig = async (req, res) => {
   }
 };
 
+const obtenerMenuPermisosRuntime = async (req, res) => {
+  try {
+    const idAnfitrion = normalizar(req.params.id_anfitrion);
+    const idInvitado = normalizar(req.params.id_invitado);
+    const rubro = normalizar(req.query.rubro || 'TRANSPORTE').toUpperCase();
+
+    if (!idAnfitrion || !idInvitado) {
+      return res.status(400).json({ success: false, message: 'Faltan parametros de usuario.' });
+    }
+
+    await asegurarTablaConfigMenu();
+
+    const configResult = await pool.query(
+      `
+        SELECT seguridad_activa
+          FROM public.mad_menu_config
+         WHERE id_usuario = $1
+           AND rubro = $2
+         LIMIT 1
+      `,
+      [idAnfitrion, rubro]
+    );
+
+    const seguridadActiva = configResult.rows[0]?.seguridad_activa === true;
+
+    if (!seguridadActiva) {
+      return res.json({
+        success: true,
+        data: {
+          rubro,
+          seguridad_activa: false,
+          acceso_total: true,
+          items: [],
+          acciones: [],
+        },
+      });
+    }
+
+    const superResult = await pool.query(
+      "SELECT 1 FROM mad_usuario WHERE id_usuario = $1 AND super = '1' LIMIT 1",
+      [idInvitado]
+    );
+    const accesoTotal = idAnfitrion === idInvitado || superResult.rows.length > 0;
+
+    if (accesoTotal) {
+      return res.json({
+        success: true,
+        data: {
+          rubro,
+          seguridad_activa: true,
+          acceso_total: true,
+          items: [],
+          acciones: [],
+        },
+      });
+    }
+
+    const [items, acciones] = await Promise.all([
+      pool.query(
+        `
+          SELECT p.id_item
+            FROM public.mad_menu_permiso_item p
+            INNER JOIN public.mad_menu_item i
+                    ON i.id_item = p.id_item
+           WHERE p.id_usuario = $1
+             AND p.id_invitado = $2
+             AND p.permitido = 'S'
+             AND i.rubro = $3
+             AND i.activo IS TRUE
+        `,
+        [idAnfitrion, idInvitado, rubro]
+      ),
+      pool.query(
+        `
+          SELECT p.id_accion
+            FROM public.mad_menu_permiso_accion p
+            INNER JOIN public.mad_menu_accion a
+                    ON a.id_accion = p.id_accion
+            INNER JOIN public.mad_menu_item i
+                    ON i.id_item = a.id_item
+           WHERE p.id_usuario = $1
+             AND p.id_invitado = $2
+             AND p.permitido = 'S'
+             AND i.rubro = $3
+             AND i.activo IS TRUE
+             AND a.activo IS TRUE
+        `,
+        [idAnfitrion, idInvitado, rubro]
+      ),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        rubro,
+        seguridad_activa: true,
+        acceso_total: false,
+        items: items.rows.map((item) => item.id_item),
+        acciones: acciones.rows.map((accion) => accion.id_accion),
+      },
+    });
+  } catch (error) {
+    console.error('Error obteniendo permisos runtime de menu:', error);
+    res.status(500).json({ success: false, message: 'Error obteniendo permisos de menu' });
+  }
+};
+
 const validarAdministradorCatalogo = async (req, res) => {
   const idAnfitrion = normalizar(req.params.id_anfitrion || req.body.id_anfitrion);
   const idInvitado = normalizar(req.params.id_invitado || req.body.id_invitado);
@@ -534,6 +641,7 @@ const guardarMenuPermisosUsuario = async (req, res) => {
 module.exports = {
   obtenerMenuConfig,
   guardarMenuConfig,
+  obtenerMenuPermisosRuntime,
   listarMenuItems,
   guardarMenuItem,
   eliminarMenuItem,

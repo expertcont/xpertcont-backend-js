@@ -69,6 +69,7 @@ const {
   guardarMenuPermisosUsuario,
   obtenerMenuConfig,
   guardarMenuConfig,
+  obtenerMenuPermisosRuntime,
 } = require('../controllers/menuconfig.controllers');
 
 router.get('/mad_punto_venta/:id_anfitrion/:documento_id', listarPuntosVenta);
@@ -131,6 +132,7 @@ router.put('/mad_menu_accion', guardarMenuAccion);
 router.delete('/mad_menu_accion/:id_anfitrion/:id_invitado/:id_accion', eliminarMenuAccion);
 
 router.get('/mad_menu_permiso/usuarios/:id_anfitrion/:id_invitado', listarUsuariosMenuPermisos);
+router.get('/mad_menu_permiso/runtime/:id_anfitrion/:id_invitado', obtenerMenuPermisosRuntime);
 router.get('/mad_menu_permiso/:id_anfitrion/:id_invitado/:id_invitado_permiso', obtenerMenuPermisosUsuario);
 router.put('/mad_menu_permiso', guardarMenuPermisosUsuario);
 

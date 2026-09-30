@@ -89,7 +89,7 @@ VALUES
 
   -- Configuracion administrativa.
   ('transporte.config', 'transporte', 'TRANSPORTE', 'GRUPO', 'Configuracion', 'Mantenimientos de transporte', NULL, 'Settings', 1200, TRUE, FALSE, TRUE),
-  ('transporte.puntos', 'transporte.config', 'TRANSPORTE', 'PANTALLA', 'Puntos venta', 'Agencias o puntos de venta', '/ad_transportepuntos', 'HolidayVillage', 1210, TRUE, FALSE, TRUE),
+  ('transporte.puntos', 'transporte.config', 'TRANSPORTE', 'PANTALLA', 'Puntos venta', 'Agencias o puntos de venta', '/ad_puntoventa', 'HolidayVillage', 1210, TRUE, FALSE, TRUE),
   ('transporte.rutas', 'transporte.config', 'TRANSPORTE', 'PANTALLA', 'Rutas', 'Rutas de transporte', '/ad_transporterutas', 'CompareArrows', 1220, TRUE, FALSE, TRUE),
   ('transporte.placas', 'transporte.config', 'TRANSPORTE', 'PANTALLA', 'Placas', 'Unidades vehiculares', '/ad_transporteplacas', 'DirectionsBus', 1230, TRUE, FALSE, TRUE),
   ('transporte.licencias', 'transporte.config', 'TRANSPORTE', 'PANTALLA', 'Licencias', 'Conductores y licencias', '/ad_transportelicencias', 'Badge', 1240, TRUE, FALSE, TRUE),
@@ -117,6 +117,13 @@ VALUES
   ('transporte.encomiendas.enviar_sunat', 'transporte.encomiendas', 'Enviar SUNAT', 'Enviar comprobante a SUNAT', 40, FALSE, TRUE, TRUE),
   ('transporte.encomiendas.baja_sunat', 'transporte.encomiendas', 'Baja SUNAT', 'Registrar comunicacion de baja tributaria', 50, FALSE, TRUE, TRUE),
   ('transporte.encomiendas.imprimir', 'transporte.encomiendas', 'Imprimir ticket', 'Generar ticket de encomienda', 60, FALSE, FALSE, TRUE),
+  ('transporte.encomiendas.eliminar', 'transporte.encomiendas', 'Eliminar operacion', 'Eliminar encomienda no protegida', 70, TRUE, FALSE, TRUE),
+
+  ('transporte.boletos.crear', 'transporte.boletos', 'Nuevo boleto', 'Registrar boleto', 10, FALSE, FALSE, TRUE),
+  ('transporte.boletos.editar', 'transporte.boletos', 'Editar boleto', 'Modificar boleto no protegido', 20, FALSE, FALSE, TRUE),
+  ('transporte.boletos.anular_local', 'transporte.boletos', 'Anular boleto', 'Anulacion administrativa sin envio SUNAT', 30, TRUE, FALSE, TRUE),
+  ('transporte.boletos.imprimir', 'transporte.boletos', 'Imprimir ticket', 'Generar ticket de boleto', 40, FALSE, FALSE, TRUE),
+  ('transporte.boletos.eliminar', 'transporte.boletos', 'Eliminar boleto', 'Eliminar boleto no protegido', 50, TRUE, FALSE, TRUE),
 
   ('transporte.entregas.marcar_llegada', 'transporte.entregas', 'Marcar llegada', 'Registrar llegada con hora servidor', 10, FALSE, FALSE, TRUE),
   ('transporte.entregas.registrar_entrega', 'transporte.entregas', 'Registrar entrega', 'Registrar entrega al destinatario', 20, FALSE, FALSE, TRUE),
