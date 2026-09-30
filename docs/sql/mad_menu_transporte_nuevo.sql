@@ -2,8 +2,8 @@
 -- No reemplaza de inmediato a mad_menucomando; puede convivir mientras se migra.
 --
 -- rubro es el separador funcional: TRANSPORTE, CONT, COMERCIAL, STOCK, PROY, etc.
--- Cada rubro puede definir su propia distribucion de menus, grupos, pantallas,
--- reportes y acciones sin forzar la estructura de otros modulos.
+-- Cada rubro puede definir su propia distribucion de menus, grupos, pantallas
+-- y acciones sin forzar la estructura de otros modulos.
 
 CREATE TABLE IF NOT EXISTS public.mad_menu_item (
   id_item VARCHAR(50) PRIMARY KEY,
@@ -46,6 +46,29 @@ CREATE TABLE IF NOT EXISTS public.mad_menu_accion (
 CREATE INDEX IF NOT EXISTS idx_mad_menu_accion_item
   ON public.mad_menu_accion (id_item, activo, orden);
 
+CREATE TABLE IF NOT EXISTS public.mad_menu_config (
+  id_usuario VARCHAR(60) NOT NULL,
+  rubro VARCHAR(20) NOT NULL,
+  seguridad_activa BOOLEAN NOT NULL DEFAULT FALSE,
+  ctrl_crea_us VARCHAR(60),
+  ctrl_crea_fh TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+  ctrl_mod_us VARCHAR(60),
+  ctrl_mod_fh TIMESTAMP WITHOUT TIME ZONE,
+  PRIMARY KEY (id_usuario, rubro)
+);
+
+-- Los reportes/dashboard de transporte no participan en permisos por usuario.
+DO $$
+BEGIN
+  IF to_regclass('public.mad_menu_permiso_item') IS NOT NULL THEN
+    DELETE FROM public.mad_menu_permiso_item
+     WHERE id_item IN ('transporte.dashboard', 'transporte.reportes');
+  END IF;
+END $$;
+
+DELETE FROM public.mad_menu_item
+ WHERE id_item IN ('transporte.dashboard', 'transporte.reportes');
+
 -- Semilla: Transporte.
 INSERT INTO public.mad_menu_item
   (id_item, id_padre, rubro, tipo, nombre, descripcion, ruta, icono, orden, requiere_admin, requiere_supervisor, activo)
@@ -63,10 +86,6 @@ VALUES
   ('transporte.sunat', 'transporte', 'TRANSPORTE', 'GRUPO', 'SUNAT', 'Opciones tributarias de transporte', NULL, 'Sunat', 1160, FALSE, TRUE, TRUE),
   ('transporte.sunat.rdi', 'transporte.sunat', 'TRANSPORTE', 'PANTALLA', 'RDI SUNAT', 'Resumen diario SUNAT de encomiendas y boletos', '/ad_transporterdiencomienda', 'Summarize', 1161, FALSE, TRUE, TRUE),
   ('transporte.sunat.bajas', 'transporte.sunat', 'TRANSPORTE', 'PANTALLA', 'Bajas SUNAT', 'Comunicaciones de baja tributaria', '/ad_transportebajas', 'CancelPresentation', 1162, FALSE, TRUE, TRUE),
-
-  -- Reportes / supervision.
-  ('transporte.reportes', 'transporte', 'TRANSPORTE', 'GRUPO', 'Reportes', 'Indicadores y seguimiento de transporte', NULL, 'InsertChart', 1170, FALSE, TRUE, TRUE),
-  ('transporte.dashboard', 'transporte.reportes', 'TRANSPORTE', 'REPORTE', 'Dashboard', 'Indicadores operativos y SUNAT', '/ad_transportedashboard', 'DashboardCustomize', 1171, FALSE, TRUE, TRUE),
 
   -- Configuracion administrativa.
   ('transporte.config', 'transporte', 'TRANSPORTE', 'GRUPO', 'Configuracion', 'Mantenimientos de transporte', NULL, 'Settings', 1200, TRUE, FALSE, TRUE),

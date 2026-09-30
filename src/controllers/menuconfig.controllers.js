@@ -4,6 +4,21 @@ const normalizar = (valor) => (valor || '').toString().trim();
 const normalizarBool = (valor) => valor === true || valor === 'true' || valor === '1' || valor === 1;
 const normalizarPermiso = (valor) => (valor === true || valor === 'true' || valor === '1' || valor === 1 || valor === 'S') ? 'S' : 'N';
 
+const asegurarTablaConfigMenu = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS public.mad_menu_config (
+      id_usuario VARCHAR(60) NOT NULL,
+      rubro VARCHAR(20) NOT NULL,
+      seguridad_activa BOOLEAN NOT NULL DEFAULT FALSE,
+      ctrl_crea_us VARCHAR(60),
+      ctrl_crea_fh TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+      ctrl_mod_us VARCHAR(60),
+      ctrl_mod_fh TIMESTAMP WITHOUT TIME ZONE,
+      PRIMARY KEY (id_usuario, rubro)
+    )
+  `);
+};
+
 const columnasItem = `
   id_item,
   id_padre,
@@ -29,6 +44,75 @@ const columnasAccion = `
   requiere_supervisor,
   activo
 `;
+
+const obtenerMenuConfig = async (req, res) => {
+  try {
+    const idAnfitrion = normalizar(req.params.id_anfitrion);
+    const rubro = normalizar(req.query.rubro || req.params.rubro || 'TRANSPORTE').toUpperCase();
+
+    if (!idAnfitrion) {
+      return res.status(400).json({ success: false, message: 'Falta id_anfitrion.' });
+    }
+
+    await asegurarTablaConfigMenu();
+
+    const result = await pool.query(
+      `
+        SELECT id_usuario, rubro, seguridad_activa
+          FROM public.mad_menu_config
+         WHERE id_usuario = $1
+           AND rubro = $2
+         LIMIT 1
+      `,
+      [idAnfitrion, rubro]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        id_usuario: idAnfitrion,
+        rubro,
+        seguridad_activa: result.rows[0]?.seguridad_activa === true,
+      },
+    });
+  } catch (error) {
+    console.error('Error obteniendo configuracion de menu:', error);
+    res.status(500).json({ success: false, message: 'Error obteniendo configuracion de menu' });
+  }
+};
+
+const guardarMenuConfig = async (req, res) => {
+  try {
+    const acceso = await validarAdministradorCatalogo(req, res);
+    if (!acceso) return;
+
+    const rubro = normalizar(req.body.rubro || req.query.rubro || 'TRANSPORTE').toUpperCase();
+    const usuarioRegistro = normalizar(req.body.usuario_registro || acceso.idInvitado) || null;
+    const seguridadActiva = normalizarBool(req.body.seguridad_activa);
+
+    await asegurarTablaConfigMenu();
+
+    const result = await pool.query(
+      `
+        INSERT INTO public.mad_menu_config (
+          id_usuario, rubro, seguridad_activa, ctrl_crea_us, ctrl_mod_us, ctrl_mod_fh
+        )
+        VALUES ($1, $2, $3, $4, $4, now())
+        ON CONFLICT (id_usuario, rubro) DO UPDATE
+        SET seguridad_activa = EXCLUDED.seguridad_activa,
+            ctrl_mod_us = EXCLUDED.ctrl_mod_us,
+            ctrl_mod_fh = now()
+        RETURNING id_usuario, rubro, seguridad_activa
+      `,
+      [acceso.idAnfitrion, rubro, seguridadActiva, usuarioRegistro]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Error guardando configuracion de menu:', error);
+    res.status(500).json({ success: false, message: 'Error guardando configuracion de menu' });
+  }
+};
 
 const validarAdministradorCatalogo = async (req, res) => {
   const idAnfitrion = normalizar(req.params.id_anfitrion || req.body.id_anfitrion);
@@ -448,6 +532,8 @@ const guardarMenuPermisosUsuario = async (req, res) => {
 };
 
 module.exports = {
+  obtenerMenuConfig,
+  guardarMenuConfig,
   listarMenuItems,
   guardarMenuItem,
   eliminarMenuItem,
