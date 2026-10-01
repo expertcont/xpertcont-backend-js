@@ -117,6 +117,7 @@ const obtenerContabilidadAdminResumenQuery = async (params) => {
        AND documento_id = $2
        AND tipo = 'ADMIN'
     `,
+    params
   );
   return result.rows;
 };
@@ -137,6 +138,7 @@ const crearResumenDiarioQuery = async (params) => {
         SELECT creado, numero_rdi, secuencia, cantidad, mensaje
         FROM public.fve_crear_resumen_diario($1, $2, $3::date, $4, $5)
       `,
+    params
   );
   return result.rows;
 };
@@ -150,6 +152,7 @@ const obtenerContabilidadTicketQuery = async (params) => {
            AND documento_id = $2
            AND tipo = 'ADMIN'
         `,
+    params
   );
   return result.rows;
 };
@@ -218,6 +221,7 @@ const obtenerResumenesRdiQuery = async (params) => {
           r.ctrl_actualiza
         ORDER BY r.fecha DESC, r.secuencia DESC
       `,
+    params
   );
   return result.rows;
 };
@@ -239,6 +243,7 @@ const obtenerPendientesResumenQuery = async (params) => {
         GROUP BY tv.r_fecemi
         ORDER BY tv.r_fecemi ASC
       `,
+    params
   );
   return result.rows;
 };
@@ -260,6 +265,7 @@ const actualizarOperacionesRdiQuery = async (params) => {
          AND documento_id = $2
          AND numero_rdi = $3
     `,
+    params
   );
   return result.rows;
 };
@@ -276,6 +282,7 @@ const incrementarIntentoRdiQuery = async (params) => {
            AND documento_id = $2
            AND numero_rdi = $3
       `,
+    params
   );
   return result.rows;
 };
@@ -290,6 +297,7 @@ const incrementarIntentoRdiFallbackQuery = async (params) => {
            AND documento_id = $2
            AND numero_rdi = $3
       `,
+    params
   );
   return result.rows;
 };
