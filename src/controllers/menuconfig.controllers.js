@@ -87,6 +87,54 @@ const sincronizarAccionesEntregas = async () => {
   `);
 };
 
+const sincronizarAccionesCaja = async () => {
+  await pool.query(`
+    INSERT INTO mad_menu_accion (
+      id_accion, id_item, nombre, descripcion, orden,
+      requiere_admin, requiere_supervisor, activo
+    )
+    VALUES
+      (
+        'transporte.caja.crear_movimiento',
+        'transporte.caja',
+        'Nuevo movimiento',
+        'Registrar movimiento de caja',
+        10,
+        FALSE,
+        FALSE,
+        TRUE
+      ),
+      (
+        'transporte.caja.anular_movimiento',
+        'transporte.caja',
+        'Anular movimiento',
+        'Anular movimiento de caja',
+        20,
+        TRUE,
+        FALSE,
+        TRUE
+      ),
+      (
+        'transporte.caja.cerrar',
+        'transporte.caja',
+        'Cerrar caja',
+        'Generar cierre o reporte de caja',
+        30,
+        FALSE,
+        TRUE,
+        TRUE
+      )
+    ON CONFLICT (id_accion) DO UPDATE
+    SET id_item = EXCLUDED.id_item,
+        nombre = EXCLUDED.nombre,
+        descripcion = EXCLUDED.descripcion,
+        orden = EXCLUDED.orden,
+        requiere_admin = EXCLUDED.requiere_admin,
+        requiere_supervisor = EXCLUDED.requiere_supervisor,
+        activo = TRUE
+  `);
+};
+
 const obtenerMenuConfig = async (req, res) => {
   try {
     const idAnfitrion = normalizar(req.params.id_anfitrion);
@@ -413,6 +461,7 @@ const listarMenuAcciones = async (req, res) => {
     if (!acceso) return;
 
     await sincronizarAccionesEntregas();
+    await sincronizarAccionesCaja();
 
     const idItem = normalizar(req.query.id_item);
     const result = await pool.query(
