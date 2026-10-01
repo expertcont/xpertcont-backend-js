@@ -20,6 +20,19 @@ const toIsoDate = (value) => {
   return String(value).split('T')[0].split(' ')[0];
 };
 
+// Una columna date de PostgreSQL no tiene zona horaria: el driver la entrega
+// como Date a medianoche UTC. Formatearla en America/Lima la corre un dia
+// (2026-09-28 se volveria 2026-09-27), asi que aqui se leen sus componentes
+// tal como los guardo PostgreSQL. Para timestamps y textos sigue mandando
+// toIsoDate, que si necesita la conversion a Lima.
+const toIsoDateColumna = (value) => {
+  if (!value) return '';
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  return String(value).split('T')[0].split(' ')[0];
+};
+
 const toIsoTime = (value) => {
   const horaLimaActual = () => {
     const parts = new Intl.DateTimeFormat('en-GB', {
@@ -69,6 +82,7 @@ const toNumber = (value, fallback = 0) => {
 
 module.exports = {
   toIsoDate,
+  toIsoDateColumna,
   toIsoTime,
   toIsoDateTimeLima,
   toNumber,

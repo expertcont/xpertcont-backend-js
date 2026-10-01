@@ -1,7 +1,7 @@
 ﻿const pool = require('../db');
 const fetch = require('node-fetch');
 const { obtenerUltimosPeriodos } = require('../utils/periodos');
-const { toIsoDate, toIsoTime, toNumber } = require('../utils/formato');
+const { toIsoDate, toIsoDateColumna, toIsoTime, toNumber } = require('../utils/formato');
 const { leerRespuestaSunat, normalizarErrorSunatTransporte } = require('../utils/sunat');
 const { normalizarTexto } = require('../utils/texto');
 
@@ -349,7 +349,7 @@ const generaJsonPrevioCPEexpertcontTransporte = async (
   const porcIgv = toNumber(venta.porc_igv, baseGravada > 0 ? 18 : 0);
   const tipoIgvCodigo = baseGravada > 0 ? '10' : '20';
   const precioBase = baseGravada > 0 ? baseGravada : baseExonerada || total;
-  const fechaEmision = toIsoDate(venta.r_fecemi);
+  const fechaEmision = toIsoDateColumna(venta.r_fecemi);
   const descripcion = [
     venta.descripcion || 'SERVICIO DE TRANSPORTE DE ENCOMIENDA',
     venta.nombre_ruta ? `Ruta: ${venta.nombre_ruta}` : '',

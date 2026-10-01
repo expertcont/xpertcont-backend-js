@@ -4,7 +4,7 @@
 // las respuestas de SUNAT y coordina con el repository. No conoce req ni res.
 const fetch = require('node-fetch');
 
-const { toIsoDate, toNumber } = require('../../utils/formato');
+const { toIsoDate, toIsoDateColumna, toNumber } = require('../../utils/formato');
 const { leerRespuestaSunat, normalizarErrorSunatTransporte } = require('../../utils/sunat');
 const { normalizarTexto } = require('../../utils/texto');
 const repository = require('../../repositories/transporte/sunat.repository');
@@ -268,7 +268,7 @@ const generarPayloadResumenSunatTransporteDesdeRdi = async ({
 
   const comprobantes = ventaQuery.rows.map(construirComprobanteResumenTransporte);
 
-  const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+  const [, fechaNumero = toIsoDateColumna(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
     String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
 
   return {
@@ -289,8 +289,8 @@ const generarPayloadResumenSunatTransporteDesdeRdi = async ({
       resumen: {
         numero: fechaNumero,
         correlativo: String(correlativo),
-        fecha_documentos: toIsoDate(rdi.fecha),
-        fecha_resumen: toIsoDate(rdi.fecha),
+        fecha_documentos: toIsoDateColumna(rdi.fecha),
+        fecha_resumen: toIsoDateColumna(rdi.fecha),
       },
       comprobantes,
     }
@@ -321,7 +321,7 @@ const consultarTicketRdiSunatTransporte = async ({
     };
   }
 
-  const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+  const [, fechaNumero = toIsoDateColumna(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
     String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
   const nombreArchivo = `${documentoId}-RC-${fechaNumero}-${correlativo}`;
   const payload = {
@@ -335,7 +335,7 @@ const consultarTicketRdiSunatTransporte = async ({
     resumen: {
       numero: fechaNumero,
       correlativo: String(correlativo),
-      fecha_documentos: toIsoDate(rdi.fecha),
+      fecha_documentos: toIsoDateColumna(rdi.fecha),
     }
   };
 
