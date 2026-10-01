@@ -13,11 +13,7 @@ const {
   registrarEntregaEncomienda,
   liberarContraEncomienda,
   registrarLlegadaRealEncomienda,
-  generarCPEexpertcontTransporte,
-  generarResumenCPEexpertcontTransporte,
-  consultarResumenCPEexpertcontTransporte,
-  corregirRdiRechazadoTransporte,
-  obtenerResumenesCPEexpertcontTransporte
+  generarCPEexpertcontTransporte
 } = require('../controllers/ventatrans.controllers');
 
 // Dashboard de transporte: vive en controllers/transporte, separado del legacy.
@@ -36,6 +32,14 @@ const {
   generarTicketPDFEncomiendaExpertcont,
   generarTicketAdminPDFEncomiendaExpertcont,
 } = require('../controllers/transporte/ticket.controller');
+
+// SUNAT / Resumen Diario: viven en controllers/transporte.
+const {
+  generarResumenCPEexpertcontTransporte,
+  consultarResumenCPEexpertcontTransporte,
+  corregirRdiRechazadoTransporte,
+  obtenerResumenesCPEexpertcontTransporte,
+} = require('../controllers/transporte/sunat.controller');
 
 const {
   listarGremTransporte,
