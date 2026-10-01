@@ -14,8 +14,6 @@ const {
   liberarContraEncomienda,
   registrarLlegadaRealEncomienda,
   generarCPEexpertcontTransporte,
-  generarTicketPDFEncomiendaExpertcont,
-  generarTicketAdminPDFEncomiendaExpertcont,
   generarResumenCPEexpertcontTransporte,
   consultarResumenCPEexpertcontTransporte,
   corregirRdiRechazadoTransporte,
@@ -32,6 +30,12 @@ const {
   obtenerUsuariosDashboardTransporte,
   obtenerDashboardTransporte,
 } = require('../controllers/transporte/dashboard.controller');
+
+// Tickets PDF de encomienda: viven en controllers/transporte.
+const {
+  generarTicketPDFEncomiendaExpertcont,
+  generarTicketAdminPDFEncomiendaExpertcont,
+} = require('../controllers/transporte/ticket.controller');
 
 const {
   listarGremTransporte,
