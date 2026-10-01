@@ -209,6 +209,7 @@ const obtenerMenuPermisosRuntime = async (req, res) => {
     const idAnfitrion = normalizar(req.params.id_anfitrion);
     const idInvitado = normalizar(req.params.id_invitado);
     const rubro = normalizar(req.query.rubro || 'TRANSPORTE').toUpperCase();
+    const aplicarPermisosSuper = normalizarBool(req.query.aplicar_permisos_super);
 
     if (!idAnfitrion || !idInvitado) {
       return res.status(400).json({ success: false, message: 'Faltan parametros de usuario.' });
@@ -246,7 +247,7 @@ const obtenerMenuPermisosRuntime = async (req, res) => {
       "SELECT 1 FROM mad_usuario WHERE id_usuario = $1 AND super = '1' LIMIT 1",
       [idInvitado]
     );
-    const accesoTotal = idAnfitrion === idInvitado || superResult.rows.length > 0;
+    const accesoTotal = idAnfitrion === idInvitado || (!aplicarPermisosSuper && superResult.rows.length > 0);
 
     if (accesoTotal) {
       return res.json({
