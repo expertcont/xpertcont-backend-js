@@ -13,13 +13,6 @@ const {
   registrarEntregaEncomienda,
   liberarContraEncomienda,
   registrarLlegadaRealEncomienda,
-  obtenerResumenDashboardTransporte,
-  obtenerProductividadDashboardTransporte,
-  obtenerSunatDashboardTransporte,
-  obtenerRutasDashboardTransporte,
-  obtenerComparativoMensualEncomiendasDashboardTransporte,
-  obtenerUsuariosDashboardTransporte,
-  obtenerDashboardTransporte,
   generarCPEexpertcontTransporte,
   generarTicketPDFEncomiendaExpertcont,
   generarTicketAdminPDFEncomiendaExpertcont,
@@ -28,6 +21,17 @@ const {
   corregirRdiRechazadoTransporte,
   obtenerResumenesCPEexpertcontTransporte
 } = require('../controllers/ventatrans.controllers');
+
+// Dashboard de transporte: vive en controllers/transporte, separado del legacy.
+const {
+  obtenerResumenDashboardTransporte,
+  obtenerProductividadDashboardTransporte,
+  obtenerSunatDashboardTransporte,
+  obtenerRutasDashboardTransporte,
+  obtenerComparativoMensualEncomiendasDashboardTransporte,
+  obtenerUsuariosDashboardTransporte,
+  obtenerDashboardTransporte,
+} = require('../controllers/transporte/dashboard.controller');
 
 const {
   listarGremTransporte,
