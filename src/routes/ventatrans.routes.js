@@ -7,8 +7,7 @@ const {
   obtenerVentaTrans,
   actualizarVentaTrans,
   anularVentaTrans,
-  eliminarVentaTrans,
-  generarCPEexpertcontTransporte
+  eliminarVentaTrans
 } = require('../controllers/ventatrans.controllers');
 
 // Dashboard de transporte: vive en controllers/transporte, separado del legacy.
@@ -48,6 +47,12 @@ const {
 const {
   clonarEncomienda,
 } = require('../controllers/transporte/encomienda.controller');
+
+// Envio individual de CPE: vive en controllers/transporte. Este modulo tambien
+// recebera los boletos (tipo_operacion = 'B'); por ahora solo admite encomiendas.
+const {
+  generarCPEexpertcontTransporte,
+} = require('../controllers/transporte/cpe.controller');
 
 const {
   listarGremTransporte,

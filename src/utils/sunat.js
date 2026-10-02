@@ -14,8 +14,8 @@ const leerRespuestaSunat = async (apiResponse) => {
   }
 };
 
-// Se movio aqui porque lo usan tanto el CPE individual (que sigue en el legacy)
-// como el flujo de resumen diario.
+// Se movio aqui porque lo usan el CPE individual (services/transporte/cpe.service.js)
+// y el flujo de resumen diario.
 const normalizarErrorSunatTransporte = (responseData, fallbackMessage = 'Error en la API SUNAT') => {
   const data = responseData?.error || responseData?.data || responseData || {};
   const nivel = data.nivel || 'ERROR';
