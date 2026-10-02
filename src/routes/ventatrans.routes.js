@@ -5,7 +5,6 @@ const {
   crearVentaTrans,
   obtenerVentasTrans,
   obtenerVentaTrans,
-  clonarEncomienda,
   actualizarVentaTrans,
   anularVentaTrans,
   eliminarVentaTrans,
@@ -44,6 +43,11 @@ const {
   liberarContraEncomienda,
   registrarLlegadaRealEncomienda,
 } = require('../controllers/transporte/entrega.controller');
+
+// Clonacion de encomiendas historicas: vive en controllers/transporte.
+const {
+  clonarEncomienda,
+} = require('../controllers/transporte/encomienda.controller');
 
 const {
   listarGremTransporte,

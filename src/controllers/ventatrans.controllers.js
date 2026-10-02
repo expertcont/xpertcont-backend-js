@@ -1,6 +1,5 @@
 ﻿const pool = require('../db');
 const fetch = require('node-fetch');
-const { obtenerUltimosPeriodos } = require('../utils/periodos');
 const { toIsoDate, toIsoDateColumna, toIsoTime, toNumber } = require('../utils/formato');
 const { leerRespuestaSunat, normalizarErrorSunatTransporte } = require('../utils/sunat');
 const { normalizarTexto } = require('../utils/texto');
@@ -567,86 +566,6 @@ const obtenerVentaTrans = async (req, res) => {
   }
 };
 
-const clonarEncomienda = async (req, res) => {
-  const { periodo, id_anfitrion, documento_id } = req.params;
-  const { id_punto_venta, limit } = req.query;
-  const limite = Math.min(Math.max(Number(limit || 80), 1), 150);
-
-  if (!periodo || !id_anfitrion || !documento_id) {
-    return res.status(400).json({
-      success: false,
-      message: 'Faltan parametros requeridos para buscar encomiendas clonables'
-    });
-  }
-
-  try {
-    const periodos = obtenerUltimosPeriodos(periodo, 3);
-    const params = [
-      ...periodos,
-      id_anfitrion,
-      documento_id,
-      limite
-    ];
-    const idUsuarioParam = periodos.length + 1;
-    const documentoParam = periodos.length + 2;
-    const limiteParam = periodos.length + 3;
-    let puntoVentaParam = null;
-
-    if (id_punto_venta) {
-      params.push(id_punto_venta);
-      puntoVentaParam = params.length;
-    }
-
-    const joinRutaClonar = `
-      LEFT JOIN (
-        SELECT id_usuario AS ruta_id_usuario,
-               documento_id AS ruta_documento_id,
-               id_ruta AS ruta_id_ruta,
-               nombre AS nombre_ruta
-          FROM mve_transruta
-      ) ruta
-        ON ruta.ruta_id_usuario = venta.id_usuario
-       AND ruta.ruta_documento_id = venta.documento_id
-       AND ruta.ruta_id_ruta = venta.id_ruta
-    `;
-    const selectsPorPeriodo = periodos.map((_, index) => `
-      SELECT ${columnasVentaTrans},
-             ruta.nombre_ruta,
-             venta.periodo AS periodo_origen
-        FROM mve_transventa venta
-        ${joinRutaClonar}
-       WHERE venta.periodo = $${index + 1}
-         AND venta.id_usuario = $${idUsuarioParam}
-         AND venta.documento_id = $${documentoParam}
-         AND venta.tipo_operacion = 'E'
-         ${puntoVentaParam ? `AND venta.id_punto_venta = $${puntoVentaParam}` : ''}
-    `).join(' UNION ALL ');
-
-    const query = `
-      SELECT *
-        FROM (
-          ${selectsPorPeriodo}
-        ) encomiendas
-       ORDER BY r_fecemi DESC, r_serie, r_numero DESC, elemento
-       LIMIT $${limiteParam}
-    `;
-
-    const result = await pool.query(query, params);
-
-    return res.status(200).json({
-      success: true,
-      data: result.rows
-    });
-  } catch (error) {
-    console.error('Error al buscar encomiendas para clonar:', error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error interno del servidor'
-    });
-  }
-};
-
 const actualizarVentaTrans = async (req, res) => {
   const {
     periodo, id_usuario, id_anfitrion, id_invitado, documento_id,
@@ -1191,7 +1110,6 @@ module.exports = {
   crearVentaTrans,
   obtenerVentasTrans,
   obtenerVentaTrans,
-  clonarEncomienda,
   actualizarVentaTrans,
   anularVentaTrans,
   eliminarVentaTrans,
