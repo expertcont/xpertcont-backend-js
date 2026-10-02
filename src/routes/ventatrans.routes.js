@@ -6,13 +6,9 @@ const {
   obtenerVentasTrans,
   obtenerVentaTrans,
   clonarEncomienda,
-  listarEncomiendasPorEntregar,
   actualizarVentaTrans,
   anularVentaTrans,
   eliminarVentaTrans,
-  registrarEntregaEncomienda,
-  liberarContraEncomienda,
-  registrarLlegadaRealEncomienda,
   generarCPEexpertcontTransporte
 } = require('../controllers/ventatrans.controllers');
 
@@ -40,6 +36,14 @@ const {
   corregirRdiRechazadoTransporte,
   obtenerResumenesCPEexpertcontTransporte,
 } = require('../controllers/transporte/sunat.controller');
+
+// Operacion de encomiendas en agencia destino: viven en controllers/transporte.
+const {
+  listarEncomiendasPorEntregar,
+  registrarEntregaEncomienda,
+  liberarContraEncomienda,
+  registrarLlegadaRealEncomienda,
+} = require('../controllers/transporte/entrega.controller');
 
 const {
   listarGremTransporte,
