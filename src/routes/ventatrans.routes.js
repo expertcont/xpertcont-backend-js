@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const router = Router();
 
+// Nucleo comun de mve_transventa (encomienda 'E' y boleto 'B').
 const {
   crearVentaTrans,
   obtenerVentasTrans,
@@ -8,7 +9,7 @@ const {
   actualizarVentaTrans,
   anularVentaTrans,
   eliminarVentaTrans
-} = require('../controllers/ventatrans.controllers');
+} = require('../controllers/transporte/transventa.controller');
 
 // Dashboard de transporte: vive en controllers/transporte, separado del legacy.
 const {
