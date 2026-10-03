@@ -834,7 +834,6 @@ const obtenerConsolidadoCaja = async (req, res) => {
         FROM mve_transventa tv
         WHERE tv.id_usuario = $1
           AND tv.documento_id = $2
-          AND tv.periodo = $3
           AND tv.tipo_operacion = 'E'
           AND ${condicionPorCobrarVentaSql}
           AND tv.entrega_fecha IS NOT NULL
@@ -853,7 +852,6 @@ const obtenerConsolidadoCaja = async (req, res) => {
         FROM mve_transventa tv
         WHERE tv.id_usuario = $1
           AND tv.documento_id = $2
-          AND tv.periodo = $3
           AND tv.tipo_operacion = 'E'
           AND ${condicionPorCobrarVentaSql}
           AND tv.entrega_fecha IS NOT NULL
@@ -1110,10 +1108,9 @@ const listarIngresosEncomiendasCaja = async (req, res) => {
           LEFT JOIN mad_punto_venta punto_destino
             ON punto_destino.id_usuario = tv.id_usuario
            AND punto_destino.documento_id = tv.documento_id
-           AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
+          AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
           WHERE tv.id_usuario = $1
             AND tv.documento_id = $2
-            AND tv.periodo = $3
             AND tv.tipo_operacion = 'E'
             AND ${condicionPorCobrarVentaSql}
             AND tv.entrega_fecha IS NOT NULL
