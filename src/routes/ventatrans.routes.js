@@ -55,6 +55,26 @@ const {
   generarCPEexpertcontTransporte,
 } = require('../controllers/transporte/cpe.controller');
 
+// Operaciones propias de boleto: listado acotado a boletos, que es el insumo de un
+// manifiesto. El alta sigue en el nucleo comun (POST /mve_transventa) porque
+// comparte contrato con la encomienda.
+const {
+  listarBoletos,
+} = require('../controllers/transporte/boleto.controller');
+
+// Manifiesto de pasajeros. Se llama transmanifiesto y no manifiesto para no
+// confundirse con routes/manifiesto.routes.js, que es el manifiesto legado de
+// otra base (/manifiestodet, /manifiestocarga, ...).
+const {
+  listarBoletosDisponibles,
+  obtenerManifiestos,
+  obtenerManifiesto,
+  crearManifiesto,
+  agregarPasajero,
+  quitarPasajero,
+  cerrarManifiesto,
+} = require('../controllers/transporte/transmanifiesto.controller');
+
 const {
   listarGremTransporte,
   obtenerUbigeosGremTransporte,
@@ -132,6 +152,41 @@ router.get(
   '/mve_transventa/dashboard/:periodo/:id_anfitrion/:documento_id/:dia',
   obtenerDashboardTransporte
 );
+
+// Listado propio de boletos. Va ANTES de los listados genericos de :periodo:
+// Express compara en orden y "/mve_transventa/boletos/..." seria tomado como
+// periodo = "boletos" por la ruta de abajo.
+router.get(
+  '/mve_transventa/boletos/:periodo/:id_anfitrion/:documento_id/:dia',
+  listarBoletos
+);
+
+router.get(
+  '/mve_transventa/boletos/:periodo/:id_anfitrion/:documento_id/:dia/:id_punto_venta',
+  listarBoletos
+);
+
+// ---------------------------------------------------------------------------
+// Manifiesto de pasajeros (transmanifiesto).
+//
+// Todas van antes de los listados genericos de :periodo. Ademas, la ruta
+// estatica boletos-disponibles va antes que la parametrizada del manifiesto:
+// si hiciera al reves, Express leeria "boletos-disponibles" como un id.
+// ---------------------------------------------------------------------------
+router.get(
+  '/mve_transmanifiesto/boletos-disponibles',
+  listarBoletosDisponibles
+);
+
+router.get('/mve_transmanifiesto', obtenerManifiestos);
+router.post('/mve_transmanifiesto', crearManifiesto);
+
+router.get('/mve_transmanifiesto/:id_manifiesto', obtenerManifiesto);
+
+router.post('/mve_transmanifiesto/:id_manifiesto/pasajero', agregarPasajero);
+router.delete('/mve_transmanifiesto/:id_manifiesto/pasajero', quitarPasajero);
+
+router.put('/mve_transmanifiesto/:id_manifiesto/cerrar', cerrarManifiesto);
 
 router.get(
   '/mve_transventa/:periodo/:id_anfitrion/:documento_id/:dia/:id_punto_venta',

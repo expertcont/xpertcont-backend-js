@@ -81,8 +81,13 @@ const obtenerOperacionCreada = async ({
 
 // Listado de operaciones. El estado decide si se filtran las anuladas; dia = '*'
 // no acota por fecha e idPuntoVenta, cuando viene, acota por punto de venta.
+//
+// tipoOperacion es opcional: si no se pasa, el SQL queda exactamente igual al de
+// siempre, que sirve tanto a encomienda como a boleto. Lo usa el listado propio de
+// boletos para no traer las encomiendas y que el frontend las descarte.
 const obtenerOperaciones = async ({
   periodo, id_anfitrion, documento_id, estadoListado, dia, idPuntoVenta,
+  tipoOperacion,
 }) => {
     let query = `
       SELECT ${columnasVentaTransDesde('tv')},
@@ -115,6 +120,11 @@ const obtenerOperaciones = async ({
       query += ` AND COALESCE(tv.registrado, 1) = 0 `;
     } else if (!['todos', 'all', '*'].includes(estadoListado)) {
       query += ` AND COALESCE(tv.registrado, 1) = 1 `;
+    }
+
+    if (tipoOperacion) {
+      params.push(tipoOperacion);
+      query += ` AND tv.tipo_operacion = $${params.length} `;
     }
 
     if (dia !== '*') {

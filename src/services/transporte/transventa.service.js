@@ -4,10 +4,11 @@
 // que rama corresponde, valida, calcula tributos y coordina; el SQL vive en el
 // repository y el HTTP en el controller.
 //
-// La rama de boleto todavia no esta conectada a su funcion PostgreSQL y devuelve
-// 501. Ese comportamiento se conserva tal cual.
+// La rama de encomienda vive aca. La de boleto tiene su propio service porque
+// resuelve la ruta y el precio de pasaje antes de grabar.
 const { normalizarTexto } = require('../../utils/texto');
 const repository = require('../../repositories/transporte/transventa.repository');
+const boletoService = require('./boleto.service');
 
 // ---------------------------------------------------------------------------
 // Reglas transversales
@@ -136,8 +137,15 @@ const crearVentaTrans = async (reqBody) => {
     }
   }
 
-  // Boletos se conectaran a su propia funcion PostgreSQL.
-  return { status: 501, body: { success: false, message: 'La funcion PostgreSQL para boletos aun no esta conectada' } };
+  // Boleto de transporte: su propio service, que resuelve la ruta y el precio
+  // de pasaje antes de grabar.
+  if (tipoOperacionBody === 'B') {
+    return boletoService.crearBoleto(reqBody);
+  }
+
+  // validarTipoOperacion ya descarto todo lo que no sea 'B' o 'E', asi que esta
+  // linea es solo una salvaguarda.
+  return { status: 400, body: { success: false, message: 'Tipo de operacion no valido. Use B=Boleto o E=Encomienda' } };
 };
 
 // ---------------------------------------------------------------------------
