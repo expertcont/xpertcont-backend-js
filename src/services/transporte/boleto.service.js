@@ -33,6 +33,7 @@ const crearBoleto = async (reqBody = {}) => {
     cliente,
     cliente_telefono,
     asiento,
+    id_manifiesto,
     elemento,
     id_invitado,
     ctrl_crea_us,
@@ -98,6 +99,7 @@ const crearBoleto = async (reqBody = {}) => {
       cliente,
       cliente_telefono: cliente_telefono || null,
       asiento: asiento || null,
+      id_manifiesto: id_manifiesto || null,
       elemento: elemento === undefined || elemento === null ? 1 : elemento,
       ctrl_crea_us: id_invitado || ctrl_crea_us || null,
     };
@@ -111,6 +113,21 @@ const crearBoleto = async (reqBody = {}) => {
     }
 
     let data = await repository.grabarBoleto(payload);
+
+    if (data && id_manifiesto) {
+      data = await repository.vincularBoletoAManifiesto({
+        periodo: data.periodo || payload.periodo,
+        id_usuario: data.id_usuario || idUsuario,
+        documento_id: data.documento_id || documento_id,
+        r_cod: data.r_cod,
+        r_serie: data.r_serie,
+        r_numero: data.r_numero,
+        elemento: data.elemento,
+        id_manifiesto,
+        asiento: asiento || null,
+        ctrl_mod_us: id_invitado || ctrl_crea_us || null,
+      }) || data;
+    }
 
     // La funcion devuelve la fila cruda. Se relee con la proyeccion
     // normalizada para que el alta del boleto tenga la misma forma que el

@@ -54,6 +54,36 @@ const obtenerOperacionBoleto = async ({
   return result.rows;
 };
 
+const vincularBoletoAManifiesto = async ({
+  periodo, id_usuario, documento_id,
+  r_cod, r_serie, r_numero, elemento,
+  id_manifiesto, asiento, ctrl_mod_us,
+}) => {
+  const result = await pool.query(
+    `UPDATE mve_transventa
+        SET id_manifiesto = $8,
+            asiento = COALESCE($9, asiento),
+            ctrl_mod = CURRENT_TIMESTAMP,
+            ctrl_mod_us = COALESCE($10, ctrl_mod_us)
+      WHERE periodo = $1
+        AND id_usuario = $2
+        AND documento_id = $3
+        AND r_cod = $4
+        AND r_serie = $5
+        AND r_numero = $6
+        AND elemento = $7
+        AND tipo_operacion = 'B'
+    RETURNING ${columnasVentaTrans}`,
+    [
+      periodo, id_usuario, documento_id,
+      r_cod, r_serie, r_numero, elemento,
+      id_manifiesto, asiento || null, ctrl_mod_us || null,
+    ]
+  );
+
+  return result.rows[0] || null;
+};
+
 // ===========================================================================
 // Lo del MANIFIESTO vive en su propio modulo:
 //   repositories/transporte/manifiesto.repository.js
@@ -66,4 +96,5 @@ module.exports = {
   obtenerRutaPorIdRuta,
   grabarBoleto,
   obtenerOperacionBoleto,
+  vincularBoletoAManifiesto,
 };

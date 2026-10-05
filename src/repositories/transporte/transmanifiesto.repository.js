@@ -10,7 +10,7 @@
 // transplaca, transcaja) y el prefijo de ruta y de tabla tambien lo lleva.
 //
 // El manifiesto NO tiene tabla de detalle: su detalle son los boletos que lo
-// apuntan con mve_transventa.manifiesto_id. Asi los datos del pasajero viven en un
+// apuntan con mve_transventa.id_manifiesto. Asi los datos del pasajero viven en un
 // solo lugar y no hay que sincronizar nada entre dos tablas.
 // ===========================================================================
 const pool = require('../../db');
@@ -31,7 +31,7 @@ const listarBoletosDisponibles = async ({
     'tv.id_usuario = $2',
     'tv.documento_id = $3',
     `tv.tipo_operacion = 'B'`,
-    'tv.manifiesto_id IS NULL',
+    'tv.id_manifiesto IS NULL',
   ];
 
   if (fecha) {
@@ -92,7 +92,7 @@ const obtenerPasajerosDelManifiesto = async ({ id_manifiesto }) => {
          ON ruta.ruta_id_usuario = tv.id_usuario
         AND ruta.ruta_documento_id = tv.documento_id
         AND ruta.ruta_id_ruta = tv.id_ruta
-      WHERE tv.manifiesto_id = $1
+      WHERE tv.id_manifiesto = $1
         AND tv.tipo_operacion = 'B'
       ORDER BY COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp) DESC,
                NULLIF(REGEXP_REPLACE(tv.r_numero, '\\D', '', 'g'), '')::bigint DESC NULLS LAST,
@@ -105,7 +105,7 @@ const obtenerPasajerosDelManifiesto = async ({ id_manifiesto }) => {
 };
 
 // Manifiestos de una empresa. Los filtros de fecha y estado son opcionales.
-const obtenerManifiestos = async ({ id_usuario, documento_id, periodo, fecha, estado }) => {
+const obtenerManifiestos = async ({ id_usuario, documento_id, periodo, fecha, estado, idPuntoVenta }) => {
   const params = [id_usuario, documento_id];
   const condiciones = ['m.id_usuario = $1', 'm.documento_id = $2'];
 
@@ -124,10 +124,15 @@ const obtenerManifiestos = async ({ id_usuario, documento_id, periodo, fecha, es
     condiciones.push(`m.estado = $${params.length}`);
   }
 
+  if (idPuntoVenta) {
+    params.push(idPuntoVenta);
+    condiciones.push(`m.id_punto_venta = $${params.length}`);
+  }
+
   const query = `SELECT m.*,
        (SELECT COUNT(*)::integer
           FROM mve_transventa tv
-         WHERE tv.manifiesto_id = m.id_manifiesto) AS total_pasajeros
+         WHERE tv.id_manifiesto = m.id_manifiesto) AS total_pasajeros
   FROM mve_transmanifiesto m
  WHERE ${condiciones.join('\n   AND ')}
  ORDER BY m.fecha DESC, m.id_manifiesto DESC`;
@@ -143,7 +148,7 @@ const obtenerManifiesto = async ({ id_manifiesto }) => {
     `SELECT m.*,
        (SELECT COUNT(*)::integer
           FROM mve_transventa tv
-         WHERE tv.manifiesto_id = m.id_manifiesto) AS total_pasajeros
+         WHERE tv.id_manifiesto = m.id_manifiesto) AS total_pasajeros
   FROM mve_transmanifiesto m
  WHERE m.id_manifiesto = $1`,
     [id_manifiesto]
@@ -154,24 +159,24 @@ const obtenerManifiesto = async ({ id_manifiesto }) => {
 
 const crearManifiesto = async (datos) => {
   const {
-    id_usuario, documento_id, periodo, fecha,
-    id_punto_venta, id_punto_venta_dest, ruta_nombre,
-    placa, licencia, chofer, ctrl_crea_us,
+    id_usuario, documento_id, periodo, fecha, hora_salida,
+    id_ruta, id_punto_venta, id_punto_venta_dest,
+    placa, licencia, observacion, ctrl_crea_us,
   } = datos;
 
   const result = await pool.query(
     `INSERT INTO mve_transmanifiesto (
-       id_usuario, documento_id, periodo, fecha,
-       id_punto_venta, id_punto_venta_dest, ruta_nombre,
-       placa, licencia, chofer,
+       id_usuario, documento_id, periodo, fecha, hora_salida,
+       id_ruta, id_punto_venta, id_punto_venta_dest,
+       placa, licencia, observacion,
        estado, ctrl_crea, ctrl_crea_us
      )
-     VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,'ABIERTO',CURRENT_TIMESTAMP,$11)
+     VALUES ($1,$2,$3,$4::date,NULLIF($5, '')::time,$6,$7,$8,$9,$10,$11,'ABIERTO',CURRENT_TIMESTAMP,$12)
      RETURNING *`,
     [
-      id_usuario, documento_id, periodo, fecha,
-      id_punto_venta, id_punto_venta_dest || null, ruta_nombre || null,
-      placa || null, licencia || null, chofer || null,
+      id_usuario, documento_id, periodo, fecha, hora_salida || null,
+      id_ruta, id_punto_venta, id_punto_venta_dest || null,
+      placa || null, licencia || null, observacion || null,
       ctrl_crea_us || null,
     ]
   );
@@ -184,7 +189,7 @@ const crearManifiesto = async (datos) => {
 // que el UPDATE de abajo no puede diferenciar.
 const obtenerManifiestoDeBoleto = async (clave) => {
   const result = await pool.query(
-    `SELECT manifiesto_id
+    `SELECT id_manifiesto
        FROM mve_transventa
       WHERE periodo = $1
         AND id_usuario = $2
@@ -215,7 +220,7 @@ const vincularPasajero = async ({
 }) => {
   const result = await pool.query(
     `UPDATE mve_transventa
-        SET manifiesto_id = $8,
+        SET id_manifiesto = $8,
             ctrl_mod = CURRENT_TIMESTAMP,
             ctrl_mod_us = COALESCE($9, ctrl_mod_us)
       WHERE periodo = $1
@@ -226,9 +231,9 @@ const vincularPasajero = async ({
         AND r_numero = $6
         AND elemento = $7
         AND tipo_operacion = 'B'
-        AND (manifiesto_id IS NULL OR manifiesto_id = $8)
+        AND (id_manifiesto IS NULL OR id_manifiesto = $8)
     RETURNING ${columnasVentaTrans},
-              manifiesto_id`,
+              id_manifiesto`,
     [
       periodo, id_usuario, documento_id, r_cod, r_serie, r_numero, elemento,
       id_manifiesto, ctrl_mod_us || null,
@@ -245,7 +250,7 @@ const desvincularPasajero = async ({
 }) => {
   const result = await pool.query(
     `UPDATE mve_transventa
-        SET manifiesto_id = NULL,
+        SET id_manifiesto = NULL,
             ctrl_mod = CURRENT_TIMESTAMP,
             ctrl_mod_us = COALESCE($9, ctrl_mod_us)
       WHERE periodo = $1
@@ -255,7 +260,7 @@ const desvincularPasajero = async ({
         AND r_serie = $5
         AND r_numero = $6
         AND elemento = $7
-        AND manifiesto_id = $8
+        AND id_manifiesto = $8
     RETURNING ${columnasVentaTrans}`,
     [
       periodo, id_usuario, documento_id, r_cod, r_serie, r_numero, elemento,

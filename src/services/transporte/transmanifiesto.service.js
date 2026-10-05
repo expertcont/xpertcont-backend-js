@@ -82,7 +82,7 @@ const listarBoletosDisponibles = async (reqBody = {}) => {
 };
 
 const obtenerManifiestos = async (reqBody = {}) => {
-  const { id_usuario, id_anfitrion, documento_id, periodo, fecha, estado } = reqBody;
+  const { id_usuario, id_anfitrion, documento_id, periodo, fecha, estado, id_punto_venta } = reqBody;
   const idUsuario = id_usuario || id_anfitrion;
 
   if (!idUsuario || !documento_id) {
@@ -99,6 +99,7 @@ const obtenerManifiestos = async (reqBody = {}) => {
       periodo: normalizarTexto(periodo) || null,
       fecha: normalizarTexto(fecha) || null,
       estado: normalizarTexto(estado).toUpperCase() || null,
+      idPuntoVenta: normalizarTexto(id_punto_venta) || null,
     });
 
     return { status: 200, body: { success: true, data: rows } };
@@ -150,14 +151,14 @@ const obtenerManifiesto = async ({ id_manifiesto }) => {
 
 const crearManifiesto = async (reqBody = {}) => {
   const {
-    id_usuario, id_anfitrion, documento_id, fecha,
-    id_punto_venta, id_punto_venta_dest, ruta_nombre,
-    placa, licencia, chofer, ctrl_crea_us, id_invitado,
+    id_usuario, id_anfitrion, documento_id, fecha, periodo,
+    hora_salida, id_ruta, id_punto_venta, id_punto_venta_dest,
+    placa, licencia, observacion, ctrl_crea_us, id_invitado,
   } = reqBody;
 
   const idUsuario = id_usuario || id_anfitrion;
 
-  if (!idUsuario || !documento_id || !fecha || !id_punto_venta) {
+  if (!idUsuario || !documento_id || !fecha || !id_ruta || !id_punto_venta || !id_punto_venta_dest) {
     return {
       status: 400,
       body: { success: false, message: 'Faltan datos requeridos para crear el manifiesto' }
@@ -178,14 +179,15 @@ const crearManifiesto = async (reqBody = {}) => {
     const manifiesto = await repository.crearManifiesto({
       id_usuario: idUsuario,
       documento_id,
-      periodo: normalizarTexto(fecha).slice(0, 7),
+      periodo: normalizarTexto(periodo) || normalizarTexto(fecha).slice(0, 7),
       fecha,
+      hora_salida,
+      id_ruta,
       id_punto_venta,
       id_punto_venta_dest,
-      ruta_nombre,
       placa,
       licencia,
-      chofer,
+      observacion,
       ctrl_crea_us: ctrl_crea_us || id_invitado,
     });
 
