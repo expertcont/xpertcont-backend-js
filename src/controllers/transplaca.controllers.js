@@ -16,7 +16,8 @@ const listarPlacasTransporte = async (req, res) => {
              documento_id,
              placa,
              marca,
-             certificado
+             certificado,
+             asientos
         FROM mve_transplaca
        WHERE id_usuario = $1
          AND documento_id = $2
@@ -39,7 +40,8 @@ const crearPlacaTransporte = async (req, res) => {
     documento_id,
     placa,
     marca,
-    certificado
+    certificado,
+    asientos
   } = req.body;
 
   if (!id_anfitrion || !documento_id || !placa) {
@@ -56,16 +58,18 @@ const crearPlacaTransporte = async (req, res) => {
         documento_id,
         placa,
         marca,
-        certificado
+        certificado,
+        asientos
       )
-      VALUES ($1,$2,$3,$4,$5)
+      VALUES ($1,$2,$3,$4,$5,$6)
       RETURNING *
     `, [
       id_anfitrion,
       documento_id,
       String(placa).trim().toUpperCase(),
       marca || null,
-      certificado || null
+      certificado || null,
+      asientos === undefined || asientos === null || asientos === '' ? null : Number(asientos)
     ]);
 
     return res.status(200).json({ success: true, data: result.rows[0] });
@@ -84,7 +88,8 @@ const actualizarPlacaTransporte = async (req, res) => {
     documento_id,
     placa,
     marca,
-    certificado
+    certificado,
+    asientos
   } = req.body;
 
   if (!id_anfitrion || !documento_id || !placa) {
@@ -98,7 +103,8 @@ const actualizarPlacaTransporte = async (req, res) => {
     const result = await pool.query(`
       UPDATE mve_transplaca
          SET marca = COALESCE($4, marca),
-             certificado = COALESCE($5, certificado)
+             certificado = COALESCE($5, certificado),
+             asientos = COALESCE($6, asientos)
        WHERE id_usuario = $1
          AND documento_id = $2
          AND placa = $3
@@ -108,7 +114,8 @@ const actualizarPlacaTransporte = async (req, res) => {
       documento_id,
       String(placa).trim().toUpperCase(),
       marca || null,
-      certificado || null
+      certificado || null,
+      asientos === undefined || asientos === null || asientos === '' ? null : Number(asientos)
     ]);
 
     if (result.rows.length === 0) {
