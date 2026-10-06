@@ -369,6 +369,51 @@ const cerrarManifiesto = async ({ id_manifiesto, placa, licencia, ctrl_mod_us, i
   }
 };
 
+const reabrirManifiesto = async ({ id_manifiesto, ctrl_mod_us, id_invitado }) => {
+  if (!id_manifiesto) {
+    return {
+      status: 400,
+      body: { success: false, message: 'Falta el manifiesto a reabrir' }
+    };
+  }
+
+  try {
+    const manifiesto = await repository.obtenerManifiesto({ id_manifiesto: Number(id_manifiesto) });
+
+    if (!manifiesto) {
+      return { status: 404, body: { success: false, message: 'Manifiesto no encontrado' } };
+    }
+
+    if (manifiesto.estado === 'ABIERTO') {
+      return { status: 200, body: { success: true, data: manifiesto } };
+    }
+
+    if (manifiesto.estado !== 'CERRADO') {
+      return {
+        status: 409,
+        body: { success: false, message: `El manifiesto esta ${manifiesto.estado} y no se puede reabrir` }
+      };
+    }
+
+    const abierto = await repository.reabrirManifiesto({
+      id_manifiesto: Number(id_manifiesto),
+      ctrl_mod_us: ctrl_mod_us || id_invitado,
+    });
+
+    return { status: 200, body: { success: true, data: abierto } };
+  } catch (error) {
+    if (/transmanifiesto_unico_abierto_ux/.test(error.message || '')) {
+      return {
+        status: 409,
+        body: { success: false, message: 'Ya existe un manifiesto abierto para esa fecha, agencia y destino' }
+      };
+    }
+
+    console.error('Error al reabrir manifiesto:', error);
+    return { status: 500, body: { success: false, message: error.message || 'Error interno del servidor' } };
+  }
+};
+
 const eliminarManifiesto = async ({ id_manifiesto }) => {
   if (!id_manifiesto) {
     return {
@@ -408,5 +453,6 @@ module.exports = {
   agregarPasajero,
   quitarPasajero,
   cerrarManifiesto,
+  reabrirManifiesto,
   eliminarManifiesto,
 };

@@ -287,6 +287,20 @@ const cerrarManifiesto = async ({ id_manifiesto, placa, licencia, ctrl_mod_us })
   return result.rows[0] || null;
 };
 
+const reabrirManifiesto = async ({ id_manifiesto, ctrl_mod_us }) => {
+  const result = await pool.query(
+    `UPDATE mve_transmanifiesto
+        SET estado = 'ABIERTO',
+            ctrl_mod = CURRENT_TIMESTAMP,
+            ctrl_mod_us = COALESCE($2, ctrl_mod_us)
+      WHERE id_manifiesto = $1
+    RETURNING *`,
+    [id_manifiesto, ctrl_mod_us || null]
+  );
+
+  return result.rows[0] || null;
+};
+
 const eliminarManifiesto = async ({ id_manifiesto }) => {
   const client = await pool.connect();
 
@@ -327,5 +341,6 @@ module.exports = {
   vincularPasajero,
   desvincularPasajero,
   cerrarManifiesto,
+  reabrirManifiesto,
   eliminarManifiesto,
 };
