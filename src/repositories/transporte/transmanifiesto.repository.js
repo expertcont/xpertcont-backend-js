@@ -271,15 +271,17 @@ const desvincularPasajero = async ({
   return result.rows[0] || null;
 };
 
-const cerrarManifiesto = async ({ id_manifiesto, ctrl_mod_us }) => {
+const cerrarManifiesto = async ({ id_manifiesto, placa, licencia, ctrl_mod_us }) => {
   const result = await pool.query(
     `UPDATE mve_transmanifiesto
         SET estado = 'CERRADO',
+            placa = COALESCE(NULLIF($2, ''), placa),
+            licencia = COALESCE(NULLIF($3, ''), licencia),
             ctrl_mod = CURRENT_TIMESTAMP,
-            ctrl_mod_us = COALESCE($2, ctrl_mod_us)
+            ctrl_mod_us = COALESCE($4, ctrl_mod_us)
       WHERE id_manifiesto = $1
     RETURNING *`,
-    [id_manifiesto, ctrl_mod_us || null]
+    [id_manifiesto, placa || null, licencia || null, ctrl_mod_us || null]
   );
 
   return result.rows[0] || null;

@@ -316,7 +316,7 @@ const quitarPasajero = async ({ id_manifiesto, ...reqBody }) => {
   }
 };
 
-const cerrarManifiesto = async ({ id_manifiesto, ctrl_mod_us, id_invitado }) => {
+const cerrarManifiesto = async ({ id_manifiesto, placa, licencia, ctrl_mod_us, id_invitado }) => {
   if (!id_manifiesto) {
     return {
       status: 400,
@@ -338,6 +338,16 @@ const cerrarManifiesto = async ({ id_manifiesto, ctrl_mod_us, id_invitado }) => 
       };
     }
 
+    const placaFinal = normalizarTexto(placa) || normalizarTexto(manifiesto.placa);
+    const licenciaFinal = normalizarTexto(licencia) || normalizarTexto(manifiesto.licencia);
+
+    if (!placaFinal || !licenciaFinal) {
+      return {
+        status: 409,
+        body: { success: false, message: 'Indica placa y licencia antes de cerrar el manifiesto' }
+      };
+    }
+
     if (!Number(manifiesto.total_pasajeros || 0)) {
       return {
         status: 409,
@@ -347,6 +357,8 @@ const cerrarManifiesto = async ({ id_manifiesto, ctrl_mod_us, id_invitado }) => 
 
     const cerrado = await repository.cerrarManifiesto({
       id_manifiesto: Number(id_manifiesto),
+      placa: placaFinal,
+      licencia: licenciaFinal,
       ctrl_mod_us: ctrl_mod_us || id_invitado,
     });
 
