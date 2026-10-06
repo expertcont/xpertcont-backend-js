@@ -80,6 +80,16 @@ const cerrarManifiesto = async (req, res) => {
   return res.status(respuesta.status).json(respuesta.body);
 };
 
+const eliminarManifiesto = async (req, res) => {
+  const respuesta = await service.eliminarManifiesto({
+    ...req.query,
+    ...req.body,
+    id_manifiesto: req.params.id_manifiesto,
+  });
+
+  return res.status(respuesta.status).json(respuesta.body);
+};
+
 module.exports = {
   listarBoletosDisponibles,
   obtenerManifiestos,
@@ -88,4 +98,5 @@ module.exports = {
   agregarPasajero,
   quitarPasajero,
   cerrarManifiesto,
+  eliminarManifiesto,
 };

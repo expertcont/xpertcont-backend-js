@@ -287,6 +287,36 @@ const cerrarManifiesto = async ({ id_manifiesto, placa, licencia, ctrl_mod_us })
   return result.rows[0] || null;
 };
 
+const eliminarManifiesto = async ({ id_manifiesto }) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `UPDATE mve_transventa
+          SET id_manifiesto = NULL,
+              ctrl_mod = CURRENT_TIMESTAMP
+        WHERE id_manifiesto = $1`,
+      [id_manifiesto]
+    );
+
+    const result = await client.query(
+      `DELETE FROM mve_transmanifiesto
+        WHERE id_manifiesto = $1
+      RETURNING *`,
+      [id_manifiesto]
+    );
+
+    await client.query('COMMIT');
+    return result.rows[0] || null;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   listarBoletosDisponibles,
   obtenerPasajerosDelManifiesto,
@@ -297,4 +327,5 @@ module.exports = {
   vincularPasajero,
   desvincularPasajero,
   cerrarManifiesto,
+  eliminarManifiesto,
 };

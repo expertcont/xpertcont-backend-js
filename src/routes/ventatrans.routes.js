@@ -73,6 +73,7 @@ const {
   agregarPasajero,
   quitarPasajero,
   cerrarManifiesto,
+  eliminarManifiesto,
 } = require('../controllers/transporte/transmanifiesto.controller');
 
 const {
@@ -187,6 +188,7 @@ router.post('/mve_transmanifiesto/:id_manifiesto/pasajero', agregarPasajero);
 router.delete('/mve_transmanifiesto/:id_manifiesto/pasajero', quitarPasajero);
 
 router.put('/mve_transmanifiesto/:id_manifiesto/cerrar', cerrarManifiesto);
+router.delete('/mve_transmanifiesto/:id_manifiesto', eliminarManifiesto);
 
 router.get(
   '/mve_transventa/:periodo/:id_anfitrion/:documento_id/:dia/:id_punto_venta',

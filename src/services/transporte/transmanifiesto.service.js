@@ -369,6 +369,37 @@ const cerrarManifiesto = async ({ id_manifiesto, placa, licencia, ctrl_mod_us, i
   }
 };
 
+const eliminarManifiesto = async ({ id_manifiesto }) => {
+  if (!id_manifiesto) {
+    return {
+      status: 400,
+      body: { success: false, message: 'Falta el manifiesto a eliminar' }
+    };
+  }
+
+  try {
+    const manifiesto = await repository.obtenerManifiesto({ id_manifiesto: Number(id_manifiesto) });
+
+    if (!manifiesto) {
+      return { status: 404, body: { success: false, message: 'Manifiesto no encontrado' } };
+    }
+
+    if (manifiesto.estado === 'CERRADO') {
+      return {
+        status: 409,
+        body: { success: false, message: 'No se puede eliminar un manifiesto cerrado' }
+      };
+    }
+
+    const eliminado = await repository.eliminarManifiesto({ id_manifiesto: Number(id_manifiesto) });
+
+    return { status: 200, body: { success: true, data: eliminado } };
+  } catch (error) {
+    console.error('Error al eliminar manifiesto:', error);
+    return { status: 500, body: { success: false, message: error.message || 'Error interno del servidor' } };
+  }
+};
+
 module.exports = {
   listarBoletosDisponibles,
   obtenerManifiestos,
@@ -377,4 +408,5 @@ module.exports = {
   agregarPasajero,
   quitarPasajero,
   cerrarManifiesto,
+  eliminarManifiesto,
 };
