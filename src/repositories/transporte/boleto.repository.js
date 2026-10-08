@@ -32,6 +32,82 @@ const grabarBoleto = async (data) => {
   return result.rows[0]?.data || null;
 };
 
+// Recupera un boleto anulado del mismo manifiesto antes de generar correlativo
+// nuevo. Asi el manifiesto conserva sus numeros: si nadie ocupa ese lugar,
+// registrado = 0 queda como anulado para que el RDI lo procese con su regla.
+const recuperarBoletoLiberado = async (data) => {
+  const query = `
+    WITH boleto_liberado AS (
+      SELECT periodo, id_usuario, documento_id, r_cod, r_serie, r_numero, elemento
+        FROM mve_transventa
+       WHERE id_usuario = $1
+         AND documento_id = $2
+         AND tipo_operacion = 'B'
+         AND COALESCE(registrado, 1) = 0
+         AND COALESCE(numero_rdi, '') = ''
+         AND COALESCE(r_vfirmado, '') = ''
+         AND id_ruta = $3
+         AND r_fecemi = $4::date
+         AND r_cod = $5
+         AND r_serie = $6
+         AND COALESCE(id_punto_venta, '') = COALESCE($7, COALESCE(id_punto_venta, ''))
+         AND COALESCE(id_punto_venta_dest, '') = COALESCE($8, COALESCE(id_punto_venta_dest, ''))
+         AND COALESCE(id_manifiesto::text, '') = COALESCE($9::text, '')
+       ORDER BY CASE WHEN asiento ~ '^[0-9]+$' THEN asiento::integer END NULLS LAST, r_numero
+       LIMIT 1
+    )
+    UPDATE mve_transventa tv
+       SET registrado = 1,
+           cliente_id_doc = $10,
+           cliente_documento_id = $11,
+           cliente = $12,
+           cliente_telefono = $13,
+           cliente_direccion_fact = $14,
+           ref_pasajero_dni = $15,
+           ref_pasajero_nombres = $16,
+           id_manifiesto = $9,
+           precio_neto = $17::numeric,
+           r_gravado = 0,
+           r_exonerado = $17::numeric,
+           r_igv = 0,
+           r_monto_total = $17::numeric,
+           porc_igv = 0,
+           ctrl_mod = CURRENT_TIMESTAMP,
+           ctrl_mod_us = COALESCE($18, ctrl_mod_us)
+      FROM boleto_liberado bl
+     WHERE tv.periodo = bl.periodo
+       AND tv.id_usuario = bl.id_usuario
+       AND tv.documento_id = bl.documento_id
+       AND tv.r_cod = bl.r_cod
+       AND tv.r_serie = bl.r_serie
+       AND tv.r_numero = bl.r_numero
+       AND tv.elemento = bl.elemento
+    RETURNING ${columnasVentaTrans}`;
+
+  const result = await pool.query(query, [
+    data.id_usuario,
+    data.documento_id,
+    data.id_ruta,
+    data.r_fecemi,
+    data.r_cod,
+    data.r_serie,
+    data.id_punto_venta || null,
+    data.id_punto_venta_dest || null,
+    data.id_manifiesto || null,
+    data.id_documento,
+    data.cliente_documento,
+    data.cliente,
+    data.cliente_telefono || null,
+    data.cliente_direccion_fact || null,
+    data.ref_pasajero_dni || null,
+    data.ref_pasajero_nombres || null,
+    data.precio_pasaje,
+    data.ctrl_crea_us || null,
+  ]);
+
+  return result.rows[0] || null;
+};
+
 // Relee la operacion recien creada con la proyeccion normalizada, la misma que
 // usan el listado y el detalle. Es una lectura: la fila ya quedo escrita por la
 // funcion PostgreSQL, no se vuelve a modificar.
@@ -172,6 +248,7 @@ const actualizarBoleto = async ({
 module.exports = {
   obtenerRutaPorIdRuta,
   grabarBoleto,
+  recuperarBoletoLiberado,
   obtenerOperacionBoleto,
   vincularBoletoAManifiesto,
   actualizarBoleto,

@@ -118,6 +118,7 @@ const crearBoleto = async (reqBody = {}) => {
       id_manifiesto: id_manifiesto || null,
       elemento: elemento === undefined || elemento === null ? 1 : elemento,
       ctrl_crea_us: id_invitado || ctrl_crea_us || null,
+      precio_pasaje: ruta.precio_pasaje,
     };
 
     if (fechaServidor) {
@@ -128,7 +129,14 @@ const crearBoleto = async (reqBody = {}) => {
       payload.periodo = reqBody.periodo;
     }
 
-    let data = await repository.grabarBoleto(payload);
+    // Liberar asiento marca el boleto con registrado = 0. Si llega un pasajero
+    // nuevo al mismo manifiesto, se reactiva ese boleto para conservar el
+    // correlativo del viaje; si no existe, se genera un boleto nuevo.
+    let data = await repository.recuperarBoletoLiberado(payload);
+
+    if (!data) {
+      data = await repository.grabarBoleto(payload);
+    }
 
     if (data && id_manifiesto) {
       data = await repository.vincularBoletoAManifiesto({

@@ -83,10 +83,11 @@ const listarBoletosDisponibles = async ({
   return result.rows;
 };
 
-// Los pasajeros de un manifiesto: los boletos que lo apuntan. Usa la misma
+// Los pasajeros de un manifiesto: los boletos activos que lo apuntan. Usa la misma
 // proyeccion que el listado del nucleo, para que el pasajero se vea igual que en
 // cualquier otra pantalla. No hace falta el LEFT JOIN de RDI porque el boleto no
-// es documento fiscal.
+// es documento fiscal. Los registrado = 0 quedan dentro del manifiesto como
+// anulados para RDI/recuperacion, pero no ocupan asiento visualmente.
 const obtenerPasajerosDelManifiesto = async ({ id_manifiesto }) => {
   const result = await pool.query(
     `SELECT ${columnasVentaTransDesde('tv')},
@@ -114,6 +115,7 @@ const obtenerPasajerosDelManifiesto = async ({ id_manifiesto }) => {
         AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
       WHERE tv.id_manifiesto = $1
         AND tv.tipo_operacion = 'B'
+        AND COALESCE(tv.registrado, 1) = 1
       ORDER BY COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp) DESC,
                NULLIF(REGEXP_REPLACE(tv.r_numero, '\\D', '', 'g'), '')::bigint DESC NULLS LAST,
                tv.r_serie DESC,
@@ -152,7 +154,9 @@ const obtenerManifiestos = async ({ id_usuario, documento_id, periodo, fecha, es
   const query = `SELECT m.*,
        (SELECT COUNT(*)::integer
           FROM mve_transventa tv
-         WHERE tv.id_manifiesto = m.id_manifiesto) AS total_pasajeros
+         WHERE tv.id_manifiesto = m.id_manifiesto
+           AND tv.tipo_operacion = 'B'
+           AND COALESCE(tv.registrado, 1) = 1) AS total_pasajeros
   FROM mve_transmanifiesto m
  WHERE ${condiciones.join('\n   AND ')}
  ORDER BY m.fecha DESC, m.id_manifiesto DESC`;
@@ -168,7 +172,9 @@ const obtenerManifiesto = async ({ id_manifiesto }) => {
     `SELECT m.*,
        (SELECT COUNT(*)::integer
           FROM mve_transventa tv
-         WHERE tv.id_manifiesto = m.id_manifiesto) AS total_pasajeros
+         WHERE tv.id_manifiesto = m.id_manifiesto
+           AND tv.tipo_operacion = 'B'
+           AND COALESCE(tv.registrado, 1) = 1) AS total_pasajeros
   FROM mve_transmanifiesto m
  WHERE m.id_manifiesto = $1`,
     [id_manifiesto]

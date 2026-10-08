@@ -350,6 +350,8 @@ const eliminarOperacion = async ({
 };
 
 // Anulacion logica: la operacion sigue existiendo pero con registrado = 0.
+// En boletos el vinculo al manifiesto se conserva: el correlativo queda anulado
+// dentro del mismo viaje y solo puede recuperarse ahi si llega otro pasajero.
 const anularOperacion = async ({
   periodo, id_usuario, documento_id, r_cod, r_serie, r_numero, elemento, ctrlModUs,
 }) => {
