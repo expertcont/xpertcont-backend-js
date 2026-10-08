@@ -82,7 +82,7 @@ const recuperarBoletoLiberado = async (data) => {
        AND tv.r_serie = bl.r_serie
        AND tv.r_numero = bl.r_numero
        AND tv.elemento = bl.elemento
-    RETURNING ${columnasVentaTrans}`;
+    RETURNING ${columnasVentaTransDesde('tv')}`;
 
   const result = await pool.query(query, [
     data.id_usuario,
