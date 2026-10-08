@@ -32,9 +32,9 @@ const grabarBoleto = async (data) => {
   return result.rows[0]?.data || null;
 };
 
-// Recupera un boleto anulado del mismo manifiesto antes de generar correlativo
-// nuevo. Asi el manifiesto conserva sus numeros: si nadie ocupa ese lugar,
-// registrado = 0 queda como anulado para que el RDI lo procese con su regla.
+// Recupera un boleto liberado antes de generar correlativo nuevo.
+// La fila se busca dentro del manifiesto/asiento y se actualiza por su PK real:
+// periodo + id_usuario + documento_id + r_cod + r_serie + r_numero + elemento.
 const recuperarBoletoLiberado = async (data) => {
   const query = `
     WITH boleto_liberado AS (
@@ -42,22 +42,30 @@ const recuperarBoletoLiberado = async (data) => {
         FROM mve_transventa
        WHERE id_usuario = $1
          AND documento_id = $2
+         AND periodo = $19
          AND tipo_operacion = 'B'
          AND COALESCE(registrado, 1) = 0
          AND COALESCE(numero_rdi, '') = ''
          AND COALESCE(r_vfirmado, '') = ''
-         AND id_ruta = $3
-         AND r_fecemi = $4::date
          AND r_cod = $5
          AND r_serie = $6
-         AND COALESCE(id_punto_venta, '') = COALESCE($7, COALESCE(id_punto_venta, ''))
-         AND COALESCE(id_punto_venta_dest, '') = COALESCE($8, COALESCE(id_punto_venta_dest, ''))
-         AND COALESCE(id_manifiesto::text, '') = COALESCE($9::text, '')
-       ORDER BY CASE WHEN asiento ~ '^[0-9]+$' THEN asiento::integer END NULLS LAST, r_numero
+         AND id_manifiesto = $9::bigint
+         AND (
+           COALESCE($20, '') = ''
+           OR asiento = $20
+         )
+       ORDER BY CASE WHEN asiento = $20 THEN 0 ELSE 1 END,
+                COALESCE(ctrl_mod, ctrl_crea, r_fecemi::timestamp) DESC,
+                r_numero
        LIMIT 1
     )
     UPDATE mve_transventa tv
        SET registrado = 1,
+           r_fecemi = $4::date,
+           id_ruta = $3,
+           id_punto_venta = $7,
+           id_punto_venta_dest = $8,
+           asiento = COALESCE($20, asiento),
            cliente_id_doc = $10,
            cliente_documento_id = $11,
            cliente = $12,
@@ -103,6 +111,8 @@ const recuperarBoletoLiberado = async (data) => {
     data.ref_pasajero_nombres || null,
     data.precio_pasaje,
     data.ctrl_crea_us || null,
+    data.periodo,
+    data.asiento || null,
   ]);
 
   return result.rows[0] || null;
