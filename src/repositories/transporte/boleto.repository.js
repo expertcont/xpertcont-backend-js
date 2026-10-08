@@ -33,7 +33,7 @@ const grabarBoleto = async (data) => {
 };
 
 // Recupera un boleto liberado antes de generar correlativo nuevo.
-// La fila se busca dentro del manifiesto/asiento y se actualiza por su PK real:
+// La fila se busca dentro del manifiesto y se actualiza por su PK real:
 // periodo + id_usuario + documento_id + r_cod + r_serie + r_numero + elemento.
 const recuperarBoletoLiberado = async (data) => {
   const query = `
@@ -50,10 +50,6 @@ const recuperarBoletoLiberado = async (data) => {
          AND r_cod = $5
          AND r_serie = $6
          AND id_manifiesto = $9::bigint
-         AND (
-           COALESCE($20, '') = ''
-           OR asiento = $20
-         )
        ORDER BY CASE WHEN asiento = $20 THEN 0 ELSE 1 END,
                 COALESCE(ctrl_mod, ctrl_crea, r_fecemi::timestamp) DESC,
                 r_numero
