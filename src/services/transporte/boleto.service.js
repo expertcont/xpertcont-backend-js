@@ -19,6 +19,9 @@ const transventaRepository = require('../../repositories/transporte/transventa.r
 
 // Datos minimos sin los cuales no hay un boleto registrable.
 const MINIMO = ['id_ruta', 'cliente', 'cliente_documento'];
+const tieneBloqueoSunatTransporte = (operacion = {}) => (
+  Boolean(normalizarTexto(operacion.r_vfirmado) || normalizarTexto(operacion.numero_rdi))
+);
 
 const crearBoleto = async (reqBody = {}) => {
   const {
@@ -225,6 +228,143 @@ const listarBoletos = async ({ periodo, id_anfitrion, documento_id, dia, idPunto
   }
 };
 
+const actualizarBoleto = async (reqBody = {}) => {
+  const {
+    periodo,
+    id_usuario,
+    id_anfitrion,
+    id_invitado,
+    documento_id,
+    r_cod,
+    r_serie,
+    r_numero,
+    elemento,
+    r_fecemi,
+    id_ruta,
+    id_punto_venta,
+    id_punto_venta_dest,
+    cliente_documento,
+    cliente_documento_id,
+    cliente,
+    cliente_telefono,
+    cliente_direccion_fact,
+    id_documento,
+    cliente_id_doc,
+    ref_pasajero_dni,
+    ref_pasajero_nombres,
+    asiento,
+    id_manifiesto,
+    ctrl_mod_us,
+  } = reqBody;
+
+  const idUsuario = id_usuario || id_anfitrion;
+  const clienteDocumento = cliente_documento_id || cliente_documento;
+  const esFactura = normalizarTexto(clienteDocumento).replace(/\D/g, '').length === 11;
+
+  if (!periodo || !idUsuario || !documento_id || !r_cod || !r_serie || !r_numero) {
+    return {
+      status: 400,
+      body: { success: false, message: 'Faltan datos requeridos para actualizar boleto de transporte' }
+    };
+  }
+
+  if (!normalizarTexto(clienteDocumento) || !normalizarTexto(cliente)) {
+    return {
+      status: 400,
+      body: { success: false, message: esFactura ? 'Indique RUC y razon social.' : 'Indique documento y nombres del pasajero.' }
+    };
+  }
+
+  if (esFactura && !normalizarTexto(cliente_direccion_fact)) {
+    return {
+      status: 400,
+      body: { success: false, message: 'Indique direccion de facturacion.' }
+    };
+  }
+
+  if (esFactura && (!normalizarTexto(ref_pasajero_dni) || !normalizarTexto(ref_pasajero_nombres))) {
+    return {
+      status: 400,
+      body: { success: false, message: 'Indique DNI y nombres del pasajero.' }
+    };
+  }
+
+  try {
+    const estadoRows = await transventaRepository.obtenerEstadoSunat({
+      periodo,
+      id_usuario: idUsuario,
+      documento_id,
+      r_cod,
+      r_serie,
+      r_numero,
+      elemento: elemento || 1,
+    });
+
+    if (estadoRows.length === 0) {
+      return {
+        status: 404,
+        body: { success: false, message: 'Boleto de transporte no encontrado' }
+      };
+    }
+
+    if (tieneBloqueoSunatTransporte(estadoRows[0])) {
+      return {
+        status: 409,
+        body: { success: false, message: 'El boleto ya fue enviado a SUNAT. No se puede modificar.' }
+      };
+    }
+
+    const rows = await repository.actualizarBoleto({
+      periodo,
+      id_usuario: idUsuario,
+      documento_id,
+      r_cod,
+      r_serie,
+      r_numero,
+      elemento: elemento || 1,
+      r_fecemi,
+      cliente_id_doc: esFactura ? '6' : (cliente_id_doc || id_documento || '1'),
+      cliente_documento_id: clienteDocumento,
+      cliente,
+      cliente_telefono,
+      cliente_direccion_fact: esFactura ? cliente_direccion_fact : null,
+      ref_pasajero_dni: esFactura ? ref_pasajero_dni : null,
+      ref_pasajero_nombres: esFactura ? ref_pasajero_nombres : null,
+      id_ruta,
+      id_punto_venta,
+      id_punto_venta_dest,
+      asiento,
+      id_manifiesto,
+      ctrl_mod_us: ctrl_mod_us || id_invitado || null,
+    });
+
+    if (rows.length === 0) {
+      return {
+        status: 404,
+        body: { success: false, message: 'Boleto de transporte no encontrado' }
+      };
+    }
+
+    return {
+      status: 200,
+      body: {
+        success: true,
+        data: rows[0]
+      }
+    };
+  } catch (error) {
+    console.error('Error al actualizar boleto de transporte:', error);
+
+    return {
+      status: 500,
+      body: {
+        success: false,
+        message: error.message || 'Error interno del servidor'
+      }
+    };
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Lo del MANIFIESTO tiene su propia capa: services/transporte/transmanifiesto.service.js
 // ---------------------------------------------------------------------------
@@ -232,4 +372,5 @@ const listarBoletos = async ({ periodo, id_anfitrion, documento_id, dia, idPunto
 module.exports = {
   crearBoleto,
   listarBoletos,
+  actualizarBoleto,
 };

@@ -173,13 +173,14 @@ const obtenerOperacion = async ({ periodo, id_anfitrion, documento_id, cod, seri
   return result.rows;
 };
 
-// Estado frente a SUNAT de una operacion. Es lo unico que se necesita para
-// decidir si se puede modificar o eliminar, asi que no se carga la fila entera.
+// Estado operativo y tributario minimo de una operacion. Se usa para decidir
+// si la mutacion debe seguir reglas de boleto o de encomienda, y si ya quedo
+// bloqueada por SUNAT/RDI.
 const obtenerEstadoSunat = async ({
   periodo, id_usuario, documento_id, r_cod, r_serie, r_numero, elemento,
 }) => {
   const query = `
-      SELECT numero_rdi, r_vfirmado
+      SELECT tipo_operacion, numero_rdi, r_vfirmado
         FROM mve_transventa
        WHERE periodo = $1
          AND id_usuario = $2
@@ -290,6 +291,7 @@ const actualizarOperacion = async (datos) => {
          AND r_serie = $5
          AND r_numero = $6
          AND elemento = $7
+         AND tipo_operacion = $9
        RETURNING ${columnasVentaTrans}
     `;
 

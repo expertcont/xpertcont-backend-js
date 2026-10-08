@@ -21,8 +21,8 @@ const tieneBloqueoSunatTransporte = (operacion = {}) => (
 
 const mensajeBloqueoSunatTransporte = (operacion = {}) => (
   normalizarTexto(operacion.numero_rdi)
-    ? `La encomienda ya fue incluida en el RDI ${operacion.numero_rdi}. No se puede modificar ni eliminar.`
-    : 'La encomienda ya fue enviada a SUNAT. No se puede modificar ni eliminar.'
+    ? `La operacion ya fue incluida en el RDI ${operacion.numero_rdi}. No se puede modificar ni eliminar.`
+    : 'La operacion ya fue enviada a SUNAT. No se puede modificar ni eliminar.'
 );
 
 // Tributos de la operacion. Es la misma regla para encomienda y boleto:
@@ -251,7 +251,7 @@ const actualizarVentaTrans = async (reqBody) => {
     destinatario_zona, destinatario_direccion,
     cantidad, precio_unitario, precio_neto,
     r_gravado, r_exonerado, r_igv, r_monto_total, precio_chofer, porc_igv,
-    condicion_pago, llegada_aprox, numero_rdi, estado_sunat, contra,
+    condicion_pago, llegada_aprox, contra,
     ctrl_mod_us
   } = reqBody;
   const idUsuarioFinal = id_usuario || id_anfitrion;
@@ -289,6 +289,22 @@ const actualizarVentaTrans = async (reqBody) => {
     }
 
     const operacionActual = operacionActualRows[0];
+    const tipoOperacionActual = tipo_operacion || operacionActual.tipo_operacion;
+
+    if (!validarTipoOperacion(tipoOperacionActual)) {
+      return {
+        status: 400,
+        body: {
+          success: false,
+          message: 'La operacion no tiene un tipo valido para actualizar'
+        }
+      };
+    }
+
+    if (tipoOperacionActual === 'B') {
+      return boletoService.actualizarBoleto({ ...reqBody, tipo_operacion: 'B' });
+    }
+
     if (tieneBloqueoSunatTransporte(operacionActual)) {
       return {
         status: 409,
@@ -362,7 +378,7 @@ const actualizarVentaTrans = async (reqBody) => {
       r_numero,
       elemento,
       r_fecemi,
-      tipo_operacion,
+      tipo_operacion: tipoOperacionActual,
       r_cod_ref,
       r_serie_ref,
       r_numero_ref,
@@ -394,8 +410,8 @@ const actualizarVentaTrans = async (reqBody) => {
       precio_chofer,
       condicion_pago,
       llegada_aprox,
-      numero_rdi,
-      estado_sunat,
+      numero_rdi: undefined,
+      estado_sunat: undefined,
       ctrlModUsFinal,
       contra,
     });
@@ -514,6 +530,37 @@ const anularVentaTrans = async ({ periodo, id_anfitrion, documento_id, cod, seri
   const ctrlModUs = normalizarTexto(ctrlModUsCrudo);
 
   try {
+    const operacionActualRows = await repository.obtenerEstadoSunat({
+      periodo,
+      id_usuario: id_anfitrion,
+      documento_id,
+      r_cod: cod,
+      r_serie: serie,
+      r_numero: num,
+      elemento: elem,
+    });
+
+    if (operacionActualRows.length === 0) {
+      return {
+        status: 404,
+        body: {
+          success: false,
+          message: 'Operacion de transporte no encontrada'
+        }
+      };
+    }
+
+    const operacionActual = operacionActualRows[0];
+    if (tieneBloqueoSunatTransporte(operacionActual)) {
+      return {
+        status: 409,
+        body: {
+          success: false,
+          message: mensajeBloqueoSunatTransporte(operacionActual)
+        }
+      };
+    }
+
     const rows = await repository.anularOperacion({
       periodo,
       id_usuario: id_anfitrion,

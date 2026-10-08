@@ -103,6 +103,64 @@ const vincularBoletoAManifiesto = async ({
   return result.rows[0] || null;
 };
 
+const actualizarBoleto = async ({
+  periodo, id_usuario, documento_id,
+  r_cod, r_serie, r_numero, elemento,
+  r_fecemi,
+  cliente_id_doc, cliente_documento_id, cliente, cliente_telefono,
+  cliente_direccion_fact, ref_pasajero_dni, ref_pasajero_nombres,
+  id_ruta, id_punto_venta, id_punto_venta_dest,
+  asiento, id_manifiesto, ctrl_mod_us,
+}) => {
+  const result = await pool.query(
+    `UPDATE mve_transventa
+        SET r_fecemi = COALESCE(NULLIF($8, '')::date, r_fecemi),
+            cliente_id_doc = COALESCE($9, cliente_id_doc),
+            cliente_documento_id = COALESCE($10, cliente_documento_id),
+            cliente = COALESCE($11, cliente),
+            cliente_telefono = COALESCE($12, cliente_telefono),
+            cliente_direccion_fact = COALESCE($13, cliente_direccion_fact),
+            ref_pasajero_dni = COALESCE($14, ref_pasajero_dni),
+            ref_pasajero_nombres = COALESCE($15, ref_pasajero_nombres),
+            id_ruta = COALESCE($16, id_ruta),
+            id_punto_venta = COALESCE($17, id_punto_venta),
+            id_punto_venta_dest = COALESCE($18, id_punto_venta_dest),
+            asiento = COALESCE($19, asiento),
+            id_manifiesto = COALESCE($20, id_manifiesto),
+            ctrl_mod = CURRENT_TIMESTAMP,
+            ctrl_mod_us = COALESCE($21, ctrl_mod_us)
+      WHERE periodo = $1
+        AND id_usuario = $2
+        AND documento_id = $3
+        AND r_cod = $4
+        AND r_serie = $5
+        AND r_numero = $6
+        AND elemento = $7
+        AND tipo_operacion = 'B'
+    RETURNING ${columnasVentaTrans}`,
+    [
+      periodo, id_usuario, documento_id,
+      r_cod, r_serie, r_numero, elemento,
+      r_fecemi || null,
+      cliente_id_doc || null,
+      cliente_documento_id || null,
+      cliente || null,
+      cliente_telefono || null,
+      cliente_direccion_fact || null,
+      ref_pasajero_dni || null,
+      ref_pasajero_nombres || null,
+      id_ruta || null,
+      id_punto_venta || null,
+      id_punto_venta_dest || null,
+      asiento || null,
+      id_manifiesto || null,
+      ctrl_mod_us || null,
+    ]
+  );
+
+  return result.rows;
+};
+
 // ===========================================================================
 // Lo del MANIFIESTO vive en su propio modulo:
 //   repositories/transporte/manifiesto.repository.js
@@ -116,4 +174,5 @@ module.exports = {
   grabarBoleto,
   obtenerOperacionBoleto,
   vincularBoletoAManifiesto,
+  actualizarBoleto,
 };
