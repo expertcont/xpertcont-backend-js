@@ -246,7 +246,7 @@ const vincularPasajero = async ({
 }) => {
   const result = await pool.query(
     `UPDATE mve_transventa
-        SET id_manifiesto = $8,
+        SET id_manifiesto = $8::bigint,
             ctrl_mod = CURRENT_TIMESTAMP,
             ctrl_mod_us = COALESCE($9, ctrl_mod_us)
       WHERE periodo = $1
@@ -257,7 +257,7 @@ const vincularPasajero = async ({
         AND r_numero = $6
         AND elemento = $7
         AND tipo_operacion = 'B'
-        AND (id_manifiesto IS NULL OR id_manifiesto = $8)
+        AND (id_manifiesto IS NULL OR id_manifiesto = $8::bigint)
     RETURNING ${columnasVentaTrans},
               id_manifiesto`,
     [
@@ -286,7 +286,7 @@ const desvincularPasajero = async ({
         AND r_serie = $5
         AND r_numero = $6
         AND elemento = $7
-        AND id_manifiesto = $8
+        AND id_manifiesto = $8::bigint
     RETURNING ${columnasVentaTrans}`,
     [
       periodo, id_usuario, documento_id, r_cod, r_serie, r_numero, elemento,

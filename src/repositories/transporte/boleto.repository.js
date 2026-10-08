@@ -65,7 +65,7 @@ const recuperarBoletoLiberado = async (data) => {
            cliente_direccion_fact = $14,
            ref_pasajero_dni = $15,
            ref_pasajero_nombres = $16,
-           id_manifiesto = $9,
+           id_manifiesto = $9::bigint,
            precio_neto = $17::numeric,
            r_gravado = 0,
            r_exonerado = $17::numeric,
@@ -156,7 +156,7 @@ const vincularBoletoAManifiesto = async ({
 }) => {
   const result = await pool.query(
     `UPDATE mve_transventa
-        SET id_manifiesto = $8,
+        SET id_manifiesto = $8::bigint,
             asiento = COALESCE($9, asiento),
             ctrl_mod = CURRENT_TIMESTAMP,
             ctrl_mod_us = COALESCE($10, ctrl_mod_us)
@@ -202,7 +202,7 @@ const actualizarBoleto = async ({
             id_punto_venta = COALESCE($17, id_punto_venta),
             id_punto_venta_dest = COALESCE($18, id_punto_venta_dest),
             asiento = COALESCE($19, asiento),
-            id_manifiesto = COALESCE($20, id_manifiesto),
+            id_manifiesto = COALESCE($20::bigint, id_manifiesto),
             ctrl_mod = CURRENT_TIMESTAMP,
             ctrl_mod_us = COALESCE($21, ctrl_mod_us)
       WHERE periodo = $1
