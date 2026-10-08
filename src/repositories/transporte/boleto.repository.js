@@ -45,10 +45,6 @@ const recuperarBoletoLiberado = async (data) => {
          AND periodo = $19
          AND tipo_operacion = 'B'
          AND COALESCE(registrado, 1) = 0
-         AND COALESCE(numero_rdi, '') = ''
-         AND COALESCE(r_vfirmado, '') = ''
-         AND r_cod = $5
-         AND r_serie = $6
          AND id_manifiesto = $9::bigint
        ORDER BY CASE WHEN asiento = $20 THEN 0 ELSE 1 END,
                 COALESCE(ctrl_mod, ctrl_crea, r_fecemi::timestamp) DESC,
