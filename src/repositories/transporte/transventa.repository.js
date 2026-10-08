@@ -225,6 +225,7 @@ const actualizarOperacion = async (datos) => {
     r_cod_ref, r_serie_ref, r_numero_ref, r_fecemi_ref,
     clienteIdDocFinal, cliente, clienteDocumentoIdFinal, cliente_telefono,
     cliente_direccion_fact,
+    ref_pasajero_dni, ref_pasajero_nombres,
     idPuntoVentaFinal, clienteZonaFinal, clienteDireccionFinal,
     id_ruta, descripcion,
     placa, licencia,
@@ -278,6 +279,8 @@ const actualizarOperacion = async (datos) => {
              numero_rdi = COALESCE($44, numero_rdi),
              estado_sunat = COALESCE($45, estado_sunat),
              contra = COALESCE($47, contra),
+             ref_pasajero_dni = COALESCE($48, ref_pasajero_dni),
+             ref_pasajero_nombres = COALESCE($49, ref_pasajero_nombres),
              ctrl_mod = CURRENT_TIMESTAMP,
              ctrl_mod_us = COALESCE($46, ctrl_mod_us)
       WHERE periodo = $1
@@ -312,7 +315,7 @@ const actualizarOperacion = async (datos) => {
       precio_chofer,
       tributosFinales.porc_igv,
       condicion_pago, llegada_aprox, numero_rdi, estado_sunat, ctrlModUsFinal,
-      contra
+      contra, ref_pasajero_dni, ref_pasajero_nombres
   ];
 
   const result = await pool.query(query, params);

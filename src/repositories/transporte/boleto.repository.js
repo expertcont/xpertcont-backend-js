@@ -39,7 +39,26 @@ const obtenerOperacionBoleto = async ({
   periodo, id_usuario, documento_id,
   r_cod, r_serie, r_numero, elemento,
 }) => {
-  const query = `SELECT ${columnasVentaTrans} FROM mve_transventa WHERE periodo = $1 AND id_usuario = $2 AND documento_id = $3 AND r_cod = $4 AND r_serie = $5 AND r_numero = $6 AND elemento = $7`;
+  const query = `
+    SELECT ${columnasVentaTransDesde('tv')},
+           punto_origen.nombre AS punto_venta_nombre,
+           punto_destino.nombre AS punto_venta_dest_nombre
+      FROM mve_transventa tv
+      LEFT JOIN mad_punto_venta punto_origen
+        ON punto_origen.id_usuario = tv.id_usuario
+       AND punto_origen.documento_id = tv.documento_id
+       AND punto_origen.id_punto_venta = tv.id_punto_venta
+      LEFT JOIN mad_punto_venta punto_destino
+        ON punto_destino.id_usuario = tv.id_usuario
+       AND punto_destino.documento_id = tv.documento_id
+       AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
+     WHERE tv.periodo = $1
+       AND tv.id_usuario = $2
+       AND tv.documento_id = $3
+       AND tv.r_cod = $4
+       AND tv.r_serie = $5
+       AND tv.r_numero = $6
+       AND tv.elemento = $7`;
 
   const result = await pool.query(query, [
     periodo,

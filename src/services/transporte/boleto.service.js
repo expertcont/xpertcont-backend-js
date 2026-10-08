@@ -32,6 +32,12 @@ const crearBoleto = async (reqBody = {}) => {
     cliente_documento_id,
     cliente,
     cliente_telefono,
+    cliente_direccion_fact,
+    id_documento,
+    r_cod,
+    r_serie,
+    ref_pasajero_dni,
+    ref_pasajero_nombres,
     asiento,
     id_manifiesto,
     elemento,
@@ -41,6 +47,7 @@ const crearBoleto = async (reqBody = {}) => {
 
   const idUsuario = id_usuario || id_anfitrion;
   const clienteDocumento = cliente_documento_id || cliente_documento;
+  const esFactura = normalizarTexto(clienteDocumento).replace(/\D/g, '').length === 11;
 
   const faltan = [
     ...MINIMO.map((campo) => ({ campo, valor: { id_ruta, cliente, cliente_documento: clienteDocumento }[campo] })),
@@ -95,9 +102,15 @@ const crearBoleto = async (reqBody = {}) => {
       id_ruta: ruta.id_ruta,
       id_punto_venta: id_punto_venta || ruta.id_punto_venta,
       id_punto_venta_dest: id_punto_venta_dest || ruta.id_punto_venta_dest,
+      r_cod: esFactura ? '01' : (r_cod || '03'),
+      r_serie: esFactura ? (r_serie || 'F001') : (r_serie || 'B001'),
+      id_documento: esFactura ? '6' : (id_documento || '1'),
       cliente_documento: clienteDocumento,
       cliente,
       cliente_telefono: cliente_telefono || null,
+      cliente_direccion_fact: esFactura ? (cliente_direccion_fact || null) : null,
+      ref_pasajero_dni: esFactura ? (ref_pasajero_dni || null) : null,
+      ref_pasajero_nombres: esFactura ? (ref_pasajero_nombres || null) : null,
       asiento: asiento || null,
       id_manifiesto: id_manifiesto || null,
       elemento: elemento === undefined || elemento === null ? 1 : elemento,

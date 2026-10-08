@@ -50,7 +50,9 @@ const listarBoletosDisponibles = async ({
   }
 
   const query = `SELECT ${columnasVentaTransDesde('tv')},
-       ruta.nombre AS nombre_ruta
+       ruta.nombre AS nombre_ruta,
+       punto_origen.nombre AS punto_venta_nombre,
+       punto_destino.nombre AS punto_venta_dest_nombre
   FROM mve_transventa tv
   LEFT JOIN (
     SELECT id_usuario AS ruta_id_usuario,
@@ -62,6 +64,14 @@ const listarBoletosDisponibles = async ({
     ON ruta.ruta_id_usuario = tv.id_usuario
    AND ruta.ruta_documento_id = tv.documento_id
    AND ruta.ruta_id_ruta = tv.id_ruta
+  LEFT JOIN mad_punto_venta punto_origen
+    ON punto_origen.id_usuario = tv.id_usuario
+   AND punto_origen.documento_id = tv.documento_id
+   AND punto_origen.id_punto_venta = tv.id_punto_venta
+  LEFT JOIN mad_punto_venta punto_destino
+    ON punto_destino.id_usuario = tv.id_usuario
+   AND punto_destino.documento_id = tv.documento_id
+   AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
  WHERE ${condiciones.join('\n   AND ')}
  ORDER BY COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp) DESC,
           NULLIF(REGEXP_REPLACE(tv.r_numero, '\\D', '', 'g'), '')::bigint DESC NULLS LAST,
@@ -80,7 +90,9 @@ const listarBoletosDisponibles = async ({
 const obtenerPasajerosDelManifiesto = async ({ id_manifiesto }) => {
   const result = await pool.query(
     `SELECT ${columnasVentaTransDesde('tv')},
-            ruta.nombre_ruta
+            ruta.nombre_ruta,
+            punto_origen.nombre AS punto_venta_nombre,
+            punto_destino.nombre AS punto_venta_dest_nombre
        FROM mve_transventa tv
        LEFT JOIN (
          SELECT id_usuario AS ruta_id_usuario,
@@ -92,6 +104,14 @@ const obtenerPasajerosDelManifiesto = async ({ id_manifiesto }) => {
          ON ruta.ruta_id_usuario = tv.id_usuario
         AND ruta.ruta_documento_id = tv.documento_id
         AND ruta.ruta_id_ruta = tv.id_ruta
+       LEFT JOIN mad_punto_venta punto_origen
+         ON punto_origen.id_usuario = tv.id_usuario
+        AND punto_origen.documento_id = tv.documento_id
+        AND punto_origen.id_punto_venta = tv.id_punto_venta
+       LEFT JOIN mad_punto_venta punto_destino
+         ON punto_destino.id_usuario = tv.id_usuario
+        AND punto_destino.documento_id = tv.documento_id
+        AND punto_destino.id_punto_venta = tv.id_punto_venta_dest
       WHERE tv.id_manifiesto = $1
         AND tv.tipo_operacion = 'B'
       ORDER BY COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp) DESC,
