@@ -68,10 +68,14 @@ const generaJsonPrevioCPEexpertcontTransporte = async ({
   const tipoIgvCodigo = baseGravada > 0 ? '10' : '20';
   const precioBase = baseGravada > 0 ? baseGravada : baseExonerada || total;
   const fechaEmision = toIsoDateColumna(venta.r_fecemi);
+  const descripcionBase = venta.descripcion || (esBoleto ? 'SERVICIO DE TRANSPORTE DE PASAJEROS' : 'SERVICIO DE TRANSPORTE DE ENCOMIENDA');
+  const rutaYaIncluida = normalizarTexto(descripcionBase)
+    .toUpperCase()
+    .includes(normalizarTexto(venta.nombre_ruta).toUpperCase());
 
   const descripcion = [
-    venta.descripcion || (esBoleto ? 'SERVICIO DE TRANSPORTE DE PASAJEROS' : 'SERVICIO DE TRANSPORTE DE ENCOMIENDA'),
-    venta.nombre_ruta ? `Ruta: ${venta.nombre_ruta}` : '',
+    descripcionBase,
+    venta.nombre_ruta && !rutaYaIncluida ? `Ruta: ${venta.nombre_ruta}` : '',
     esBoleto && venta.asiento ? `Asiento: ${venta.asiento}` : '',
     esBoleto && venta.ref_pasajero_nombres ? `Pasajero: ${venta.ref_pasajero_nombres}` : '',
     !esBoleto && venta.destinatario ? `Destinatario: ${venta.destinatario}` : ''

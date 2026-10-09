@@ -5,7 +5,7 @@
 const pool = require('../../db');
 const { columnasVentaTrans } = require('../transventaColumnas');
 
-// Busca encomiendas de los ultimos 3 periodos que se pueden clonar.
+// Busca encomiendas de los ultimos periodos que se pueden clonar.
 // Arma internamente el arreglo de parametros para que el orden $1..$N quede
 // explicito junto al SQL que lo consume.
 const buscarEncomiendasClonables = async ({

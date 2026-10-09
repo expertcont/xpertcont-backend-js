@@ -6,7 +6,7 @@ const service = require('../../services/transporte/encomienda.service');
 
 const clonarEncomienda = async (req, res) => {
   const { periodo, id_anfitrion, documento_id } = req.params;
-  const { id_punto_venta, limit } = req.query;
+  const { id_punto_venta, limit, periodos } = req.query;
 
   if (!periodo || !id_anfitrion || !documento_id) {
     return res.status(400).json({
@@ -21,6 +21,7 @@ const clonarEncomienda = async (req, res) => {
     documentoId: documento_id,
     idPuntoVenta: id_punto_venta,
     limit,
+    periodos,
   });
 
   return res.status(respuesta.status).json(respuesta.body);
