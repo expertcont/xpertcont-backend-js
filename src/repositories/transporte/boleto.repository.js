@@ -2,11 +2,11 @@
 //
 // A diferencia de la encomienda, el boleto no lleva destinatario, placa,
 // licencia ni contrasena: el pasajero viaja desde la agencia hacia el destino
-// de la ruta, y el precio sale del pasaje configurado en la ruta.
+// de la ruta, y descripcion/precio pueden llegar personalizados desde el boleto.
 //
 // La grabacion delega en la funcion PostgreSQL public.fve_transventa_grabar_boleto,
 // igual que la encomienda delega en fve_transventa_grabar_encomienda. Esa funcion
-// es la unica que fija el precio: aqui no se acepta ningun importe del frontend.
+// es la que normaliza los fallback de descripcion y precio.
 const pool = require('../../db');
 const { columnasVentaTrans, columnasVentaTransDesde } = require('../transventaColumnas');
 
@@ -67,6 +67,7 @@ const recuperarBoletoLiberado = async (data) => {
            ref_pasajero_nombres = $14,
            id_manifiesto = $7::bigint,
            precio_neto = $15::numeric,
+           descripcion = COALESCE($19, descripcion),
            r_gravado = 0,
            r_exonerado = $15::numeric,
            r_igv = 0,
@@ -103,6 +104,7 @@ const recuperarBoletoLiberado = async (data) => {
     data.ctrl_crea_us || null,
     data.periodo,
     data.asiento || null,
+    data.descripcion || null,
   ]);
 
   return result.rows[0] || null;
@@ -185,6 +187,7 @@ const actualizarBoleto = async ({
   r_fecemi,
   cliente_id_doc, cliente_documento_id, cliente, cliente_telefono,
   cliente_direccion_fact, ref_pasajero_dni, ref_pasajero_nombres,
+  descripcion, precio_neto,
   id_ruta, id_punto_venta, id_punto_venta_dest,
   asiento, id_manifiesto, ctrl_mod_us,
 }) => {
@@ -198,13 +201,20 @@ const actualizarBoleto = async ({
             cliente_direccion_fact = COALESCE($13, cliente_direccion_fact),
             ref_pasajero_dni = COALESCE($14, ref_pasajero_dni),
             ref_pasajero_nombres = COALESCE($15, ref_pasajero_nombres),
-            id_ruta = COALESCE($16, id_ruta),
-            id_punto_venta = COALESCE($17, id_punto_venta),
-            id_punto_venta_dest = COALESCE($18, id_punto_venta_dest),
-            asiento = COALESCE($19, asiento),
-            id_manifiesto = COALESCE($20::bigint, id_manifiesto),
+            descripcion = COALESCE($16, descripcion),
+            precio_neto = COALESCE($17::numeric, precio_neto),
+            r_gravado = CASE WHEN $17::numeric IS NULL THEN r_gravado ELSE 0 END,
+            r_exonerado = COALESCE($17::numeric, r_exonerado),
+            r_igv = CASE WHEN $17::numeric IS NULL THEN r_igv ELSE 0 END,
+            r_monto_total = COALESCE($17::numeric, r_monto_total),
+            porc_igv = CASE WHEN $17::numeric IS NULL THEN porc_igv ELSE 0 END,
+            id_ruta = COALESCE($18, id_ruta),
+            id_punto_venta = COALESCE($19, id_punto_venta),
+            id_punto_venta_dest = COALESCE($20, id_punto_venta_dest),
+            asiento = COALESCE($21, asiento),
+            id_manifiesto = COALESCE($22::bigint, id_manifiesto),
             ctrl_mod = CURRENT_TIMESTAMP,
-            ctrl_mod_us = COALESCE($21, ctrl_mod_us)
+            ctrl_mod_us = COALESCE($23, ctrl_mod_us)
       WHERE periodo = $1
         AND id_usuario = $2
         AND documento_id = $3
@@ -225,6 +235,8 @@ const actualizarBoleto = async ({
       cliente_direccion_fact || null,
       ref_pasajero_dni || null,
       ref_pasajero_nombres || null,
+      descripcion || null,
+      precio_neto || null,
       id_ruta || null,
       id_punto_venta || null,
       id_punto_venta_dest || null,

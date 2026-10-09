@@ -10,9 +10,8 @@
 // agencia puede tener varias rutas activas y son destinos distintos, no datos
 // redundantes.
 //
-// El precio NUNCA viene del frontend. Sale de mve_transruta.precio_pasaje y lo
-// aplica la funcion PostgreSQL, de modo que un total manipulado en el request no
-// se guarda. El service solo lee la ruta para validar.
+// Origen, destino y precio viajan en descripcion/precio_neto. La funcion
+// PostgreSQL protege los fallback desde la ruta cuando no llegan.
 const { normalizarTexto } = require('../../utils/texto');
 const repository = require('../../repositories/transporte/boleto.repository');
 const transventaRepository = require('../../repositories/transporte/transventa.repository');
@@ -41,6 +40,9 @@ const crearBoleto = async (reqBody = {}) => {
     r_serie,
     ref_pasajero_dni,
     ref_pasajero_nombres,
+    descripcion,
+    precio_neto,
+    r_monto_total,
     asiento,
     id_manifiesto,
     elemento,
@@ -87,7 +89,9 @@ const crearBoleto = async (reqBody = {}) => {
       };
     }
 
-    if (!(Number(ruta.precio_pasaje) > 0)) {
+    const precioPasaje = Number(precio_neto || r_monto_total || ruta.precio_pasaje || 0);
+
+    if (!Number.isFinite(precioPasaje) || !(precioPasaje > 0)) {
       return {
         status: 400,
         body: {
@@ -97,8 +101,8 @@ const crearBoleto = async (reqBody = {}) => {
       };
     }
 
-    // El precio y el destino definitivos los aplica la funcion PostgreSQL desde
-    // la ruta; aca solo se arma lo que ella necesita para resolverlos.
+    // La descripcion personalizada (ORIGEN - DESTINO) y el precio viajan a la
+    // funcion. Si llegan vacios, la funcion usa la ruta como respaldo.
     const payload = {
       id_usuario: idUsuario,
       documento_id,
@@ -114,11 +118,13 @@ const crearBoleto = async (reqBody = {}) => {
       cliente_direccion_fact: esFactura ? (cliente_direccion_fact || null) : null,
       ref_pasajero_dni: esFactura ? (ref_pasajero_dni || null) : null,
       ref_pasajero_nombres: esFactura ? (ref_pasajero_nombres || null) : null,
+      descripcion: descripcion || null,
       asiento: asiento || null,
       id_manifiesto: id_manifiesto || null,
       elemento: elemento === undefined || elemento === null ? 1 : elemento,
       ctrl_crea_us: id_invitado || ctrl_crea_us || null,
-      precio_pasaje: ruta.precio_pasaje,
+      precio_pasaje: precioPasaje,
+      precio_neto: precioPasaje,
     };
 
     if (fechaServidor) {
@@ -260,6 +266,9 @@ const actualizarBoleto = async (reqBody = {}) => {
     cliente_id_doc,
     ref_pasajero_dni,
     ref_pasajero_nombres,
+    descripcion,
+    precio_neto,
+    r_monto_total,
     asiento,
     id_manifiesto,
     ctrl_mod_us,
@@ -290,7 +299,7 @@ const actualizarBoleto = async (reqBody = {}) => {
     };
   }
 
-  if (esFactura && (!normalizarTexto(ref_pasajero_dni) || !normalizarTexto(ref_pasajero_nombres))) {
+    if (esFactura && (!normalizarTexto(ref_pasajero_dni) || !normalizarTexto(ref_pasajero_nombres))) {
     return {
       status: 400,
       body: { success: false, message: 'Indique DNI y nombres del pasajero.' }
@@ -315,6 +324,8 @@ const actualizarBoleto = async (reqBody = {}) => {
       };
     }
 
+    const precioBoleto = Number(precio_neto || r_monto_total || 0);
+
     if (tieneBloqueoSunatTransporte(estadoRows[0])) {
       return {
         status: 409,
@@ -338,6 +349,8 @@ const actualizarBoleto = async (reqBody = {}) => {
       cliente_direccion_fact: esFactura ? cliente_direccion_fact : null,
       ref_pasajero_dni: esFactura ? ref_pasajero_dni : null,
       ref_pasajero_nombres: esFactura ? ref_pasajero_nombres : null,
+      descripcion,
+      precio_neto: Number.isFinite(precioBoleto) && precioBoleto > 0 ? precioBoleto : null,
       id_ruta,
       id_punto_venta,
       id_punto_venta_dest,
