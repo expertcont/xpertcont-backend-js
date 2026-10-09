@@ -66,7 +66,10 @@ const buscarEncomiendasClonables = async ({
          AND venta.documento_id = $${documentoParam}
          AND venta.tipo_operacion = 'E'
          ${puntoVentaParam ? `AND venta.id_punto_venta = $${puntoVentaParam}` : ''}
-         ${clienteDocumentoParam ? `AND regexp_replace(COALESCE(venta.cliente_documento::text, venta.cliente_documento_id::text, ''), '\\D', '', 'g') = $${clienteDocumentoParam}` : ''}
+         ${clienteDocumentoParam ? `AND (
+           regexp_replace(COALESCE(NULLIF(venta.cliente_documento::text, ''), ''), '\\D', '', 'g') = $${clienteDocumentoParam}
+           OR regexp_replace(COALESCE(NULLIF(venta.cliente_documento_id::text, ''), ''), '\\D', '', 'g') = $${clienteDocumentoParam}
+         )` : ''}
     `).join(' UNION ALL ');
 
     const query = `
