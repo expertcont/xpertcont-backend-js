@@ -6,13 +6,15 @@
 const { obtenerUltimosPeriodos } = require('../../utils/periodos');
 const repository = require('../../repositories/transporte/encomienda.repository');
 
-// Limite de la bandeja: por defecto 80, entre 1 y 150.
-const normalizarLimite = (limit) => Math.min(Math.max(Number(limit || 80), 1), 150);
+// Limite de la bandeja: por defecto 80, entre 1 y 150. Si viene DNI/RUC, no limita.
+const normalizarLimite = (limit, clienteDocumento) => (
+  clienteDocumento ? null : Math.min(Math.max(Number(limit || 80), 1), 150)
+);
 const normalizarPeriodos = (periodos) => Math.min(Math.max(Number(periodos || 6), 1), 12);
 
-const clonarEncomienda = async ({ periodo, idAnfitrion, documentoId, idPuntoVenta, limit, periodos }) => {
+const clonarEncomienda = async ({ periodo, idAnfitrion, documentoId, idPuntoVenta, limit, periodos, clienteDocumento }) => {
   try {
-    const limite = normalizarLimite(limit);
+    const limite = normalizarLimite(limit, clienteDocumento);
     const cantidadPeriodos = normalizarPeriodos(periodos);
     const periodosBusqueda = obtenerUltimosPeriodos(periodo, cantidadPeriodos);
 
@@ -22,6 +24,7 @@ const clonarEncomienda = async ({ periodo, idAnfitrion, documentoId, idPuntoVent
       documentoId,
       limite,
       idPuntoVenta,
+      clienteDocumento,
     });
 
     return {

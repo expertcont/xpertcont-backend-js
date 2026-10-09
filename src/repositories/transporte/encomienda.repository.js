@@ -14,21 +14,32 @@ const buscarEncomiendasClonables = async ({
   documentoId,
   limite,
   idPuntoVenta,
+  clienteDocumento,
 }) => {
   const params = [
     ...periodos,
     idAnfitrion,
     documentoId,
-    limite
   ];
   const idUsuarioParam = periodos.length + 1;
   const documentoParam = periodos.length + 2;
-  const limiteParam = periodos.length + 3;
   let puntoVentaParam = null;
 
   if (idPuntoVenta) {
     params.push(idPuntoVenta);
     puntoVentaParam = params.length;
+  }
+
+  let clienteDocumentoParam = null;
+  if (clienteDocumento) {
+    params.push(String(clienteDocumento).replace(/\D/g, ''));
+    clienteDocumentoParam = params.length;
+  }
+
+  let limiteParam = null;
+  if (limite) {
+    params.push(limite);
+    limiteParam = params.length;
   }
 
     const joinRutaClonar = `
@@ -55,6 +66,7 @@ const buscarEncomiendasClonables = async ({
          AND venta.documento_id = $${documentoParam}
          AND venta.tipo_operacion = 'E'
          ${puntoVentaParam ? `AND venta.id_punto_venta = $${puntoVentaParam}` : ''}
+         ${clienteDocumentoParam ? `AND regexp_replace(COALESCE(venta.cliente_documento::text, venta.cliente_documento_id::text, ''), '\\D', '', 'g') = $${clienteDocumentoParam}` : ''}
     `).join(' UNION ALL ');
 
     const query = `
@@ -63,7 +75,7 @@ const buscarEncomiendasClonables = async ({
           ${selectsPorPeriodo}
         ) encomiendas
        ORDER BY r_fecemi DESC, r_serie, r_numero DESC, elemento
-       LIMIT $${limiteParam}
+       ${limiteParam ? `LIMIT $${limiteParam}` : ''}
     `;
 
   const result = await pool.query(query, params);
