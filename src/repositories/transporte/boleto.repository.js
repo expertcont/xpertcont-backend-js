@@ -42,11 +42,11 @@ const recuperarBoletoLiberado = async (data) => {
         FROM mve_transventa
        WHERE id_usuario = $1
          AND documento_id = $2
-         AND periodo = $19
+         AND periodo = $17
          AND tipo_operacion = 'B'
          AND COALESCE(registrado, 1) = 0
-         AND id_manifiesto = $9::bigint
-       ORDER BY CASE WHEN asiento = $20 THEN 0 ELSE 1 END,
+         AND id_manifiesto = $7::bigint
+       ORDER BY CASE WHEN asiento = $18 THEN 0 ELSE 1 END,
                 COALESCE(ctrl_mod, ctrl_crea, r_fecemi::timestamp) DESC,
                 r_numero
        LIMIT 1
@@ -55,25 +55,25 @@ const recuperarBoletoLiberado = async (data) => {
        SET registrado = 1,
            r_fecemi = $4::date,
            id_ruta = $3,
-           id_punto_venta = $7,
-           id_punto_venta_dest = $8,
-           asiento = COALESCE($20, asiento),
-           cliente_id_doc = $10,
-           cliente_documento_id = $11,
-           cliente = $12,
-           cliente_telefono = $13,
-           cliente_direccion_fact = $14,
-           ref_pasajero_dni = $15,
-           ref_pasajero_nombres = $16,
-           id_manifiesto = $9::bigint,
-           precio_neto = $17::numeric,
+           id_punto_venta = $5,
+           id_punto_venta_dest = $6,
+           asiento = COALESCE($18, asiento),
+           cliente_id_doc = $8,
+           cliente_documento_id = $9,
+           cliente = $10,
+           cliente_telefono = $11,
+           cliente_direccion_fact = $12,
+           ref_pasajero_dni = $13,
+           ref_pasajero_nombres = $14,
+           id_manifiesto = $7::bigint,
+           precio_neto = $15::numeric,
            r_gravado = 0,
-           r_exonerado = $17::numeric,
+           r_exonerado = $15::numeric,
            r_igv = 0,
-           r_monto_total = $17::numeric,
+           r_monto_total = $15::numeric,
            porc_igv = 0,
            ctrl_mod = CURRENT_TIMESTAMP,
-           ctrl_mod_us = COALESCE($18, ctrl_mod_us)
+           ctrl_mod_us = COALESCE($16, ctrl_mod_us)
       FROM boleto_liberado bl
      WHERE tv.periodo = bl.periodo
        AND tv.id_usuario = bl.id_usuario
@@ -89,8 +89,6 @@ const recuperarBoletoLiberado = async (data) => {
     data.documento_id,
     data.id_ruta,
     data.r_fecemi,
-    data.r_cod,
-    data.r_serie,
     data.id_punto_venta || null,
     data.id_punto_venta_dest || null,
     data.id_manifiesto || null,
