@@ -1,4 +1,4 @@
-// SQL del envio individual de CPE de encomienda.
+// SQL del envio individual de CPE de transporte.
 //
 // Las cuatro consultas de este modulo viven aqui: datos de la contabilidad, la
 // operacion con su ruta, y las dos actualizaciones que guardan el resultado de
@@ -26,7 +26,7 @@ const obtenerDatosContabilidad = async ({ idUsuario, documentoId }) => {
   return result.rows[0];
 };
 
-// La encomienda a enviar, con el nombre de su ruta.
+// La operacion a enviar, con el nombre de su ruta.
 const obtenerEncomiendaParaCpe = async ({ periodo, idUsuario, documentoId, rCod, rSerie, rNumero, elemento }) => {
   const query = `
     SELECT tv.*,

@@ -1,12 +1,9 @@
-// Reglas del envio individual de CPE de encomienda.
+// Reglas del envio individual de CPE de transporte.
 //
 // Arma el payload del CPE, lo manda a la API SUNAT, interpreta la respuesta y
 // guarda el resultado en mve_transventa. El SQL esta en el repository y el HTTP
 // en el controller.
 //
-// Por ahora solo admite encomiendas (tipo_operacion = 'E'). Los boletos tambien
-// son CPE y deberian entrar por este mismo modulo, pero ese soporte todavia no
-// existe: la validacion de tipo se mantiene tal cual, sin ampliar.
 const fetch = require('node-fetch');
 const { toIsoDateColumna, toIsoTime, toNumber } = require('../../utils/formato');
 const { leerRespuestaSunat, normalizarErrorSunatTransporte } = require('../../utils/sunat');
@@ -38,22 +35,26 @@ const generaJsonPrevioCPEexpertcontTransporte = async ({
   });
 
   if (!venta) {
-    throw new Error('ENCOMIENDA NO ENCONTRADA');
+    throw new Error('OPERACION DE TRANSPORTE NO ENCONTRADA');
   }
 
-  if (String(venta.tipo_operacion || '').trim() !== 'E') {
-    throw new Error('Solo se puede enviar a SUNAT una operacion de encomienda');
+  const tipoOperacion = String(venta.tipo_operacion || '').trim().toUpperCase();
+  const esBoleto = tipoOperacion === 'B';
+  const esEncomienda = tipoOperacion === 'E';
+
+  if (!esEncomienda && !esBoleto) {
+    throw new Error('Solo se puede enviar a SUNAT una operacion de transporte valida');
   }
 
   if (normalizarTexto(venta.numero_rdi)) {
-    const error = new Error(`La encomienda ya fue incluida en el RDI ${venta.numero_rdi}. No corresponde envio individual.`);
+    const error = new Error(`La operacion ya fue incluida en el RDI ${venta.numero_rdi}. No corresponde envio individual.`);
     error.statusCode = 409;
     error.nivel = 'PENDIENTE';
     throw error;
   }
 
   if (normalizarTexto(venta.r_vfirmado)) {
-    const error = new Error('La encomienda ya tiene firma SUNAT registrada. Use las descargas del comprobante.');
+    const error = new Error('La operacion ya tiene firma SUNAT registrada. Use las descargas del comprobante.');
     error.statusCode = 409;
     error.nivel = 'ACEPTADO';
     throw error;
@@ -69,9 +70,11 @@ const generaJsonPrevioCPEexpertcontTransporte = async ({
   const fechaEmision = toIsoDateColumna(venta.r_fecemi);
 
   const descripcion = [
-    venta.descripcion || 'SERVICIO DE TRANSPORTE DE ENCOMIENDA',
+    venta.descripcion || (esBoleto ? 'SERVICIO DE TRANSPORTE DE PASAJEROS' : 'SERVICIO DE TRANSPORTE DE ENCOMIENDA'),
     venta.nombre_ruta ? `Ruta: ${venta.nombre_ruta}` : '',
-    venta.destinatario ? `Destinatario: ${venta.destinatario}` : ''
+    esBoleto && venta.asiento ? `Asiento: ${venta.asiento}` : '',
+    esBoleto && venta.ref_pasajero_nombres ? `Pasajero: ${venta.ref_pasajero_nombres}` : '',
+    !esBoleto && venta.destinatario ? `Destinatario: ${venta.destinatario}` : ''
   ].filter(Boolean).join(' | ');
 
   const jsonPayload = {

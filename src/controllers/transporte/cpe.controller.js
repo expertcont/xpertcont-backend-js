@@ -42,7 +42,7 @@ const generarCPEexpertcontTransporte = async (req, res) => {
   ) {
     return res.status(400).json({
       success: false,
-      message: 'Faltan parametros requeridos para enviar encomienda a SUNAT'
+      message: 'Faltan parametros requeridos para enviar operacion de transporte a SUNAT'
     });
   }
 
