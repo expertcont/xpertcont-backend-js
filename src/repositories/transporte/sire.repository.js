@@ -93,7 +93,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
          ORDER BY fecha_descarga DESC, id_propuesta DESC
          LIMIT 1
       ),
-      sire AS (
+      sire_datos AS (
         SELECT
           d.id_detalle::varchar AS id_origen,
           'SIRE'::varchar(10) AS origen,
@@ -114,12 +114,11 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           d.tipo_cambio,
           p.ticket,
           p.nombre_archivo,
-          d.raw_linea,
-          COUNT(*) OVER (PARTITION BY d.tipo_comprobante, d.serie, d.numero) AS duplicados_origen
+          d.raw_linea
         FROM public.mve_sire_propuesta_det d
         JOIN propuesta p ON p.id_propuesta = d.id_propuesta
       ),
-      xpert AS (
+      xpert_datos AS (
         SELECT
           CONCAT(tv.r_cod, '-', tv.r_serie, '-', tv.r_numero, '-', tv.elemento)::varchar AS id_origen,
           'XPERT'::varchar(10) AS origen,
@@ -141,11 +140,6 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           NULL::varchar AS ticket,
           NULL::varchar AS nombre_archivo,
           NULL::text AS raw_linea,
-          COUNT(*) OVER (
-            PARTITION BY COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod),
-                         COALESCE(NULLIF(tv.r_serie_ref, ''), tv.r_serie),
-                         COALESCE(NULLIF(tv.r_numero_ref, ''), tv.r_numero)
-          ) AS duplicados_origen,
           COALESCE(tv.registrado, 1)::integer AS registrado
         FROM public.mve_transventa tv
        WHERE tv.id_usuario = $1
@@ -153,6 +147,35 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
          AND tv.periodo = $3
          AND tv.tipo_operacion IN ('B', 'E')
          AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) IN ('01', '03', '07', '08')
+      ),
+      -- Normalizar solo correlativos numericos; conservar el numero original para mostrarlo.
+      sire_claves AS (
+        SELECT s.*,
+          CASE WHEN BTRIM(s.numero) ~ '^[0-9]+$'
+            THEN COALESCE(NULLIF(LTRIM(BTRIM(s.numero), '0'), ''), '0')
+            ELSE BTRIM(s.numero)
+          END AS numero_clave
+        FROM sire_datos s
+      ),
+      xpert_claves AS (
+        SELECT x.*,
+          CASE WHEN BTRIM(x.numero) ~ '^[0-9]+$'
+            THEN COALESCE(NULLIF(LTRIM(BTRIM(x.numero), '0'), ''), '0')
+            ELSE BTRIM(x.numero)
+          END AS numero_clave
+        FROM xpert_datos x
+      ),
+      sire AS (
+        SELECT s.*, COUNT(*) OVER (
+          PARTITION BY s.tipo_comprobante, s.serie, s.numero_clave
+        ) AS duplicados_origen
+        FROM sire_claves s
+      ),
+      xpert AS (
+        SELECT x.*, COUNT(*) OVER (
+          PARTITION BY x.tipo_comprobante, x.serie, x.numero_clave
+        ) AS duplicados_origen
+        FROM xpert_claves x
       ),
       base AS (
         SELECT
@@ -184,7 +207,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
              FROM xpert x
             WHERE x.tipo_comprobante = s.tipo_comprobante
               AND x.serie = s.serie
-              AND x.numero = s.numero
+              AND x.numero_clave = s.numero_clave
          )
         UNION ALL
         SELECT
@@ -209,7 +232,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
              FROM sire s
             WHERE s.tipo_comprobante = x.tipo_comprobante
               AND s.serie = x.serie
-              AND s.numero = x.numero
+              AND s.numero_clave = x.numero_clave
          )
         UNION ALL
         SELECT
@@ -263,7 +286,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
         JOIN xpert x
           ON x.tipo_comprobante = s.tipo_comprobante
          AND x.serie = s.serie
-         AND x.numero = s.numero
+         AND x.numero_clave = s.numero_clave
         WHERE COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01')
            OR s.moneda IS DISTINCT FROM x.moneda
            OR ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01
