@@ -28,14 +28,21 @@ const {
   generarTicketAdminPDFEncomiendaExpertcont,
 } = require('../controllers/transporte/ticket.controller');
 
-// SUNAT / Resumen Diario: viven en controllers/transporte.
+// RDI / Resumen Diario: viven en controllers/transporte.
 const {
   generarResumenCPEexpertcontTransporte,
   consultarResumenCPEexpertcontTransporte,
   corregirRdiRechazadoTransporte,
   obtenerResumenesCPEexpertcontTransporte,
+} = require('../controllers/transporte/rdi.controller');
+
+// SIRe transporte: mantiene el endpoint historico para no romper frontend.
+const {
   obtenerRegistroSireTransporte,
-} = require('../controllers/transporte/sunat.controller');
+  generarTicketPropuestaSireTransporte,
+  consultarEstadoPropuestaSireTransporte,
+  descargarPropuestaSireTransporte,
+} = require('../controllers/transporte/sire.controller');
 
 // Operacion de encomiendas en agencia destino: viven en controllers/transporte.
 const {
@@ -102,6 +109,9 @@ router.post('/mve_transventa/ticket/encomienda/admin', generarTicketAdminPDFEnco
 router.post('/mve_transventa/cpe/resumen', generarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/ticket', consultarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/corregir-rechazado', corregirRdiRechazadoTransporte);
+router.post('/transporte/sire/propuesta/ticket', generarTicketPropuestaSireTransporte);
+router.post('/transporte/sire/propuesta/estado', consultarEstadoPropuestaSireTransporte);
+router.post('/transporte/sire/propuesta/descargar', descargarPropuestaSireTransporte);
 router.get('/mve_transventa/cpe/registro-sire/:periodo/:id_anfitrion/:documento_id', obtenerRegistroSireTransporte);
 router.get('/mve_transventa/cpe/resumen/:periodo/:id_anfitrion/:documento_id', obtenerResumenesCPEexpertcontTransporte);
 

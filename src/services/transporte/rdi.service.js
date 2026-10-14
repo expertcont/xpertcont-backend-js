@@ -7,7 +7,7 @@ const fetch = require('node-fetch');
 const { toIsoDate, toIsoDateColumna, toNumber } = require('../../utils/formato');
 const { leerRespuestaSunat, normalizarErrorSunatTransporte } = require('../../utils/sunat');
 const { normalizarTexto } = require('../../utils/texto');
-const repository = require('../../repositories/transporte/sunat.repository');
+const repository = require('../../repositories/transporte/rdi.repository');
 
 // ------------------------------------------------------------------
 // Payload del comprobante dentro del resumen
@@ -878,38 +878,10 @@ const obtenerResumenesRdiTransporte = async ({
   return { data: result.rows, pendientes: pendientesResult.rows };
 };
 
-const obtenerRegistroSireTransporte = async ({ idAnfitrion, documentoId, periodo }) => {
-  const data = await repository.obtenerRegistroSireTransporteQuery([periodo, idAnfitrion, documentoId]);
-  const observaciones = data.filter((item) => Array.isArray(item.observaciones) && item.observaciones.length > 0);
-  const resumen = data.reduce((acc, item) => {
-    acc.total_comprobantes += 1;
-    acc.total_base_gravada += Number(item.base_gravada || 0);
-    acc.total_exonerado += Number(item.exonerado || 0);
-    acc.total_inafecto += Number(item.inafecto || 0);
-    acc.total_igv += Number(item.igv || 0);
-    acc.total += Number(item.total || 0);
-    if (Array.isArray(item.observaciones) && item.observaciones.length > 0) {
-      acc.total_observaciones += 1;
-    }
-    return acc;
-  }, {
-    total_comprobantes: 0,
-    total_observaciones: 0,
-    total_base_gravada: 0,
-    total_exonerado: 0,
-    total_inafecto: 0,
-    total_igv: 0,
-    total: 0,
-  });
-
-  return { data, observaciones, resumen };
-};
-
 module.exports = {
   consultarTicketResumenSunatTransporte,
   corregirRdiRechazadoTransporte,
   obtenerResumenesRdiTransporte,
-  obtenerRegistroSireTransporte,
   crearYEnviarResumenSunatTransporte,
   obtenerRdiPendienteTransporte,
   esRechazoRdiSunatTransporte,
