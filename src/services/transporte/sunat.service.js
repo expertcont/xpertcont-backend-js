@@ -879,7 +879,7 @@ const obtenerResumenesRdiTransporte = async ({
 };
 
 const obtenerRegistroSireTransporte = async ({ idAnfitrion, documentoId, periodo }) => {
-  const data = await repository.obtenerRegistroSireTransporteQuery([idAnfitrion, documentoId, periodo]);
+  const data = await repository.obtenerRegistroSireTransporteQuery([periodo, idAnfitrion, documentoId]);
   const observaciones = data.filter((item) => Array.isArray(item.observaciones) && item.observaciones.length > 0);
   const resumen = data.reduce((acc, item) => {
     acc.total_comprobantes += 1;
