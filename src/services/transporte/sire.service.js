@@ -1,4 +1,5 @@
 const repository = require('../../repositories/transporte/sire.repository');
+const sireRepository = require('../../repositories/sire/sire.repository');
 const sireSunatClient = require('../sire/sireSunatClient.service');
 const { guardarPropuestaVentasSire } = require('../sire/sirePropuestaStore.service');
 
@@ -63,6 +64,23 @@ const obtenerComparacionSireTransporte = async ({
   });
 
   return { data, resumen };
+};
+
+const obtenerUltimaPropuestaSireTransporte = async (params) => {
+  const idLibro = sireSunatClient.normalizarIdLibroSire(params.idLibro || '014');
+  const ticketGuardado = await sireRepository.obtenerTicketPropuestaSire({ ...params, idLibro });
+  const propuesta = await repository.obtenerPropuestaGuardadaSireTransporteQuery({
+    ...params, idLibro, ticket: ticketGuardado,
+  });
+  const ticket = ticketGuardado || propuesta?.ticket || '';
+  return {
+    ticket,
+    reutilizado: Boolean(ticket),
+    nombre_archivo_rep: propuesta?.nombre_archivo || '',
+    importacion: propuesta && ['PARSEADO', 'COMPARADO'].includes(propuesta.estado)
+      ? { id_propuesta: propuesta.id_propuesta, cantidad_registros: propuesta.cantidad_registros }
+      : null,
+  };
 };
 
 const generarTicketPropuestaSireTransporte = async ({
@@ -141,6 +159,7 @@ const descargarPropuestaSireTransporte = async ({
 });
 
 module.exports = {
+  obtenerUltimaPropuestaSireTransporte,
   obtenerRegistroSireTransporte,
   obtenerComparacionSireTransporte,
   generarTicketPropuestaSireTransporte,

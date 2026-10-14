@@ -326,7 +326,22 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
   return result.rows;
 };
 
+const obtenerPropuestaGuardadaSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro, ticket }) => {
+  const result = await pool.query(
+    `SELECT id_propuesta, ticket, nombre_archivo, estado, cantidad_registros
+       FROM public.mve_sire_propuesta
+      WHERE id_usuario = $1 AND documento_id = $2 AND periodo = $3 AND id_libro = $4
+        AND origen = 'TRANSPORTE'
+        AND ($5::varchar = '' OR ticket = $5)
+      ORDER BY fecha_descarga DESC, id_propuesta DESC
+      LIMIT 1`,
+    [idAnfitrion, documentoId, periodo, idLibro, ticket]
+  );
+  return result.rows[0] || null;
+};
+
 module.exports = {
+  obtenerPropuestaGuardadaSireTransporteQuery,
   obtenerRegistroSireTransporteQuery,
   obtenerComparacionSireTransporteQuery,
 };

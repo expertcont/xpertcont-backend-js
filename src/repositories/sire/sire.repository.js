@@ -32,6 +32,15 @@ const obtenerTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo, i
 };
 
 const registrarTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo, idLibro, ticket }) => {
+  const actualizar = () => pool.query(
+    `UPDATE mct_contabilidadticket SET sire_tpropuesta = $5
+      WHERE id_usuario = $1 AND documento_id = $2 AND periodo = $3 AND id_libro = $4
+      RETURNING sire_tpropuesta`,
+    [idAnfitrion, documentoId, periodo, idLibro, ticket]
+  );
+  const actualizado = await actualizar();
+  if (actualizado.rows.length) return actualizado.rows[0].sire_tpropuesta;
+
   try {
     const result = await pool.query(
       `
@@ -45,7 +54,8 @@ const registrarTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo,
     return result.rows[0]?.sire_tpropuesta || ticket;
   } catch (error) {
     if (error.code === '23505') {
-      return obtenerTicketPropuestaSire({ idAnfitrion, documentoId, periodo, idLibro });
+      const result = await actualizar();
+      if (result.rows.length) return result.rows[0].sire_tpropuesta;
     }
 
     throw error;

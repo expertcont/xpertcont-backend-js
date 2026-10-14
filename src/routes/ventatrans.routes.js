@@ -41,6 +41,7 @@ const {
   obtenerRegistroSireTransporte,
   obtenerComparacionSireTransporte,
   generarTicketPropuestaSireTransporte,
+  obtenerUltimaPropuestaSireTransporte,
   consultarEstadoPropuestaSireTransporte,
   descargarPropuestaSireTransporte,
 } = require('../controllers/transporte/sire.controller');
@@ -111,6 +112,7 @@ router.post('/mve_transventa/cpe/resumen', generarResumenCPEexpertcontTransporte
 router.post('/mve_transventa/cpe/resumen/ticket', consultarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/corregir-rechazado', corregirRdiRechazadoTransporte);
 router.post('/transporte/sire/propuesta/ticket', generarTicketPropuestaSireTransporte);
+router.get('/transporte/sire/propuesta/ultima/:periodo/:id_anfitrion/:documento_id', obtenerUltimaPropuestaSireTransporte);
 router.post('/transporte/sire/propuesta/estado', consultarEstadoPropuestaSireTransporte);
 router.post('/transporte/sire/propuesta/descargar', descargarPropuestaSireTransporte);
 router.get('/mve_transventa/cpe/registro-sire/:periodo/:id_anfitrion/:documento_id', obtenerRegistroSireTransporte);

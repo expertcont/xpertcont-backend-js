@@ -80,6 +80,19 @@ const obtenerComparacionSireTransporte = async (req, res) => {
   }
 };
 
+const obtenerUltimaPropuestaSireTransporte = async (req, res) => {
+  const params = obtenerParametrosSire({ ...req.query, ...req.params });
+  const errorValidacion = validarParametrosBase(params);
+  if (errorValidacion) return res.status(400).json({ success: false, message: errorValidacion });
+  try {
+    const propuesta = await service.obtenerUltimaPropuestaSireTransporte(params);
+    return res.status(200).json({ success: true, ...propuesta });
+  } catch (error) {
+    console.error('Error recuperando propuesta SIRe transporte:', error);
+    return res.status(500).json({ success: false, message: 'No se pudo recuperar la propuesta SIRe guardada.' });
+  }
+};
+
 const generarTicketPropuestaSireTransporte = async (req, res) => {
   const params = obtenerParametrosSire(req.body);
   const errorValidacion = validarParametrosBase(params);
@@ -150,6 +163,7 @@ const descargarPropuestaSireTransporte = async (req, res) => {
 };
 
 module.exports = {
+  obtenerUltimaPropuestaSireTransporte,
   obtenerRegistroSireTransporte,
   obtenerComparacionSireTransporte,
   generarTicketPropuestaSireTransporte,
