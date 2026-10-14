@@ -296,10 +296,7 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
           WHEN COALESCE(tv.numero_rdi, '') <> ''
            AND COALESCE(rdi.estado, '') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', '') THEN 'RDI PENDIENTE CDR'
           WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01'
-           AND COALESCE(tv.r_vfirmado, '') <> ''
-           AND COALESCE(tv.cdr_descripcion, '') <> '' THEN 'ACEPTADO'
-          WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01'
-           AND COALESCE(tv.r_vfirmado, '') <> '' THEN 'FACTURA SIN CDR'
+           AND COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
           WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01' THEN 'SIN ENVIO SUNAT'
           ELSE COALESCE(NULLIF(tv.estado_sunat, ''), 'PENDIENTE')
         END AS estado_sunat,
@@ -318,7 +315,6 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.numero_rdi, '') <> '' AND rdi.numero_rdi IS NULL THEN 'Inconsistencia local: RDI no encontrado' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.numero_rdi, '') <> '' AND COALESCE(rdi.estado, '') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', '') THEN 'RDI pendiente de CDR' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND (COALESCE(rdi.estado, '') = 'RECHAZADO' OR COALESCE(tv.estado_sunat, '') IN ('R', 'E')) THEN 'Rechazado/error SUNAT' END,
-          CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01' AND COALESCE(tv.r_vfirmado, '') <> '' AND COALESCE(tv.cdr_descripcion, '') = '' THEN 'Factura sin CDR' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') LIKE 'RDI:%' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Inconsistencia local: firma RDI sin numero RDI' END
         ], NULL) AS observaciones
       FROM public.mve_transventa tv
