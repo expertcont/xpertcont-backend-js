@@ -53,13 +53,20 @@ const obtenerEncomiendaParaCpe = async ({ periodo, idUsuario, documentoId, rCod,
 // Guarda el motivo del rechazo de SUNAT. No toca r_vfirmado.
 const actualizarCdrDescripcionSunat = async ({
   periodo, idUsuario, documentoId, rCod, rSerie, rNumero, elemento,
-  cdrDescripcion, ctrlModUs,
+  cdrCodigo, cdrDescripcion, cdrNivel, cdrPendiente, anularDocumento = false, ctrlModUs,
 }) => {
   const query = `
         UPDATE mve_transventa
-           SET cdr_descripcion = $8,
+           SET cdr_codigo = $8,
+               cdr_descripcion = $9,
+               cdr_nivel = $10,
+               cdr_pendiente = $11,
+               registrado = CASE
+                              WHEN $12 THEN 0
+                              ELSE registrado
+                            END,
                ctrl_mod = CURRENT_TIMESTAMP,
-               ctrl_mod_us = COALESCE($9, ctrl_mod_us)
+               ctrl_mod_us = COALESCE($13, ctrl_mod_us)
          WHERE periodo = $1
            AND id_usuario = $2
            AND documento_id = $3
@@ -77,7 +84,11 @@ const actualizarCdrDescripcionSunat = async ({
         rSerie,
         rNumero,
         elemento,
+    cdrCodigo,
     cdrDescripcion,
+    cdrNivel,
+    cdrPendiente,
+    anularDocumento,
     ctrlModUs
   ];
 
@@ -88,14 +99,21 @@ const actualizarCdrDescripcionSunat = async ({
 // contabilidad opera en modo externo (empresa.modo === '1').
 const actualizarFirmaSunat = async ({
   periodo, idUsuario, documentoId, rCod, rSerie, rNumero, elemento,
-  codigoHash, cdrDescripcion, ctrlModUs,
+  codigoHash, cdrCodigo, cdrDescripcion, cdrNivel, cdrPendiente, anularDocumento = false, ctrlModUs,
 }) => {
   const query = `
         UPDATE mve_transventa
            SET r_vfirmado = COALESCE($8, r_vfirmado),
-               cdr_descripcion = $9,
+               cdr_codigo = $9,
+               cdr_descripcion = $10,
+               cdr_nivel = $11,
+               cdr_pendiente = $12,
+               registrado = CASE
+                              WHEN $13 THEN 0
+                              ELSE registrado
+                            END,
                ctrl_mod = CURRENT_TIMESTAMP,
-               ctrl_mod_us = COALESCE($10, ctrl_mod_us)
+               ctrl_mod_us = COALESCE($14, ctrl_mod_us)
          WHERE periodo = $1
            AND id_usuario = $2
            AND documento_id = $3
@@ -114,7 +132,11 @@ const actualizarFirmaSunat = async ({
         rNumero,
         elemento,
     codigoHash,
+    cdrCodigo,
     cdrDescripcion,
+    cdrNivel,
+    cdrPendiente,
+    anularDocumento,
     ctrlModUs
   ];
 

@@ -169,6 +169,8 @@ const generarCPEexpertcontTransporte = async (datosEntrada) => {
 
     if (!apiResponse.ok) {
       const errorNormalizado = normalizarErrorSunatTransporte(responseData);
+      const anularDocumento = errorNormalizado.nivel === 'RECHAZADO'
+        && errorNormalizado.consumio_correlativo === true;
       await repository.actualizarCdrDescripcionSunat({
         periodo,
         idUsuario,
@@ -177,7 +179,11 @@ const generarCPEexpertcontTransporte = async (datosEntrada) => {
         rSerie,
         rNumero,
         elemento,
+        cdrCodigo: errorNormalizado.codigo,
         cdrDescripcion: limitarCdrDescripcionTransporte(errorNormalizado.respuesta_sunat_descripcion),
+        cdrNivel: errorNormalizado.nivel,
+        cdrPendiente: errorNormalizado.cdr_pendiente,
+        anularDocumento,
         ctrlModUs,
       });
 
@@ -203,6 +209,7 @@ const generarCPEexpertcontTransporte = async (datosEntrada) => {
     } = dataSunat;
 
     const data = JSON.parse(jsonString);
+    const anularDocumento = nivel === 'RECHAZADO' && consumioCorrelativo === true;
     if (String(data.empresa.modo) === '1') {
       await repository.actualizarFirmaSunat({
         periodo,
@@ -215,7 +222,11 @@ const generarCPEexpertcontTransporte = async (datosEntrada) => {
         // el service desestructura la respuesta como codigo_hash; el repository
         // lo llama codigoHash
         codigoHash: codigo_hash,
+        cdrCodigo: codigo,
         cdrDescripcion: limitarCdrDescripcionTransporte(respuesta_sunat_descripcion),
+        cdrNivel: nivel,
+        cdrPendiente: cdr_pendiente,
+        anularDocumento,
         ctrlModUs,
       });
     }

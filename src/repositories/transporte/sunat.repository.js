@@ -287,6 +287,8 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
            AND COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
           WHEN COALESCE(tv.registrado, 1) = 0 THEN 'ANULADO LOCAL'
           WHEN COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
+          WHEN COALESCE(tv.numero_rdi, '') = ''
+           AND COALESCE(tv.cdr_descripcion, '') <> '' THEN 'RECHAZADO'
           WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
            AND COALESCE(tv.numero_rdi, '') = '' THEN 'SIN ENVIO SUNAT'
           WHEN COALESCE(tv.numero_rdi, '') <> ''
@@ -308,14 +310,14 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
         END AS modo_envio,
         tv.numero_rdi,
         rdi.ticket,
-        COALESCE(rdi.respuesta_codigo, CASE WHEN COALESCE(tv.estado_sunat, '') = 'A' THEN '0' ELSE NULL END) AS codigo_cdr,
+        COALESCE(rdi.respuesta_codigo, tv.cdr_codigo, CASE WHEN COALESCE(tv.estado_sunat, '') = 'A' THEN '0' ELSE NULL END) AS codigo_cdr,
         COALESCE(rdi.respuesta_desc, tv.cdr_descripcion) AS descripcion_cdr,
         ARRAY_REMOVE(ARRAY[
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Boleta sin RDI' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Sin envio SUNAT' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(tv.numero_rdi, '') <> '' AND rdi.numero_rdi IS NULL THEN 'Inconsistencia local: RDI no encontrado' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(tv.numero_rdi, '') <> '' AND COALESCE(rdi.estado, '') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', '') THEN 'RDI pendiente de CDR' END,
-          CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND (COALESCE(rdi.estado, '') = 'RECHAZADO' OR COALESCE(tv.estado_sunat, '') IN ('R', 'E')) THEN 'Rechazado/error SUNAT' END
+          CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND (COALESCE(rdi.estado, '') = 'RECHAZADO' OR COALESCE(tv.cdr_nivel, '') = 'RECHAZADO' OR COALESCE(tv.cdr_descripcion, '') <> '' OR COALESCE(tv.estado_sunat, '') IN ('R', 'E')) THEN 'Rechazado/error SUNAT' END
         ], NULL) AS observaciones
       FROM public.mve_transventa tv
       LEFT JOIN public.mve_rdi_sunat rdi
