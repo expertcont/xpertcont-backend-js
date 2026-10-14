@@ -4,7 +4,7 @@
 // devuelve un descriptor { status, body } y el controller lo responde.
 const fetch = require('node-fetch');
 
-const { toIsoDate, toIsoTime, toIsoDateTimeLima, toNumber } = require('../../utils/formato');
+const { toIsoTime, toIsoDateTimeLima, toNumber } = require('../../utils/formato');
 const { leerRespuestaSunat } = require('../../utils/sunat');
 const repository = require('../../repositories/transporte/ticket.repository');
 
@@ -67,7 +67,10 @@ const generaJsonTicketEncomiendaExpertcontTransporte = async (
   }
 
   const total = toNumber(venta.r_monto_total || venta.precio_neto);
-  const fechaTicket = toIsoDate(venta.r_fecemi);
+  const fechaTicket = venta.fecha_emision_ticket;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaTicket || '')) {
+    throw new Error('FECHA DE EMISION DEL TICKET NO VALIDA');
+  }
   const horaTicket = toIsoTime();
   const fechaHoraTicket = toIsoDateTimeLima(fechaTicket, horaTicket);
 

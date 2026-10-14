@@ -151,7 +151,7 @@ const obtenerManifiestos = async ({ id_usuario, documento_id, periodo, fecha, es
     condiciones.push(`m.id_punto_venta = $${params.length}`);
   }
 
-  const query = `SELECT m.*,
+  const query = `SELECT m.*, TO_CHAR(m.fecha, 'YYYY-MM-DD') AS fecha,
        (SELECT COUNT(*)::integer
           FROM mve_transventa tv
          WHERE tv.id_manifiesto = m.id_manifiesto
@@ -169,7 +169,7 @@ const obtenerManifiestos = async ({ id_usuario, documento_id, periodo, fecha, es
 // Un manifiesto con su lista de pasajeros.
 const obtenerManifiesto = async ({ id_manifiesto }) => {
   const result = await pool.query(
-    `SELECT m.*,
+    `SELECT m.*, TO_CHAR(m.fecha, 'YYYY-MM-DD') AS fecha,
        (SELECT COUNT(*)::integer
           FROM mve_transventa tv
          WHERE tv.id_manifiesto = m.id_manifiesto
@@ -198,7 +198,7 @@ const crearManifiesto = async (datos) => {
        estado, ctrl_crea, ctrl_crea_us
      )
      VALUES ($1,$2,$3,$4::date,NULLIF($5, '')::time,$6,$7,$8,$9,$10,$11,'ABIERTO',CURRENT_TIMESTAMP,$12)
-     RETURNING *`,
+     RETURNING *, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha`,
     [
       id_usuario, documento_id, periodo, fecha, hora_salida || null,
       id_ruta, id_punto_venta, id_punto_venta_dest || null,
@@ -306,7 +306,7 @@ const cerrarManifiesto = async ({ id_manifiesto, placa, licencia, ctrl_mod_us })
             ctrl_mod = CURRENT_TIMESTAMP,
             ctrl_mod_us = COALESCE($4, ctrl_mod_us)
       WHERE id_manifiesto = $1
-    RETURNING *`,
+    RETURNING *, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha`,
     [id_manifiesto, placa || null, licencia || null, ctrl_mod_us || null]
   );
 
@@ -320,7 +320,7 @@ const reabrirManifiesto = async ({ id_manifiesto, ctrl_mod_us }) => {
             ctrl_mod = CURRENT_TIMESTAMP,
             ctrl_mod_us = COALESCE($2, ctrl_mod_us)
       WHERE id_manifiesto = $1
-    RETURNING *`,
+    RETURNING *, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha`,
     [id_manifiesto, ctrl_mod_us || null]
   );
 
@@ -343,7 +343,7 @@ const eliminarManifiesto = async ({ id_manifiesto }) => {
     const result = await client.query(
       `DELETE FROM mve_transmanifiesto
         WHERE id_manifiesto = $1
-      RETURNING *`,
+      RETURNING *, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha`,
       [id_manifiesto]
     );
 

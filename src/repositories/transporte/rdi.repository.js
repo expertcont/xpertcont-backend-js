@@ -31,7 +31,7 @@ const obtenerDatosResumenSunatTransporte = async (idUsuario, documentoId) => {
 const obtenerRdiSunatTransporte = async ({ idUsuario, documentoId, numeroRdi, fechaResumen, origenResumen }) => {
   const params = [idUsuario, documentoId];
   let query = `
-    SELECT *
+    SELECT *, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha_rdi_texto
       FROM public.mve_rdi_sunat
      WHERE id_usuario = $1
        AND documento_id = $2

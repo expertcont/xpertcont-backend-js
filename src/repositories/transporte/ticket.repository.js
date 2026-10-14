@@ -32,6 +32,7 @@ const obtenerEncomiendaTicketQuery = async ({
   const ventaQuery = await pool.query(
     `
     SELECT tv.*,
+           TO_CHAR(tv.r_fecemi, 'YYYY-MM-DD') AS fecha_emision_ticket,
            ruta.nombre AS nombre_ruta,
            punto_origen.nombre AS punto_venta_nombre,
            punto_destino.nombre AS punto_venta_dest_nombre

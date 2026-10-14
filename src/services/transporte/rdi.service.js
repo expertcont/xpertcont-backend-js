@@ -4,10 +4,19 @@
 // las respuestas de SUNAT y coordina con el repository. No conoce req ni res.
 const fetch = require('node-fetch');
 
-const { toIsoDate, toIsoDateColumna, toNumber } = require('../../utils/formato');
+const { toIsoDate, toNumber } = require('../../utils/formato');
 const { leerRespuestaSunat, normalizarErrorSunatTransporte } = require('../../utils/sunat');
 const { normalizarTexto } = require('../../utils/texto');
 const repository = require('../../repositories/transporte/rdi.repository');
+
+// La fecha del RDI es DATE, no un instante: usar el texto SQL evita cambios de dia.
+const obtenerFechaRdiTexto = (rdi) => {
+  const fecha = rdi.fecha_rdi_texto;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) {
+    throw new Error('FECHA DEL RESUMEN DIARIO NO VALIDA');
+  }
+  return fecha;
+};
 
 // ------------------------------------------------------------------
 // Payload del comprobante dentro del resumen
@@ -268,7 +277,7 @@ const generarPayloadResumenSunatTransporteDesdeRdi = async ({
 
   const comprobantes = ventaQuery.rows.map(construirComprobanteResumenTransporte);
 
-  const [, fechaNumero = toIsoDateColumna(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+  const [, fechaNumero = obtenerFechaRdiTexto(rdi).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
     String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
 
   return {
@@ -289,8 +298,8 @@ const generarPayloadResumenSunatTransporteDesdeRdi = async ({
       resumen: {
         numero: fechaNumero,
         correlativo: String(correlativo),
-        fecha_documentos: toIsoDateColumna(rdi.fecha),
-        fecha_resumen: toIsoDateColumna(rdi.fecha),
+        fecha_documentos: obtenerFechaRdiTexto(rdi),
+        fecha_resumen: obtenerFechaRdiTexto(rdi),
       },
       comprobantes,
     }
@@ -321,7 +330,7 @@ const consultarTicketRdiSunatTransporte = async ({
     };
   }
 
-  const [, fechaNumero = toIsoDateColumna(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+  const [, fechaNumero = obtenerFechaRdiTexto(rdi).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
     String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
   const nombreArchivo = `${documentoId}-RC-${fechaNumero}-${correlativo}`;
   const payload = {
@@ -335,7 +344,7 @@ const consultarTicketRdiSunatTransporte = async ({
     resumen: {
       numero: fechaNumero,
       correlativo: String(correlativo),
-      fecha_documentos: toIsoDateColumna(rdi.fecha),
+      fecha_documentos: obtenerFechaRdiTexto(rdi),
     }
   };
 

@@ -7,10 +7,13 @@ const toNumber = (value, fallback = 0) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
 };
-const toIsoDate = (value) => {
-  if (!value) return '';
-  if (value instanceof Date) return value.toISOString().split('T')[0];
-  return String(value).split('T')[0].split(' ')[0];
+// La fecha del RDI es DATE: conservar el texto SQL evita cambios por zona horaria.
+const obtenerFechaRdiComercialTexto = (rdi) => {
+  const fecha = rdi.fecha_rdi_texto;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) {
+    throw new Error('FECHA DEL RESUMEN DIARIO COMERCIAL NO VALIDA');
+  }
+  return fecha;
 };
 const leerRespuestaSunatResumen = async (apiResponse) => {
   const raw = await apiResponse.text();
@@ -2020,7 +2023,7 @@ const obtenerDatosResumenSunatComercial = async (idUsuario, documentoId) => {
 const obtenerRdiSunatComercial = async ({ idUsuario, documentoId, numeroRdi, fechaResumen, origenResumen }) => {
   const params = [idUsuario, documentoId];
   let query = `
-    SELECT *
+    SELECT *, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha_rdi_texto
       FROM public.mve_rdi_sunat
      WHERE id_usuario = $1
        AND documento_id = $2
@@ -2260,7 +2263,7 @@ const generarPayloadResumenSunatComercial = async ({
     };
   });
 
-  const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+  const [, fechaNumero = obtenerFechaRdiComercialTexto(rdi).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
     String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
 
   return {
@@ -2281,8 +2284,8 @@ const generarPayloadResumenSunatComercial = async ({
       resumen: {
         numero: fechaNumero,
         correlativo: String(correlativo),
-        fecha_documentos: toIsoDate(rdi.fecha),
-        fecha_resumen: toIsoDate(rdi.fecha),
+        fecha_documentos: obtenerFechaRdiComercialTexto(rdi),
+        fecha_resumen: obtenerFechaRdiComercialTexto(rdi),
       },
       comprobantes,
     }
@@ -2477,7 +2480,7 @@ const consultarTicketRdiSunatComercial = async ({
     };
   }
 
-  const [, fechaNumero = toIsoDate(rdi.fecha).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
+  const [, fechaNumero = obtenerFechaRdiComercialTexto(rdi).replace(/-/g, ''), correlativo = String(rdi.secuencia || 1)] =
     String(numeroRdi).match(/^RC-(\d{8})-(\d+)$/) || [];
   const nombreArchivo = `${documentoId}-RC-${fechaNumero}-${correlativo}`;
   const payload = {
@@ -2491,7 +2494,7 @@ const consultarTicketRdiSunatComercial = async ({
     resumen: {
       numero: fechaNumero,
       correlativo: String(correlativo),
-      fecha_documentos: toIsoDate(rdi.fecha),
+      fecha_documentos: obtenerFechaRdiComercialTexto(rdi),
     }
   };
 

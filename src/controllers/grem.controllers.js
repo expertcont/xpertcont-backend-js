@@ -1,5 +1,6 @@
 ﻿const pool = require('../db');
 const fetch = require('node-fetch');
+const { toIsoDate: fechaInstanteLima, toIsoDateColumna } = require('../utils/formato');
 
 const normalizarTexto = (valor) => (valor || '').toString().trim();
 const SUNAT_API_BASE_URL = 'https://expertcont-api-sunat.up.railway.app';
@@ -48,13 +49,7 @@ const normalizarSerieGremTransporte = (serie) => {
   throw error;
 };
 
-const toIsoDate = (value) => {
-  if (!value) return '';
-  if (value instanceof Date) {
-    return value.toISOString().split('T')[0];
-  }
-  return String(value).split('T')[0].split(' ')[0];
-};
+const toIsoDate = (value) => toIsoDateColumna(value);
 
 const toIsoTime = (value) => {
   const horaLimaActual = () => {
@@ -1050,7 +1045,7 @@ const generarPayloadGremTransporte = async ({
       ),
 
       fecha_emision: toIsoDate(
-        guia.fecha_emision || new Date()
+        guia.fecha_emision || fechaInstanteLima(new Date())
       ),
 
       hora_emision: toIsoTime(
