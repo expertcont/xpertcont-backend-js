@@ -29,6 +29,42 @@ const obtenerRegistroSireTransporte = async ({ idAnfitrion, documentoId, periodo
   return { data, observaciones, resumen };
 };
 
+const obtenerComparacionSireTransporte = async ({
+  idAnfitrion,
+  documentoId,
+  periodo,
+  idLibro = '014',
+}) => {
+  const idLibroSire = sireSunatClient.normalizarIdLibroSire(idLibro);
+  const data = await repository.obtenerComparacionSireTransporteQuery({
+    idAnfitrion,
+    documentoId,
+    periodo,
+    idLibro: idLibroSire,
+  });
+
+  const resumen = data.reduce((acc, row) => {
+    acc.total += 1;
+    const severidad = String(row.severidad || '').toLowerCase();
+    const categoria = String(row.categoria || '').toLowerCase();
+    if (severidad === 'critico') acc.criticos += 1;
+    if (severidad === 'medio') acc.medios += 1;
+    if (categoria.includes('faltante')) acc.faltantes += 1;
+    if (categoria.includes('duplicado')) acc.duplicados += 1;
+    if (String(row.resultado || '').toUpperCase() === 'DIFERENCIA') acc.diferencias += 1;
+    return acc;
+  }, {
+    total: 0,
+    criticos: 0,
+    medios: 0,
+    faltantes: 0,
+    diferencias: 0,
+    duplicados: 0,
+  });
+
+  return { data, resumen };
+};
+
 const generarTicketPropuestaSireTransporte = async ({
   idAnfitrion,
   documentoId,
@@ -106,6 +142,7 @@ const descargarPropuestaSireTransporte = async ({
 
 module.exports = {
   obtenerRegistroSireTransporte,
+  obtenerComparacionSireTransporte,
   generarTicketPropuestaSireTransporte,
   consultarEstadoPropuestaSireTransporte,
   descargarPropuestaSireTransporte,

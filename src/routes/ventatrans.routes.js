@@ -39,6 +39,7 @@ const {
 // SIRe transporte: mantiene el endpoint historico para no romper frontend.
 const {
   obtenerRegistroSireTransporte,
+  obtenerComparacionSireTransporte,
   generarTicketPropuestaSireTransporte,
   consultarEstadoPropuestaSireTransporte,
   descargarPropuestaSireTransporte,
@@ -113,6 +114,7 @@ router.post('/transporte/sire/propuesta/ticket', generarTicketPropuestaSireTrans
 router.post('/transporte/sire/propuesta/estado', consultarEstadoPropuestaSireTransporte);
 router.post('/transporte/sire/propuesta/descargar', descargarPropuestaSireTransporte);
 router.get('/mve_transventa/cpe/registro-sire/:periodo/:id_anfitrion/:documento_id', obtenerRegistroSireTransporte);
+router.get('/mve_transventa/cpe/comparacion-sire/:periodo/:id_anfitrion/:documento_id', obtenerComparacionSireTransporte);
 router.get('/mve_transventa/cpe/resumen/:periodo/:id_anfitrion/:documento_id', obtenerResumenesCPEexpertcontTransporte);
 
 router.get(

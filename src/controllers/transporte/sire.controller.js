@@ -48,6 +48,38 @@ const obtenerRegistroSireTransporte = async (req, res) => {
   }
 };
 
+const obtenerComparacionSireTransporte = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id } = req.params;
+  const idLibro = req.query.id_libro || req.query.idLibro || '014';
+
+  if (!periodo || !id_anfitrion || !documento_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos: periodo, id_anfitrion o documento_id',
+    });
+  }
+
+  try {
+    const comparacion = await service.obtenerComparacionSireTransporte({
+      idAnfitrion: id_anfitrion,
+      documentoId: documento_id,
+      periodo,
+      idLibro,
+    });
+
+    return res.status(200).json({
+      success: true,
+      ...comparacion,
+    });
+  } catch (error) {
+    console.error('Error al obtener comparacion SIRe transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno obteniendo comparacion SIRe transporte.',
+    });
+  }
+};
+
 const generarTicketPropuestaSireTransporte = async (req, res) => {
   const params = obtenerParametrosSire(req.body);
   const errorValidacion = validarParametrosBase(params);
@@ -119,6 +151,7 @@ const descargarPropuestaSireTransporte = async (req, res) => {
 
 module.exports = {
   obtenerRegistroSireTransporte,
+  obtenerComparacionSireTransporte,
   generarTicketPropuestaSireTransporte,
   consultarEstadoPropuestaSireTransporte,
   descargarPropuestaSireTransporte,

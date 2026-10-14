@@ -78,6 +78,255 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
   return result.rows;
 };
 
+const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro }) => {
+  const result = await pool.query(
+    `
+      WITH propuesta AS (
+        SELECT id_propuesta, ticket, nombre_archivo
+          FROM public.mve_sire_propuesta
+         WHERE id_usuario = $1
+           AND documento_id = $2
+           AND periodo = $3
+           AND id_libro = $4
+           AND origen = 'TRANSPORTE'
+           AND estado IN ('PARSEADO', 'COMPARADO', 'DESCARGADO')
+         ORDER BY fecha_descarga DESC, id_propuesta DESC
+         LIMIT 1
+      ),
+      sire AS (
+        SELECT
+          d.id_detalle::varchar AS id_origen,
+          'SIRE'::varchar(10) AS origen,
+          d.linea,
+          d.fecha_emision,
+          d.tipo_comprobante,
+          d.serie,
+          d.numero,
+          d.tipo_doc_cliente,
+          d.nro_doc_cliente,
+          d.cliente,
+          COALESCE(d.base_gravada, 0)::numeric AS base_gravada,
+          COALESCE(d.exonerado, 0)::numeric AS exonerado,
+          COALESCE(d.inafecto, 0)::numeric AS inafecto,
+          COALESCE(d.igv, 0)::numeric AS igv,
+          COALESCE(d.total, 0)::numeric AS total,
+          d.moneda,
+          d.tipo_cambio,
+          p.ticket,
+          p.nombre_archivo,
+          d.raw_linea,
+          COUNT(*) OVER (PARTITION BY d.tipo_comprobante, d.serie, d.numero) AS duplicados_origen
+        FROM public.mve_sire_propuesta_det d
+        JOIN propuesta p ON p.id_propuesta = d.id_propuesta
+      ),
+      xpert AS (
+        SELECT
+          CONCAT(tv.r_cod, '-', tv.r_serie, '-', tv.r_numero, '-', tv.elemento)::varchar AS id_origen,
+          'XPERT'::varchar(10) AS origen,
+          NULL::integer AS linea,
+          tv.r_fecemi::date AS fecha_emision,
+          COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod)::varchar AS tipo_comprobante,
+          COALESCE(NULLIF(tv.r_serie_ref, ''), tv.r_serie)::varchar AS serie,
+          COALESCE(NULLIF(tv.r_numero_ref, ''), tv.r_numero)::varchar AS numero,
+          tv.cliente_id_doc::varchar AS tipo_doc_cliente,
+          tv.cliente_documento_id::varchar AS nro_doc_cliente,
+          tv.cliente::varchar AS cliente,
+          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_gravado, 0) END::numeric AS base_gravada,
+          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_exonerado, 0) END::numeric AS exonerado,
+          0::numeric AS inafecto,
+          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_igv, 0) END::numeric AS igv,
+          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_monto_total, 0) END::numeric AS total,
+          COALESCE(tv.r_moneda, 'PEN')::varchar AS moneda,
+          tv.r_tc::numeric AS tipo_cambio,
+          NULL::varchar AS ticket,
+          NULL::varchar AS nombre_archivo,
+          NULL::text AS raw_linea,
+          COUNT(*) OVER (
+            PARTITION BY COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod),
+                         COALESCE(NULLIF(tv.r_serie_ref, ''), tv.r_serie),
+                         COALESCE(NULLIF(tv.r_numero_ref, ''), tv.r_numero)
+          ) AS duplicados_origen,
+          COALESCE(tv.registrado, 1)::integer AS registrado
+        FROM public.mve_transventa tv
+       WHERE tv.id_usuario = $1
+         AND tv.documento_id = $2
+         AND tv.periodo = $3
+         AND tv.tipo_operacion IN ('B', 'E')
+         AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) IN ('01', '03', '07', '08')
+      ),
+      base AS (
+        SELECT
+          'SIRE - XPERT'::varchar AS resultado,
+          'CRITICO'::varchar AS severidad,
+          'FALTANTE_XPERT'::varchar AS categoria,
+          'Existe en SIRe, no existe en XPERT'::varchar AS observacion,
+          s.id_origen, s.origen, s.linea, s.fecha_emision, s.tipo_comprobante, s.serie, s.numero,
+          s.tipo_doc_cliente, s.nro_doc_cliente, s.cliente,
+          s.base_gravada AS base_gravada_sire,
+          NULL::numeric AS base_gravada_xpert,
+          s.exonerado AS exonerado_sire,
+          NULL::numeric AS exonerado_xpert,
+          s.inafecto AS inafecto_sire,
+          NULL::numeric AS inafecto_xpert,
+          s.igv AS igv_sire,
+          NULL::numeric AS igv_xpert,
+          s.total AS total_sire,
+          NULL::numeric AS total_xpert,
+          s.total AS diferencia_total,
+          s.moneda AS moneda_sire,
+          NULL::varchar AS moneda_xpert,
+          s.tipo_cambio AS tipo_cambio_sire,
+          NULL::numeric AS tipo_cambio_xpert,
+          s.ticket, s.nombre_archivo, s.raw_linea
+          FROM sire s
+         WHERE NOT EXISTS (
+           SELECT 1
+             FROM xpert x
+            WHERE x.tipo_comprobante = s.tipo_comprobante
+              AND x.serie = s.serie
+              AND x.numero = s.numero
+         )
+        UNION ALL
+        SELECT
+          'XPERT - SIRE'::varchar AS resultado,
+          CASE WHEN x.registrado = 0 THEN 'BAJO' ELSE 'CRITICO' END::varchar AS severidad,
+          CASE WHEN x.registrado = 0 THEN 'ANULADO_SOLO_XPERT' ELSE 'FALTANTE_SIRE' END::varchar AS categoria,
+          CASE WHEN x.registrado = 0 THEN 'Anulado en XPERT y no aparece en SIRe' ELSE 'Existe en XPERT, no existe en SIRe' END::varchar AS observacion,
+          x.id_origen, x.origen, x.linea, x.fecha_emision, x.tipo_comprobante, x.serie, x.numero,
+          x.tipo_doc_cliente, x.nro_doc_cliente, x.cliente,
+          NULL::numeric, x.base_gravada,
+          NULL::numeric, x.exonerado,
+          NULL::numeric, x.inafecto,
+          NULL::numeric, x.igv,
+          NULL::numeric, x.total,
+          (0 - x.total)::numeric AS diferencia_total,
+          NULL::varchar, x.moneda,
+          NULL::numeric, x.tipo_cambio,
+          x.ticket, x.nombre_archivo, x.raw_linea
+          FROM xpert x
+         WHERE NOT EXISTS (
+           SELECT 1
+             FROM sire s
+            WHERE s.tipo_comprobante = x.tipo_comprobante
+              AND s.serie = x.serie
+              AND s.numero = x.numero
+         )
+        UNION ALL
+        SELECT
+          'DIFERENCIA'::varchar AS resultado,
+          CASE
+            WHEN ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01 THEN 'CRITICO'
+            WHEN ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01 THEN 'CRITICO'
+            ELSE 'MEDIO'
+          END::varchar AS severidad,
+          CONCAT_WS(
+            '+',
+            CASE WHEN COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01') THEN 'FECHA' END,
+            CASE WHEN COALESCE(s.moneda, '') <> COALESCE(x.moneda, '') THEN 'MONEDA' END,
+            CASE WHEN ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01 THEN 'TOTAL' END,
+            CASE WHEN ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01 THEN 'IGV' END,
+            CASE WHEN ABS(COALESCE(s.base_gravada, 0) - COALESCE(x.base_gravada, 0)) > 0.01 THEN 'BASE' END,
+            CASE WHEN ABS(COALESCE(s.exonerado, 0) - COALESCE(x.exonerado, 0)) > 0.01 THEN 'EXONERADO' END,
+            CASE WHEN ABS(COALESCE(s.inafecto, 0) - COALESCE(x.inafecto, 0)) > 0.01 THEN 'INAFECTO' END
+          )::varchar AS categoria,
+          CONCAT_WS(
+            '; ',
+            CASE WHEN COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01') THEN 'Fecha distinta' END,
+            CASE WHEN COALESCE(s.moneda, '') <> COALESCE(x.moneda, '') THEN 'Moneda distinta' END,
+            CASE WHEN ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01 THEN 'Total distinto' END,
+            CASE WHEN ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01 THEN 'IGV distinto' END,
+            CASE WHEN ABS(COALESCE(s.base_gravada, 0) - COALESCE(x.base_gravada, 0)) > 0.01 THEN 'Base gravada distinta' END,
+            CASE WHEN ABS(COALESCE(s.exonerado, 0) - COALESCE(x.exonerado, 0)) > 0.01 THEN 'Exonerado distinto' END,
+            CASE WHEN ABS(COALESCE(s.inafecto, 0) - COALESCE(x.inafecto, 0)) > 0.01 THEN 'Inafecto distinto' END
+          )::varchar AS observacion,
+          s.id_origen, 'AMBOS'::varchar AS origen,
+          s.linea,
+          COALESCE(s.fecha_emision, x.fecha_emision) AS fecha_emision,
+          s.tipo_comprobante,
+          s.serie,
+          s.numero,
+          COALESCE(s.tipo_doc_cliente, x.tipo_doc_cliente) AS tipo_doc_cliente,
+          COALESCE(s.nro_doc_cliente, x.nro_doc_cliente) AS nro_doc_cliente,
+          COALESCE(s.cliente, x.cliente) AS cliente,
+          s.base_gravada, x.base_gravada,
+          s.exonerado, x.exonerado,
+          s.inafecto, x.inafecto,
+          s.igv, x.igv,
+          s.total, x.total,
+          (COALESCE(s.total, 0) - COALESCE(x.total, 0))::numeric AS diferencia_total,
+          s.moneda, x.moneda,
+          s.tipo_cambio, x.tipo_cambio,
+          s.ticket,
+          s.nombre_archivo,
+          s.raw_linea
+        FROM sire s
+        JOIN xpert x
+          ON x.tipo_comprobante = s.tipo_comprobante
+         AND x.serie = s.serie
+         AND x.numero = s.numero
+        WHERE COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01')
+           OR COALESCE(s.moneda, '') <> COALESCE(x.moneda, '')
+           OR ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01
+           OR ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01
+           OR ABS(COALESCE(s.base_gravada, 0) - COALESCE(x.base_gravada, 0)) > 0.01
+           OR ABS(COALESCE(s.exonerado, 0) - COALESCE(x.exonerado, 0)) > 0.01
+           OR ABS(COALESCE(s.inafecto, 0) - COALESCE(x.inafecto, 0)) > 0.01
+        UNION ALL
+        SELECT
+          'DUPLICADO'::varchar AS resultado,
+          'MEDIO'::varchar AS severidad,
+          'DUPLICADO_SIRE'::varchar AS categoria,
+          'Comprobante duplicado en SIRe'::varchar AS observacion,
+          s.id_origen, s.origen, s.linea, s.fecha_emision, s.tipo_comprobante, s.serie, s.numero,
+          s.tipo_doc_cliente, s.nro_doc_cliente, s.cliente,
+          s.base_gravada, NULL::numeric,
+          s.exonerado, NULL::numeric,
+          s.inafecto, NULL::numeric,
+          s.igv, NULL::numeric,
+          s.total, NULL::numeric,
+          s.total AS diferencia_total,
+          s.moneda, NULL::varchar,
+          s.tipo_cambio, NULL::numeric,
+          s.ticket, s.nombre_archivo, s.raw_linea
+          FROM sire s
+         WHERE s.duplicados_origen > 1
+        UNION ALL
+        SELECT
+          'DUPLICADO'::varchar AS resultado,
+          'MEDIO'::varchar AS severidad,
+          'DUPLICADO_XPERT'::varchar AS categoria,
+          'Comprobante duplicado en XPERT'::varchar AS observacion,
+          x.id_origen, x.origen, x.linea, x.fecha_emision, x.tipo_comprobante, x.serie, x.numero,
+          x.tipo_doc_cliente, x.nro_doc_cliente, x.cliente,
+          NULL::numeric, x.base_gravada,
+          NULL::numeric, x.exonerado,
+          NULL::numeric, x.inafecto,
+          NULL::numeric, x.igv,
+          NULL::numeric, x.total,
+          (0 - x.total)::numeric AS diferencia_total,
+          NULL::varchar, x.moneda,
+          NULL::numeric, x.tipo_cambio,
+          x.ticket, x.nombre_archivo, x.raw_linea
+          FROM xpert x
+         WHERE x.duplicados_origen > 1
+      )
+      SELECT *
+        FROM base
+       ORDER BY
+         CASE severidad WHEN 'CRITICO' THEN 1 WHEN 'MEDIO' THEN 2 ELSE 3 END,
+         fecha_emision NULLS LAST,
+         tipo_comprobante,
+         serie,
+         numero,
+         categoria
+    `,
+    [idAnfitrion, documentoId, periodo, idLibro]
+  );
+
+  return result.rows;
+};
+
 module.exports = {
   obtenerRegistroSireTransporteQuery,
+  obtenerComparacionSireTransporteQuery,
 };

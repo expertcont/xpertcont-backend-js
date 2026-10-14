@@ -4,6 +4,8 @@ const { convertirFechaStringComplete, corregirTCPEN } = require('../../utils/lib
 
 const toText = (value = '') => String(value ?? '').trim();
 
+const limitText = (value, maxLength) => toText(value).slice(0, maxLength);
+
 const toNumber = (value = 0) => {
   const normalized = toText(value).replace(/,/g, '');
   const parsed = Number(normalized);
@@ -46,13 +48,13 @@ const parsearPropuestaVentasSire = ({ buffer, nombreArchivo = '' }) => {
         linea: index,
         fecha_emision: toDate(row[4]),
         fecha_vencimiento: toDate(row[5]),
-        tipo_comprobante: toText(row[6]).replace(/,/g, ''),
-        serie: toText(row[7]).replace(/,/g, ''),
-        numero: toText(row[8]).replace(/,/g, ''),
-        numero_final: toText(row[9]).replace(/,/g, ''),
-        tipo_doc_cliente: toText(row[10]).replace(/,/g, ''),
-        nro_doc_cliente: toText(row[11]).replace(/,/g, ''),
-        cliente: toText(row[12]).replace(/,/g, ''),
+        tipo_comprobante: limitText(row[6], 2).replace(/,/g, ''),
+        serie: limitText(row[7], 20).replace(/,/g, ''),
+        numero: limitText(row[8], 30).replace(/,/g, ''),
+        numero_final: limitText(row[9], 30).replace(/,/g, ''),
+        tipo_doc_cliente: limitText(row[10], 2).replace(/,/g, ''),
+        nro_doc_cliente: limitText(row[11], 20).replace(/,/g, ''),
+        cliente: limitText(row[12], 250).replace(/,/g, ''),
         base_exportacion: toNumber(row[13]),
         base_gravada: toNumber(row[14]),
         descuento_base_gravada: toNumber(row[15]),
@@ -65,12 +67,12 @@ const parsearPropuestaVentasSire = ({ buffer, nombreArchivo = '' }) => {
         icbp: toNumber(row[23]),
         otros: toNumber(row[24]),
         total: toNumber(row[25]),
-        moneda: toText(row[26]) || 'PEN',
+        moneda: limitText(row[26], 5) || 'PEN',
         tipo_cambio: toNumber(corregirTCPEN(row[27], row[26])) || null,
         fecha_emision_ref: toDate(row[28]),
-        tipo_comprobante_ref: toText(row[29]),
-        serie_ref: toText(row[30]),
-        numero_ref: toText(row[31]),
+        tipo_comprobante_ref: limitText(row[29], 2),
+        serie_ref: limitText(row[30], 20),
+        numero_ref: limitText(row[31], 30),
         raw_linea: line,
       };
     })
