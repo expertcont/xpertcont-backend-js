@@ -68,7 +68,8 @@ const obtenerComparacionSireTransporte = async ({
 
 const obtenerUltimaPropuestaSireTransporte = async (params) => {
   const idLibro = sireSunatClient.normalizarIdLibroSire(params.idLibro || '014');
-  const ticketGuardado = await sireRepository.obtenerTicketPropuestaSire({ ...params, idLibro });
+  const datosTicket = await sireRepository.obtenerDatosTicketPropuestaSire({ ...params, idLibro });
+  const ticketGuardado = datosTicket?.sire_tpropuesta || '';
   const propuesta = await repository.obtenerPropuestaGuardadaSireTransporteQuery({
     ...params, idLibro, ticket: ticketGuardado,
   });
@@ -76,6 +77,7 @@ const obtenerUltimaPropuestaSireTransporte = async (params) => {
   return {
     ticket,
     reutilizado: Boolean(ticket),
+    fecha_generacion: ticketGuardado ? datosTicket?.sire_tpropuesta_fecha_generacion || null : null,
     nombre_archivo_rep: propuesta?.nombre_archivo || '',
     importacion: propuesta && ['PARSEADO', 'COMPARADO'].includes(propuesta.estado)
       ? { id_propuesta: propuesta.id_propuesta, cantidad_registros: propuesta.cantidad_registros }

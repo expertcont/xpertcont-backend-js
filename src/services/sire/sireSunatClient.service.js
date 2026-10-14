@@ -78,15 +78,15 @@ const generarTicketPropuestaSire = async ({
   const idLibroSire = normalizarIdLibroSire(idLibro);
 
   if (reutilizarExistente) {
-    const ticketExistente = await repository.obtenerTicketPropuestaSire({
+    const datosTicket = await repository.obtenerDatosTicketPropuestaSire({
       idAnfitrion,
       documentoId,
       periodo,
       idLibro: idLibroSire,
     });
 
-    if (ticketExistente) {
-      return { ticket: ticketExistente, reutilizado: true, id_libro_sire: idLibroSire };
+    if (datosTicket?.sire_tpropuesta) {
+      return { ticket: datosTicket.sire_tpropuesta, fecha_generacion: datosTicket.sire_tpropuesta_fecha_generacion || null, reutilizado: true, id_libro_sire: idLibroSire };
     }
   }
 
@@ -110,15 +110,17 @@ const generarTicketPropuestaSire = async ({
     throw new Error(data.msg || data.message || data.error || 'SUNAT no devolvio ticket de propuesta SIRe.');
   }
 
+  const fechaGeneracion = new Date().toISOString();
   const ticket = await repository.registrarTicketPropuestaSire({
     idAnfitrion,
     documentoId,
     periodo,
     idLibro: idLibroSire,
     ticket: data.numTicket,
+    fechaGeneracion,
   });
 
-  return { ticket, reutilizado: false, id_libro_sire: idLibroSire, respuesta_sunat: data };
+  return { ticket, fecha_generacion: fechaGeneracion, reutilizado: false, id_libro_sire: idLibroSire, respuesta_sunat: data };
 };
 
 const consultarEstadoTicketSire = async ({ idAnfitrion, documentoId, periodo, ticket }) => {
