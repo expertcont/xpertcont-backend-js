@@ -5,7 +5,7 @@
 // en el controller.
 //
 const fetch = require('node-fetch');
-const { toIsoDateColumna, toIsoTime, toNumber } = require('../../utils/formato');
+const { toIsoTime, toNumber } = require('../../utils/formato');
 const { leerRespuestaSunat, normalizarErrorSunatTransporte } = require('../../utils/sunat');
 const { normalizarTexto } = require('../../utils/texto');
 const repository = require('../../repositories/transporte/cpe.repository');
@@ -67,7 +67,11 @@ const generaJsonPrevioCPEexpertcontTransporte = async ({
   const porcIgv = toNumber(venta.porc_igv, baseGravada > 0 ? 18 : 0);
   const tipoIgvCodigo = baseGravada > 0 ? '10' : '20';
   const precioBase = baseGravada > 0 ? baseGravada : baseExonerada || total;
-  const fechaEmision = toIsoDateColumna(venta.r_fecemi);
+  // r_fecemi es DATE: tomar el texto SQL evita convertirla a UTC o a hora local.
+  const fechaEmision = venta.fecha_emision_cpe;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaEmision || '')) {
+    throw new Error('FECHA DE EMISION DEL COMPROBANTE NO VALIDA');
+  }
   const descripcionBase = venta.descripcion || (esBoleto ? 'SERVICIO DE TRANSPORTE DE PASAJEROS' : 'SERVICIO DE TRANSPORTE DE ENCOMIENDA');
   const rutaYaIncluida = normalizarTexto(descripcionBase)
     .toUpperCase()

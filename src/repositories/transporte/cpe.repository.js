@@ -30,6 +30,7 @@ const obtenerDatosContabilidad = async ({ idUsuario, documentoId }) => {
 const obtenerEncomiendaParaCpe = async ({ periodo, idUsuario, documentoId, rCod, rSerie, rNumero, elemento }) => {
   const query = `
     SELECT tv.*,
+           TO_CHAR(tv.r_fecemi, 'YYYY-MM-DD') AS fecha_emision_cpe,
            ruta.nombre AS nombre_ruta
       FROM mve_transventa tv
       LEFT JOIN mve_transruta ruta
