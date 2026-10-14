@@ -18,6 +18,7 @@ const transventaRepository = require('../../repositories/transporte/transventa.r
 
 // Datos minimos sin los cuales no hay un boleto registrable.
 const MINIMO = ['id_ruta', 'cliente', 'cliente_documento'];
+const esDocumentoRuc = (documento) => normalizarTexto(documento).replace(/\D/g, '').length === 11;
 const tieneBloqueoSunatTransporte = (operacion = {}) => (
   Boolean(normalizarTexto(operacion.r_vfirmado) || normalizarTexto(operacion.numero_rdi))
 );
@@ -52,7 +53,7 @@ const crearBoleto = async (reqBody = {}) => {
 
   const idUsuario = id_usuario || id_anfitrion;
   const clienteDocumento = cliente_documento_id || cliente_documento;
-  const esFactura = normalizarTexto(clienteDocumento).replace(/\D/g, '').length === 11;
+  const esFactura = esDocumentoRuc(clienteDocumento);
 
   const faltan = [
     ...MINIMO.map((campo) => ({ campo, valor: { id_ruta, cliente, cliente_documento: clienteDocumento }[campo] })),
@@ -276,7 +277,7 @@ const actualizarBoleto = async (reqBody = {}) => {
 
   const idUsuario = id_usuario || id_anfitrion;
   const clienteDocumento = cliente_documento_id || cliente_documento;
-  const esFactura = normalizarTexto(clienteDocumento).replace(/\D/g, '').length === 11;
+  const esFactura = esDocumentoRuc(clienteDocumento);
 
   if (!periodo || !idUsuario || !documento_id || !r_cod || !r_serie || !r_numero) {
     return {
@@ -324,9 +325,25 @@ const actualizarBoleto = async (reqBody = {}) => {
       };
     }
 
+    const estadoActual = estadoRows[0];
+    const esFacturaOriginal = String(estadoActual.r_cod || '').padStart(2, '0') === '01'
+      || esDocumentoRuc(estadoActual.cliente_documento_id || estadoActual.cliente_documento);
+
+    if (esFacturaOriginal !== esFactura) {
+      return {
+        status: 409,
+        body: {
+          success: false,
+          message: esFacturaOriginal
+            ? 'Este boleto ya fue generado como factura. Solo puede cambiarse por otro RUC.'
+            : 'Este boleto ya fue generado como boleta. Solo puede cambiarse por otro DNI.'
+        }
+      };
+    }
+
     const precioBoleto = Number(precio_neto || r_monto_total || 0);
 
-    if (tieneBloqueoSunatTransporte(estadoRows[0])) {
+    if (tieneBloqueoSunatTransporte(estadoActual)) {
       return {
         status: 409,
         body: { success: false, message: 'El boleto ya fue enviado a SUNAT. No se puede modificar.' }

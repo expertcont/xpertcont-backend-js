@@ -287,9 +287,40 @@ const obtenerResumenesCPEexpertcontTransporte = async (req, res) => {
   }
 };
 
+const obtenerRegistroSireTransporte = async (req, res) => {
+  const { periodo, id_anfitrion, documento_id } = req.params;
+
+  if (!periodo || !id_anfitrion || !documento_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Faltan parametros requeridos: periodo, id_anfitrion o documento_id',
+    });
+  }
+
+  try {
+    const registro = await service.obtenerRegistroSireTransporte({
+      idAnfitrion: id_anfitrion,
+      documentoId: documento_id,
+      periodo,
+    });
+
+    return res.status(200).json({
+      success: true,
+      ...registro,
+    });
+  } catch (error) {
+    console.error('Error al obtener Reporte SIRE de transporte:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno obteniendo Reporte SIRE de transporte.',
+    });
+  }
+};
+
 module.exports = {
   generarResumenCPEexpertcontTransporte,
   consultarResumenCPEexpertcontTransporte,
   corregirRdiRechazadoTransporte,
   obtenerResumenesCPEexpertcontTransporte,
+  obtenerRegistroSireTransporte,
 };

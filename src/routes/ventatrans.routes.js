@@ -34,6 +34,7 @@ const {
   consultarResumenCPEexpertcontTransporte,
   corregirRdiRechazadoTransporte,
   obtenerResumenesCPEexpertcontTransporte,
+  obtenerRegistroSireTransporte,
 } = require('../controllers/transporte/sunat.controller');
 
 // Operacion de encomiendas en agencia destino: viven en controllers/transporte.
@@ -101,6 +102,7 @@ router.post('/mve_transventa/ticket/encomienda/admin', generarTicketAdminPDFEnco
 router.post('/mve_transventa/cpe/resumen', generarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/ticket', consultarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/corregir-rechazado', corregirRdiRechazadoTransporte);
+router.get('/mve_transventa/cpe/registro-sire/:periodo/:id_anfitrion/:documento_id', obtenerRegistroSireTransporte);
 router.get('/mve_transventa/cpe/resumen/:periodo/:id_anfitrion/:documento_id', obtenerResumenesCPEexpertcontTransporte);
 
 router.get(

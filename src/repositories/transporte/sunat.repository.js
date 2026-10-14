@@ -240,11 +240,102 @@ const obtenerPendientesResumenQuery = async (params) => {
           AND tv.tipo_operacion = $4
           AND COALESCE(tv.numero_rdi, '') = ''
           AND COALESCE(tv.r_vfirmado, '') = ''
+          AND NOT EXISTS (
+            SELECT 1
+              FROM public.mve_rdi_sunat r
+             WHERE r.id_usuario = tv.id_usuario
+               AND r.documento_id = tv.documento_id
+               AND r.fecha = tv.r_fecemi
+               AND r.origen = CASE WHEN $4 = 'B' THEN 'TRANS_BOLETO' ELSE 'TRANS_ENCOMIENDA' END
+               AND COALESCE(r.estado, '') = 'ACEPTADO'
+               AND COALESCE(r.respuesta_codigo, '') = '0'
+               AND COALESCE(r.ctrl_actualiza, r.ctrl_insercion) >= COALESCE(tv.ctrl_crea, tv.r_fecemi::timestamp)
+          )
         GROUP BY tv.r_fecemi
         ORDER BY tv.r_fecemi ASC
       `,
     params
   );
+  return result.rows;
+};
+
+const obtenerRegistroSireTransporteQuery = async (params) => {
+  const result = await pool.query(
+    `
+      SELECT
+        CAST(tv.r_fecemi AS varchar(10)) AS fecha_emision,
+        COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) AS tipo_comprobante,
+        COALESCE(NULLIF(tv.r_serie_ref, ''), tv.r_serie) AS serie,
+        COALESCE(NULLIF(tv.r_numero_ref, ''), tv.r_numero) AS numero,
+        tv.elemento,
+        tv.tipo_operacion,
+        tv.cliente_id_doc AS tipo_doc_cliente,
+        tv.cliente_documento_id AS nro_doc_cliente,
+        tv.cliente AS cliente,
+        COALESCE(tv.r_gravado, 0)::numeric AS base_gravada,
+        COALESCE(tv.r_exonerado, 0)::numeric AS exonerado,
+        0::numeric AS inafecto,
+        COALESCE(tv.r_igv, 0)::numeric AS igv,
+        COALESCE(tv.r_monto_total, tv.precio_neto, 0)::numeric AS total,
+        'PEN'::varchar AS moneda,
+        CASE
+          WHEN COALESCE(tv.registrado, 1) = 0 THEN 'ANULADO LOCAL'
+          WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
+           AND COALESCE(tv.numero_rdi, '') = '' THEN 'SIN ENVIO SUNAT'
+          WHEN COALESCE(tv.numero_rdi, '') <> ''
+           AND COALESCE(rdi.estado, '') = 'ACEPTADO'
+           AND COALESCE(rdi.respuesta_codigo, '') = '0' THEN 'ACEPTADO'
+          WHEN COALESCE(tv.numero_rdi, '') <> ''
+           AND COALESCE(rdi.estado, '') = 'RECHAZADO' THEN 'RECHAZADO'
+          WHEN COALESCE(tv.numero_rdi, '') <> ''
+           AND COALESCE(rdi.estado, '') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', '') THEN 'RDI PENDIENTE CDR'
+          WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01'
+           AND COALESCE(tv.r_vfirmado, '') <> ''
+           AND COALESCE(tv.cdr_descripcion, '') <> '' THEN 'ACEPTADO'
+          WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01'
+           AND COALESCE(tv.r_vfirmado, '') <> '' THEN 'FACTURA SIN CDR'
+          WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01' THEN 'SIN ENVIO SUNAT'
+          ELSE COALESCE(NULLIF(tv.estado_sunat, ''), 'PENDIENTE')
+        END AS estado_sunat,
+        CASE
+          WHEN COALESCE(tv.numero_rdi, '') <> '' THEN 'RDI'
+          WHEN COALESCE(tv.r_vfirmado, '') <> '' THEN 'Individual'
+          ELSE ''
+        END AS modo_envio,
+        tv.numero_rdi,
+        rdi.ticket,
+        COALESCE(rdi.respuesta_codigo, CASE WHEN COALESCE(tv.estado_sunat, '') = 'A' THEN '0' ELSE NULL END) AS codigo_cdr,
+        COALESCE(rdi.respuesta_desc, tv.cdr_descripcion) AS descripcion_cdr,
+        ARRAY_REMOVE(ARRAY[
+          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 'Comprobante anulado localmente' END,
+          CASE WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Boleta sin RDI' END,
+          CASE WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Sin envio SUNAT' END,
+          CASE WHEN COALESCE(tv.numero_rdi, '') <> '' AND rdi.numero_rdi IS NULL THEN 'Inconsistencia local: RDI no encontrado' END,
+          CASE WHEN COALESCE(tv.numero_rdi, '') <> '' AND COALESCE(rdi.estado, '') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', '') THEN 'RDI pendiente de CDR' END,
+          CASE WHEN COALESCE(rdi.estado, '') = 'RECHAZADO' OR COALESCE(tv.estado_sunat, '') IN ('R', 'E') THEN 'Rechazado/error SUNAT' END,
+          CASE WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01' AND COALESCE(tv.r_vfirmado, '') <> '' AND COALESCE(tv.cdr_descripcion, '') = '' THEN 'Factura sin CDR' END,
+          CASE WHEN COALESCE(tv.r_vfirmado, '') LIKE 'RDI:%' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Inconsistencia local: firma RDI sin numero RDI' END
+        ], NULL) AS observaciones
+      FROM public.mve_transventa tv
+      LEFT JOIN public.mve_rdi_sunat rdi
+        ON rdi.id_usuario = tv.id_usuario
+       AND rdi.documento_id = tv.documento_id
+       AND rdi.numero_rdi = tv.numero_rdi
+      WHERE tv.periodo = $1
+        AND tv.id_usuario = $2
+        AND tv.documento_id = $3
+        AND tv.tipo_operacion IN ('B', 'E')
+        AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) IN ('01', '03', '07', '08')
+      ORDER BY
+        tv.r_fecemi ASC,
+        COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) ASC,
+        COALESCE(NULLIF(tv.r_serie_ref, ''), tv.r_serie) ASC,
+        NULLIF(REGEXP_REPLACE(COALESCE(NULLIF(tv.r_numero_ref, ''), tv.r_numero), '\\D', '', 'g'), '')::bigint ASC NULLS LAST,
+        tv.elemento ASC
+    `,
+    params
+  );
+
   return result.rows;
 };
 
@@ -420,6 +511,7 @@ module.exports = {
   obtenerContabilidadTicketQuery,
   obtenerResumenesRdiQuery,
   obtenerPendientesResumenQuery,
+  obtenerRegistroSireTransporteQuery,
   corregirRdiRechazadoTransaccion,
   adquirirCandadoRdi,
   liberarCandadoRdi,
