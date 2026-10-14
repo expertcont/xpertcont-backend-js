@@ -98,7 +98,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           d.id_detalle::varchar AS id_origen,
           'SIRE'::varchar(10) AS origen,
           d.linea,
-          d.fecha_emision,
+          d.fecha_emision::date AS fecha_emision,
           d.tipo_comprobante,
           d.serie,
           d.numero,
@@ -183,7 +183,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           'CRITICO'::varchar AS severidad,
           'FALTANTE_XPERT'::varchar AS categoria,
           'Existe en SIRe, no existe en XPERT'::varchar AS observacion,
-          s.id_origen, s.origen, s.linea, s.fecha_emision, s.tipo_comprobante, s.serie, s.numero,
+          s.id_origen, s.origen, s.linea, TO_CHAR(s.fecha_emision, 'YYYY/MM/DD') AS fecha_emision, s.tipo_comprobante, s.serie, s.numero,
           s.tipo_doc_cliente, s.nro_doc_cliente, s.cliente,
           s.base_gravada AS base_gravada_sire,
           NULL::numeric AS base_gravada_xpert,
@@ -200,7 +200,9 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           NULL::varchar AS moneda_xpert,
           s.tipo_cambio AS tipo_cambio_sire,
           NULL::numeric AS tipo_cambio_xpert,
-          s.ticket, s.nombre_archivo, s.raw_linea
+          s.ticket, s.nombre_archivo, s.raw_linea,
+          TO_CHAR(s.fecha_emision, 'YYYY/MM/DD') AS fecha_emision_sire,
+          NULL::text AS fecha_emision_xpert
           FROM sire s
          WHERE NOT EXISTS (
            SELECT 1
@@ -215,7 +217,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           CASE WHEN x.registrado = 0 THEN 'BAJO' ELSE 'CRITICO' END::varchar AS severidad,
           CASE WHEN x.registrado = 0 THEN 'ANULADO_SOLO_XPERT' ELSE 'FALTANTE_SIRE' END::varchar AS categoria,
           CASE WHEN x.registrado = 0 THEN 'Anulado en XPERT y no aparece en SIRe' ELSE 'Existe en XPERT, no existe en SIRe' END::varchar AS observacion,
-          x.id_origen, x.origen, x.linea, x.fecha_emision, x.tipo_comprobante, x.serie, x.numero,
+          x.id_origen, x.origen, x.linea, TO_CHAR(x.fecha_emision, 'YYYY/MM/DD') AS fecha_emision, x.tipo_comprobante, x.serie, x.numero,
           x.tipo_doc_cliente, x.nro_doc_cliente, x.cliente,
           NULL::numeric, x.base_gravada,
           NULL::numeric, x.exonerado,
@@ -225,7 +227,9 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           (0 - x.total)::numeric AS diferencia_total,
           NULL::varchar, x.moneda,
           NULL::numeric, x.tipo_cambio,
-          x.ticket, x.nombre_archivo, x.raw_linea
+          x.ticket, x.nombre_archivo, x.raw_linea,
+          NULL::text AS fecha_emision_sire,
+          TO_CHAR(x.fecha_emision, 'YYYY/MM/DD') AS fecha_emision_xpert
           FROM xpert x
          WHERE NOT EXISTS (
            SELECT 1
@@ -244,7 +248,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           END::varchar AS severidad,
           CONCAT_WS(
             '+',
-            CASE WHEN COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01') THEN 'FECHA' END,
+            CASE WHEN s.fecha_emision IS DISTINCT FROM x.fecha_emision THEN 'FECHA' END,
             CASE WHEN s.moneda IS DISTINCT FROM x.moneda THEN 'MONEDA' END,
             CASE WHEN ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01 THEN 'TOTAL' END,
             CASE WHEN ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01 THEN 'IGV' END,
@@ -254,7 +258,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           )::varchar AS categoria,
           CONCAT_WS(
             '; ',
-            CASE WHEN COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01') THEN 'Fecha distinta' END,
+            CASE WHEN s.fecha_emision IS DISTINCT FROM x.fecha_emision THEN 'Fecha distinta' END,
             CASE WHEN s.moneda IS DISTINCT FROM x.moneda THEN 'Moneda distinta' END,
             CASE WHEN ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01 THEN 'Total distinto' END,
             CASE WHEN ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01 THEN 'IGV distinto' END,
@@ -264,7 +268,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           )::varchar AS observacion,
           s.id_origen, 'AMBOS'::varchar AS origen,
           s.linea,
-          COALESCE(s.fecha_emision, x.fecha_emision) AS fecha_emision,
+          TO_CHAR(COALESCE(s.fecha_emision, x.fecha_emision), 'YYYY/MM/DD') AS fecha_emision,
           s.tipo_comprobante,
           s.serie,
           s.numero,
@@ -281,13 +285,15 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           s.tipo_cambio, x.tipo_cambio,
           s.ticket,
           s.nombre_archivo,
-          s.raw_linea
+          s.raw_linea,
+          TO_CHAR(s.fecha_emision, 'YYYY/MM/DD') AS fecha_emision_sire,
+          TO_CHAR(x.fecha_emision, 'YYYY/MM/DD') AS fecha_emision_xpert
         FROM sire s
         JOIN xpert x
           ON x.tipo_comprobante = s.tipo_comprobante
          AND x.serie = s.serie
          AND x.numero_clave = s.numero_clave
-        WHERE COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01')
+        WHERE s.fecha_emision IS DISTINCT FROM x.fecha_emision
            OR s.moneda IS DISTINCT FROM x.moneda
            OR ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01
            OR ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01
@@ -300,7 +306,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           'MEDIO'::varchar AS severidad,
           'DUPLICADO_SIRE'::varchar AS categoria,
           'Comprobante duplicado en SIRe'::varchar AS observacion,
-          s.id_origen, s.origen, s.linea, s.fecha_emision, s.tipo_comprobante, s.serie, s.numero,
+          s.id_origen, s.origen, s.linea, TO_CHAR(s.fecha_emision, 'YYYY/MM/DD') AS fecha_emision, s.tipo_comprobante, s.serie, s.numero,
           s.tipo_doc_cliente, s.nro_doc_cliente, s.cliente,
           s.base_gravada, NULL::numeric,
           s.exonerado, NULL::numeric,
@@ -310,7 +316,9 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           s.total AS diferencia_total,
           s.moneda, NULL::varchar,
           s.tipo_cambio, NULL::numeric,
-          s.ticket, s.nombre_archivo, s.raw_linea
+          s.ticket, s.nombre_archivo, s.raw_linea,
+          TO_CHAR(s.fecha_emision, 'YYYY/MM/DD') AS fecha_emision_sire,
+          NULL::text AS fecha_emision_xpert
           FROM sire s
          WHERE s.duplicados_origen > 1
         UNION ALL
@@ -319,7 +327,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           'MEDIO'::varchar AS severidad,
           'DUPLICADO_XPERT'::varchar AS categoria,
           'Comprobante duplicado en XPERT'::varchar AS observacion,
-          x.id_origen, x.origen, x.linea, x.fecha_emision, x.tipo_comprobante, x.serie, x.numero,
+          x.id_origen, x.origen, x.linea, TO_CHAR(x.fecha_emision, 'YYYY/MM/DD') AS fecha_emision, x.tipo_comprobante, x.serie, x.numero,
           x.tipo_doc_cliente, x.nro_doc_cliente, x.cliente,
           NULL::numeric, x.base_gravada,
           NULL::numeric, x.exonerado,
@@ -329,7 +337,9 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           (0 - x.total)::numeric AS diferencia_total,
           NULL::varchar, x.moneda,
           NULL::numeric, x.tipo_cambio,
-          x.ticket, x.nombre_archivo, x.raw_linea
+          x.ticket, x.nombre_archivo, x.raw_linea,
+          NULL::text AS fecha_emision_sire,
+          TO_CHAR(x.fecha_emision, 'YYYY/MM/DD') AS fecha_emision_xpert
           FROM xpert x
          WHERE x.duplicados_origen > 1
       )
