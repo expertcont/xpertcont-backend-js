@@ -1,5 +1,6 @@
 const repository = require('../../repositories/transporte/sire.repository');
 const sireSunatClient = require('../sire/sireSunatClient.service');
+const { guardarPropuestaVentasSire } = require('../sire/sirePropuestaStore.service');
 
 const obtenerRegistroSireTransporte = async ({ idAnfitrion, documentoId, periodo }) => {
   const data = await repository.obtenerRegistroSireTransporteQuery([periodo, idAnfitrion, documentoId]);
@@ -46,13 +47,46 @@ const consultarEstadoPropuestaSireTransporte = async ({
   idAnfitrion,
   documentoId,
   periodo,
+  idLibro = '014',
   ticket,
-}) => sireSunatClient.consultarEstadoTicketSire({
-  idAnfitrion,
-  documentoId,
-  periodo,
-  ticket,
-});
+}) => {
+  const estado = await sireSunatClient.consultarEstadoTicketSire({
+    idAnfitrion,
+    documentoId,
+    periodo,
+    ticket,
+  });
+
+  if (!estado.nombre_archivo_rep) {
+    return estado;
+  }
+
+  const idLibroSire = sireSunatClient.normalizarIdLibroSire(idLibro);
+  const descarga = await sireSunatClient.descargarPropuestaSire({
+    idAnfitrion,
+    documentoId,
+    periodo,
+    idLibro,
+    ticket,
+    nombreArchivo: estado.nombre_archivo_rep,
+  });
+
+  const importacion = await guardarPropuestaVentasSire({
+    idAnfitrion,
+    documentoId,
+    periodo,
+    idLibro: idLibroSire,
+    ticket,
+    nombreArchivo: estado.nombre_archivo_rep,
+    buffer: descarga.buffer,
+  });
+
+  return {
+    ...estado,
+    propuesta_importada: true,
+    importacion,
+  };
+};
 
 const descargarPropuestaSireTransporte = async ({
   idAnfitrion,

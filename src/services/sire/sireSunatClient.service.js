@@ -12,6 +12,18 @@ const obtenerAliasLibroPropuesta = (idLibroSire) => (idLibroSire === '140000' ? 
 
 const normalizarPeriodoSire = (periodo = '') => periodo.replace(/-/g, '');
 
+const limpiarTexto = (value = '') => String(value ?? '').trim();
+
+const obtenerRucSire = (documentoId = '') => limpiarTexto(documentoId).replace(/\D/g, '');
+
+const obtenerUsuarioSolSire = ({ documentoId, sireSol }) => {
+  const ruc = obtenerRucSire(documentoId);
+  const usuarioSol = limpiarTexto(sireSol);
+
+  if (!ruc || !usuarioSol) return `${ruc}${usuarioSol}`;
+  return usuarioSol.startsWith(ruc) ? usuarioSol : `${ruc}${usuarioSol}`;
+};
+
 const obtenerCredencialesSire = async ({ idAnfitrion, documentoId }) => {
   const credenciales = await repository.obtenerCredencialesSire({ idAnfitrion, documentoId });
 
@@ -24,14 +36,19 @@ const obtenerCredencialesSire = async ({ idAnfitrion, documentoId }) => {
 
 const obtenerTokenSire = async ({ idAnfitrion, documentoId }) => {
   const credenciales = await obtenerCredencialesSire({ idAnfitrion, documentoId });
-  const url = `https://api-seguridad.sunat.gob.pe/v1/clientessol/${credenciales.sire_id}/oauth2/token/`;
+  const clientId = limpiarTexto(credenciales.sire_id);
+  const clientSecret = limpiarTexto(credenciales.sire_secret);
+  const username = obtenerUsuarioSolSire({ documentoId, sireSol: credenciales.sire_sol });
+  const password = limpiarTexto(credenciales.sire_solpwd);
+
+  const url = `https://api-seguridad.sunat.gob.pe/v1/clientessol/${clientId}/oauth2/token/`;
   const body = new URLSearchParams({
     grant_type: 'password',
     scope: 'https://api-sire.sunat.gob.pe',
-    client_id: credenciales.sire_id,
-    client_secret: credenciales.sire_secret,
-    username: `${documentoId}${credenciales.sire_sol}`,
-    password: credenciales.sire_solpwd,
+    client_id: clientId,
+    client_secret: clientSecret,
+    username,
+    password,
   });
 
   const response = await fetch(url, {
