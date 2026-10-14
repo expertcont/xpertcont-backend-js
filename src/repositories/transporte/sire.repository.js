@@ -19,7 +19,7 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
         0::numeric AS inafecto,
         CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_igv, 0) END::numeric AS igv,
         CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_monto_total, tv.precio_neto, 0) END::numeric AS total,
-        'PEN'::varchar AS moneda,
+        tv.r_moneda::varchar AS moneda,
         CASE
           WHEN COALESCE(tv.registrado, 1) = 0 THEN 'ANULADO'
           WHEN COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
@@ -136,7 +136,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           0::numeric AS inafecto,
           CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_igv, 0) END::numeric AS igv,
           CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_monto_total, 0) END::numeric AS total,
-          COALESCE(tv.r_moneda, 'PEN')::varchar AS moneda,
+          tv.r_moneda::varchar AS moneda,
           tv.r_tc::numeric AS tipo_cambio,
           NULL::varchar AS ticket,
           NULL::varchar AS nombre_archivo,
@@ -222,7 +222,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           CONCAT_WS(
             '+',
             CASE WHEN COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01') THEN 'FECHA' END,
-            CASE WHEN COALESCE(s.moneda, '') <> COALESCE(x.moneda, '') THEN 'MONEDA' END,
+            CASE WHEN s.moneda IS DISTINCT FROM x.moneda THEN 'MONEDA' END,
             CASE WHEN ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01 THEN 'TOTAL' END,
             CASE WHEN ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01 THEN 'IGV' END,
             CASE WHEN ABS(COALESCE(s.base_gravada, 0) - COALESCE(x.base_gravada, 0)) > 0.01 THEN 'BASE' END,
@@ -232,7 +232,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           CONCAT_WS(
             '; ',
             CASE WHEN COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01') THEN 'Fecha distinta' END,
-            CASE WHEN COALESCE(s.moneda, '') <> COALESCE(x.moneda, '') THEN 'Moneda distinta' END,
+            CASE WHEN s.moneda IS DISTINCT FROM x.moneda THEN 'Moneda distinta' END,
             CASE WHEN ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01 THEN 'Total distinto' END,
             CASE WHEN ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01 THEN 'IGV distinto' END,
             CASE WHEN ABS(COALESCE(s.base_gravada, 0) - COALESCE(x.base_gravada, 0)) > 0.01 THEN 'Base gravada distinta' END,
@@ -265,7 +265,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
          AND x.serie = s.serie
          AND x.numero = s.numero
         WHERE COALESCE(s.fecha_emision, DATE '1900-01-01') <> COALESCE(x.fecha_emision, DATE '1900-01-01')
-           OR COALESCE(s.moneda, '') <> COALESCE(x.moneda, '')
+           OR s.moneda IS DISTINCT FROM x.moneda
            OR ABS(COALESCE(s.total, 0) - COALESCE(x.total, 0)) > 0.01
            OR ABS(COALESCE(s.igv, 0) - COALESCE(x.igv, 0)) > 0.01
            OR ABS(COALESCE(s.base_gravada, 0) - COALESCE(x.base_gravada, 0)) > 0.01
