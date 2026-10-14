@@ -272,20 +272,14 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
         tv.cliente_id_doc AS tipo_doc_cliente,
         tv.cliente_documento_id AS nro_doc_cliente,
         tv.cliente AS cliente,
-        COALESCE(tv.r_gravado, 0)::numeric AS base_gravada,
-        COALESCE(tv.r_exonerado, 0)::numeric AS exonerado,
+        CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_gravado, 0) END::numeric AS base_gravada,
+        CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_exonerado, 0) END::numeric AS exonerado,
         0::numeric AS inafecto,
-        COALESCE(tv.r_igv, 0)::numeric AS igv,
-        COALESCE(tv.r_monto_total, tv.precio_neto, 0)::numeric AS total,
+        CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_igv, 0) END::numeric AS igv,
+        CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_monto_total, tv.precio_neto, 0) END::numeric AS total,
         'PEN'::varchar AS moneda,
         CASE
-          WHEN COALESCE(tv.registrado, 1) = 0
-           AND COALESCE(tv.numero_rdi, '') <> ''
-           AND COALESCE(rdi.estado, '') = 'ACEPTADO'
-           AND COALESCE(rdi.respuesta_codigo, '') = '0' THEN 'ACEPTADO'
-          WHEN COALESCE(tv.registrado, 1) = 0
-           AND COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
-          WHEN COALESCE(tv.registrado, 1) = 0 THEN 'ANULADO LOCAL'
+          WHEN COALESCE(tv.registrado, 1) = 0 THEN 'ANULADO'
           WHEN COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
           WHEN COALESCE(tv.numero_rdi, '') = ''
            AND COALESCE(tv.cdr_descripcion, '') <> '' THEN 'RECHAZADO'
