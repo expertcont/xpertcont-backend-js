@@ -95,8 +95,8 @@ VALUES
 
   -- Tributario.
   ('transporte.sunat', 'transporte', 'TRANSPORTE', 'GRUPO', 'SUNAT', 'Opciones tributarias de transporte', NULL, 'Sunat', 1160, FALSE, TRUE, TRUE),
-  ('transporte.sunat.rdi', 'transporte.sunat', 'TRANSPORTE', 'PANTALLA', 'RDI SUNAT', 'Resumen diario SUNAT de encomiendas y boletos', '/ad_transporterdiencomienda', 'Summarize', 1161, FALSE, TRUE, TRUE),
-  ('transporte.sunat.bajas', 'transporte.sunat', 'TRANSPORTE', 'PANTALLA', 'Bajas SUNAT', 'Comunicaciones de baja tributaria', '/ad_transportebajas', 'CancelPresentation', 1162, FALSE, TRUE, TRUE),
+  ('transporte.sunat.rdi', 'transporte.sunat', 'TRANSPORTE', 'PANTALLA', 'REPORTE SIRE', 'Reporte y comparacion SIRE de encomiendas y boletos', '/ad_transportesire', 'Summarize', 1161, FALSE, FALSE, TRUE),
+  ('transporte.sunat.bajas', 'transporte.sunat', 'TRANSPORTE', 'PANTALLA', 'HISTORIAL RDI y CDR', 'Historial de resumenes diarios y CDR de encomiendas y boletos', '/ad_transporterdiencomienda', 'Summarize', 1162, FALSE, FALSE, TRUE),
 
   -- Configuracion administrativa.
   ('transporte.config', 'transporte', 'TRANSPORTE', 'GRUPO', 'Configuracion', 'Mantenimientos de transporte', NULL, 'Settings', 1200, TRUE, FALSE, TRUE),
