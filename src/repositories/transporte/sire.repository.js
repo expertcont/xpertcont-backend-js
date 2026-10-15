@@ -19,7 +19,7 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
         0::numeric AS inafecto,
         CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_igv, 0) END::numeric AS igv,
         CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_monto_total, tv.precio_neto, 0) END::numeric AS total,
-        tv.r_moneda::varchar AS moneda,
+        COALESCE(NULLIF(to_jsonb(tv)->>'r_moneda', ''), 'PEN')::varchar AS moneda,
         CASE
           WHEN COALESCE(tv.registrado, 1) = 0 THEN 'ANULADO'
           WHEN COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
@@ -79,6 +79,14 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
 };
 
 const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro }) => {
+  const tabla = await pool.query("SELECT to_regclass('public.mve_sire_reemplazo') AS tabla");
+  if (tabla.rows[0]?.tabla) {
+    const ultimo = await pool.query(`SELECT to_jsonb(r)->>'estado_actualizacion' AS actualizacion
+      FROM public.mve_sire_reemplazo r WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3
+        AND id_libro=$4 AND estado='TERMINADO' ORDER BY fecha_preparacion DESC LIMIT 1`, [idAnfitrion,documentoId,periodo,idLibro]);
+    if (ultimo.rows[0] && ultimo.rows[0].actualizacion !== 'ACTUALIZADO') throw Object.assign(
+      new Error('El reemplazo termino. Actualiza la propuesta SUNAT antes de volver a comparar.'), { statusCode: 409 });
+  }
   const result = await pool.query(
     `
       WITH propuesta AS (
@@ -135,8 +143,8 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           0::numeric AS inafecto,
           CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_igv, 0) END::numeric AS igv,
           CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_monto_total, 0) END::numeric AS total,
-          tv.r_moneda::varchar AS moneda,
-          tv.r_tc::numeric AS tipo_cambio,
+          COALESCE(NULLIF(to_jsonb(tv)->>'r_moneda', ''), 'PEN')::varchar AS moneda,
+          COALESCE(NULLIF(to_jsonb(tv)->>'r_tc', '')::numeric, 1)::numeric AS tipo_cambio,
           NULL::varchar AS ticket,
           NULL::varchar AS nombre_archivo,
           NULL::text AS raw_linea,
@@ -359,12 +367,13 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
   return result.rows;
 };
 
-const obtenerPropuestaGuardadaSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro, ticket }) => {
-  const result = await pool.query(
+const obtenerPropuestaGuardadaSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro, ticket }, db = pool) => {
+  const result = await db.query(
     `SELECT id_propuesta, ticket, nombre_archivo, estado, cantidad_registros
        FROM public.mve_sire_propuesta
       WHERE id_usuario = $1 AND documento_id = $2 AND periodo = $3 AND id_libro = $4
         AND origen = 'TRANSPORTE'
+        AND estado IN ('PARSEADO','COMPARADO','DESCARGADO')
         AND ($5::varchar = '' OR ticket = $5)
       ORDER BY fecha_descarga DESC, id_propuesta DESC
       LIMIT 1`,
@@ -373,7 +382,16 @@ const obtenerPropuestaGuardadaSireTransporteQuery = async ({ idAnfitrion, docume
   return result.rows[0] || null;
 };
 
+const obtenerReemplazoTerminadoQuery = async ({ idAnfitrion, documentoId, periodo, idLibro }) => {
+  const tabla = await pool.query("SELECT to_regclass('public.mve_sire_reemplazo') AS tabla");
+  if (!tabla.rows[0]?.tabla) return null;
+  const result = await pool.query(`SELECT ticket_actualizacion,estado_actualizacion FROM public.mve_sire_reemplazo
+    WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4 AND estado='TERMINADO'
+    ORDER BY fecha_preparacion DESC LIMIT 1`, [idAnfitrion,documentoId,periodo,idLibro]);
+  return result.rows[0] || null;
+};
 module.exports = {
+  obtenerReemplazoTerminadoQuery,
   obtenerPropuestaGuardadaSireTransporteQuery,
   obtenerRegistroSireTransporteQuery,
   obtenerComparacionSireTransporteQuery,

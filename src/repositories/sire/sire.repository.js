@@ -1,7 +1,7 @@
 const pool = require('../../db');
 
-const obtenerCredencialesSire = async ({ idAnfitrion, documentoId }) => {
-  const result = await pool.query(
+const obtenerCredencialesSire = async ({ idAnfitrion, documentoId }, db = pool) => {
+  const result = await db.query(
     `
       SELECT sire_id, sire_secret, sire_sol, sire_solpwd
         FROM mad_usuariocontabilidad
@@ -14,8 +14,8 @@ const obtenerCredencialesSire = async ({ idAnfitrion, documentoId }) => {
   return result.rows[0] || null;
 };
 
-const obtenerDatosTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo, idLibro }) => {
-  const result = await pool.query(
+const obtenerDatosTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo, idLibro }, db = pool) => {
+  const result = await db.query(
     `
       SELECT sire_tpropuesta, sire_tpropuesta_fecha_generacion
         FROM mct_contabilidadticket
@@ -36,8 +36,8 @@ const obtenerTicketPropuestaSire = async (params) => {
   return datos?.sire_tpropuesta || '';
 };
 
-const registrarTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo, idLibro, ticket, fechaGeneracion }) => {
-  const actualizar = () => pool.query(
+const registrarTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo, idLibro, ticket, fechaGeneracion }, db = pool) => {
+  const actualizar = () => db.query(
     `UPDATE mct_contabilidadticket SET sire_tpropuesta = $5, sire_tpropuesta_fecha_generacion = $6::timestamptz
       WHERE id_usuario = $1 AND documento_id = $2 AND periodo = $3 AND id_libro = $4
       RETURNING sire_tpropuesta`,
@@ -47,7 +47,7 @@ const registrarTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo,
   if (actualizado.rows.length) return actualizado.rows[0].sire_tpropuesta;
 
   try {
-    const result = await pool.query(
+    const result = await db.query(
       `
         INSERT INTO mct_contabilidadticket (id_usuario, documento_id, periodo, id_libro, sire_tpropuesta, sire_tpropuesta_fecha_generacion)
         VALUES ($1, $2, $3, $4, $5, $6::timestamptz)

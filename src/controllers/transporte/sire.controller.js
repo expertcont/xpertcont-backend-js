@@ -73,7 +73,7 @@ const obtenerComparacionSireTransporte = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener comparacion SIRe transporte:', error);
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || 'Error interno obteniendo comparacion SIRe transporte.',
     });

@@ -1,5 +1,12 @@
 const { Router } = require('express');
 const router = Router();
+router.use(require('./sireReemplazo.routes'));
+const {
+  aceptarPropuestaSireTransporte,
+  obtenerAceptacionSireTransporte,
+  consultarAceptacionSireTransporte,
+} = require('../controllers/transporte/sireAceptacion.controller');
+
 
 // Nucleo comun de mve_transventa (encomienda 'E' y boleto 'B').
 const {
@@ -111,6 +118,9 @@ router.post('/mve_transventa/ticket/encomienda/admin', generarTicketAdminPDFEnco
 router.post('/mve_transventa/cpe/resumen', generarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/ticket', consultarResumenCPEexpertcontTransporte);
 router.post('/mve_transventa/cpe/resumen/corregir-rechazado', corregirRdiRechazadoTransporte);
+router.post('/transporte/sire/propuesta/aceptar', aceptarPropuestaSireTransporte);
+router.get('/transporte/sire/propuesta/aceptacion/:periodo/:id_anfitrion/:documento_id', obtenerAceptacionSireTransporte);
+router.post('/transporte/sire/propuesta/aceptacion/estado', consultarAceptacionSireTransporte);
 router.post('/transporte/sire/propuesta/ticket', generarTicketPropuestaSireTransporte);
 router.get('/transporte/sire/propuesta/ultima/:periodo/:id_anfitrion/:documento_id', obtenerUltimaPropuestaSireTransporte);
 router.post('/transporte/sire/propuesta/estado', consultarEstadoPropuestaSireTransporte);

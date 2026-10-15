@@ -68,6 +68,11 @@ const obtenerComparacionSireTransporte = async ({
 
 const obtenerUltimaPropuestaSireTransporte = async (params) => {
   const idLibro = sireSunatClient.normalizarIdLibroSire(params.idLibro || '014');
+  const reemplazo = await repository.obtenerReemplazoTerminadoQuery({ ...params, idLibro });
+  if (reemplazo && reemplazo.estado_actualizacion !== 'ACTUALIZADO') return {
+    ticket: reemplazo.ticket_actualizacion || '', reutilizado: Boolean(reemplazo.ticket_actualizacion),
+    nombre_archivo_rep: '', importacion: null, actualizacion_pendiente: true,
+  };
   const datosTicket = await sireRepository.obtenerDatosTicketPropuestaSire({ ...params, idLibro });
   const ticketGuardado = datosTicket?.sire_tpropuesta || '';
   const propuesta = await repository.obtenerPropuestaGuardadaSireTransporteQuery({

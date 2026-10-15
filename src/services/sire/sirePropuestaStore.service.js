@@ -89,12 +89,28 @@ const guardarPropuestaVentasSire = async ({
   ticket,
   nombreArchivo,
   buffer,
+  db,
 }) => {
   const rows = parsearPropuestaVentasSire({ buffer, nombreArchivo });
-  const client = await pool.connect();
+  const client = db || await pool.connect();
 
   try {
     await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',
+      [`sire-presentacion:${idAnfitrion}:${documentoId}:${periodo}:${idLibro}`]);
+    const tabla = await client.query("SELECT to_regclass('public.mve_sire_reemplazo') AS tabla");
+    if (tabla.rows[0]?.tabla) {
+      const reemplazo = await client.query(`SELECT ticket_actualizacion FROM public.mve_sire_reemplazo
+        WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4 AND estado='TERMINADO'
+        ORDER BY fecha_preparacion DESC LIMIT 1`, [idAnfitrion,documentoId,periodo,idLibro]);
+      if (reemplazo.rows[0] && reemplazo.rows[0].ticket_actualizacion !== ticket) {
+        throw Object.assign(new Error('La propuesta anterior fue reemplazada. Actualiza la descarga desde el resultado de reemplazo.'), { statusCode: 409 });
+      }
+    }
+    if (rows.some((r) => {
+      const campos = r.raw_linea.split('|');
+      return campos[0].trim() !== documentoId || campos[2].trim() !== periodo.replace('-', '');
+    })) throw new Error('La propuesta descargada no corresponde al RUC y periodo solicitados.');
 
     const existing = await client.query(
       `
@@ -248,7 +264,7 @@ const guardarPropuestaVentasSire = async ({
     await client.query('ROLLBACK');
     throw error;
   } finally {
-    client.release();
+    if (!db) client.release();
   }
 };
 
