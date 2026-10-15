@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS public.mve_sire_propuesta (
   id_propuesta BIGSERIAL PRIMARY KEY,
-  id_usuario VARCHAR(20) NOT NULL,
+  id_usuario VARCHAR(60) NOT NULL,
   documento_id VARCHAR(20) NOT NULL,
   periodo VARCHAR(7) NOT NULL,
   id_libro VARCHAR(10) NOT NULL DEFAULT '140000',

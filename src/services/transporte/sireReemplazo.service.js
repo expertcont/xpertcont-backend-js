@@ -12,7 +12,7 @@ const validar = (entrada = {}) => {
   const documentoId = String(entrada.documentoId || '').trim();
   const match = String(entrada.periodo || '').match(/^(\d{4})-?(0[1-9]|1[0-2])$/);
   const idLibro = sire.normalizarIdLibroSire(String(entrada.idLibro || '014'));
-  if (!idAnfitrion || idAnfitrion.length > 20 || !/^\d{11}$/.test(documentoId) || !match || idLibro !== '140000') {
+  if (!idAnfitrion || idAnfitrion.length > 60 || !/^\d{11}$/.test(documentoId) || !match || idLibro !== '140000') {
     throw errorHttp('Indica usuario, RUC de 11 digitos, periodo YYYY-MM o YYYYMM y libro RVIE (014).', 400);
   }
   const periodo = `${match[1]}-${match[2]}`;

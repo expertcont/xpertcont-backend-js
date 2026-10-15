@@ -68,16 +68,28 @@ const obtenerComparacionSireTransporte = async ({
 
 const obtenerUltimaPropuestaSireTransporte = async (params) => {
   const idLibro = sireSunatClient.normalizarIdLibroSire(params.idLibro || '014');
-  const reemplazo = await repository.obtenerReemplazoTerminadoQuery({ ...params, idLibro });
-  if (reemplazo && reemplazo.estado_actualizacion !== 'ACTUALIZADO') return {
-    ticket: reemplazo.ticket_actualizacion || '', reutilizado: Boolean(reemplazo.ticket_actualizacion),
-    nombre_archivo_rep: '', importacion: null, actualizacion_pendiente: true,
-  };
   const datosTicket = await sireRepository.obtenerDatosTicketPropuestaSire({ ...params, idLibro });
   const ticketGuardado = datosTicket?.sire_tpropuesta || '';
-  const propuesta = await repository.obtenerPropuestaGuardadaSireTransporteQuery({
-    ...params, idLibro, ticket: ticketGuardado,
-  });
+  let propuesta;
+  try {
+    const reemplazo = await repository.obtenerReemplazoTerminadoQuery({ ...params, idLibro });
+    if (reemplazo && reemplazo.estado_actualizacion !== 'ACTUALIZADO') return {
+      ticket: reemplazo.ticket_actualizacion || '', reutilizado: Boolean(reemplazo.ticket_actualizacion),
+      nombre_archivo_rep: '', importacion: null, actualizacion_pendiente: true,
+    };
+    propuesta = await repository.obtenerPropuestaGuardadaSireTransporteQuery({
+      ...params, idLibro, ticket: ticketGuardado,
+    });
+  } catch (error) {
+    if (!ticketGuardado) throw error;
+    console.error('Ticket SIRE recuperado sin verificar propuesta o reemplazo:', error.message);
+    return {
+      ticket: ticketGuardado, reutilizado: true,
+      fecha_generacion: datosTicket?.sire_tpropuesta_fecha_generacion || null,
+      nombre_archivo_rep: '', importacion: null,
+      advertencia: 'Ticket guardado recuperado. No se pudo verificar la propuesta importada o su reemplazo. La presentacion permanecera bloqueada hasta recuperar ese estado.',
+    };
+  }
   const ticket = ticketGuardado || propuesta?.ticket || '';
   return {
     ticket,

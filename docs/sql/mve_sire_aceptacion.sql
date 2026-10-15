@@ -2,7 +2,7 @@
 -- El ticket de aceptacion se conserva separado del ticket de descarga de propuesta.
 CREATE TABLE IF NOT EXISTS public.mve_sire_aceptacion (
   id_aceptacion BIGSERIAL PRIMARY KEY,
-  id_usuario VARCHAR(20) NOT NULL,
+  id_usuario VARCHAR(60) NOT NULL,
   documento_id VARCHAR(20) NOT NULL,
   periodo VARCHAR(7) NOT NULL,
   id_libro VARCHAR(10) NOT NULL DEFAULT '140000' CHECK (id_libro = '140000'),

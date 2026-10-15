@@ -1,7 +1,7 @@
 -- Ejecutar despues de mve_sire_aceptacion.sql. No envia informacion a SUNAT.
 CREATE TABLE IF NOT EXISTS public.mve_sire_reemplazo (
   id_reemplazo UUID PRIMARY KEY,
-  id_usuario VARCHAR(20) NOT NULL,
+  id_usuario VARCHAR(60) NOT NULL,
   documento_id VARCHAR(11) NOT NULL,
   periodo VARCHAR(7) NOT NULL,
   id_libro VARCHAR(10) NOT NULL DEFAULT '140000' CHECK (id_libro = '140000'),

@@ -17,8 +17,9 @@ const obtenerCredencialesSire = async ({ idAnfitrion, documentoId }, db = pool) 
 const obtenerDatosTicketPropuestaSire = async ({ idAnfitrion, documentoId, periodo, idLibro }, db = pool) => {
   const result = await db.query(
     `
-      SELECT sire_tpropuesta, sire_tpropuesta_fecha_generacion
-        FROM mct_contabilidadticket
+      SELECT t.sire_tpropuesta,
+             to_jsonb(t)->>'sire_tpropuesta_fecha_generacion' AS sire_tpropuesta_fecha_generacion
+        FROM mct_contabilidadticket t
        WHERE id_usuario = $1
          AND documento_id = $2
          AND periodo = $3

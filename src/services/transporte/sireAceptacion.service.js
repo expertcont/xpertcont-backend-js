@@ -9,7 +9,7 @@ const validarContexto = (entrada = {}) => {
   const documentoId = String(entrada.documentoId || '').trim();
   const periodoEntrada = String(entrada.periodo || '').trim();
   const match = periodoEntrada.match(/^(\d{4})-?(0[1-9]|1[0-2])$/);
-  if (!idAnfitrion || idAnfitrion.length > 20 || !/^\d{11}$/.test(documentoId) || !match) {
+  if (!idAnfitrion || idAnfitrion.length > 60 || !/^\d{11}$/.test(documentoId) || !match) {
     throw errorHttp('Indica id_anfitrion, un RUC de 11 digitos y periodo YYYY-MM o YYYYMM valido.', 400);
   }
   const idLibro = sire.normalizarIdLibroSire(String(entrada.idLibro || '014'));

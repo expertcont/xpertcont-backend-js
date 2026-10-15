@@ -309,3 +309,14 @@ test('un reemplazo activo impide aceptar y libera el candado sin invocar SUNAT',
     assert.equal(e.liberaciones(), 1);
   }
 });
+
+test('recupera y acepta con anfitrion correo de mas de 20 caracteres sin truncarlo', async () => {
+  const idAnfitrion = 'luceliariveracdsl@gmail.com';
+  const e = entorno();
+  assert.equal((await e.service.obtenerAceptacion({ ...parametros, idAnfitrion })).estado, 'SIN_ENVIO');
+  assert.equal(e.llamadas(), 0);
+  await e.service.aceptarPropuesta({ ...parametros, idAnfitrion });
+  assert.equal(e.registro().id_usuario, idAnfitrion);
+  await assert.rejects(e.service.obtenerAceptacion({ ...parametros, idAnfitrion: 'x'.repeat(61) }),
+    (error) => error.statusCode === 400);
+});

@@ -540,3 +540,13 @@ test('repositorio solo borra ticket de descarga con reinicio explicito', async (
   assert.equal(llamadas[0].params[9], true); assert.equal(llamadas[1].params[9], false);
   assert.doesNotMatch(llamadas[0].sql, /ticket_reemplazo\s*=/);
 });
+
+test('recupera reemplazo de anfitrion correo de mas de 20 caracteres sin enviar a SUNAT', async () => {
+  const e = entorno({ previo: null });
+  const resultado = await e.service.obtenerReemplazo({ ...p, idAnfitrion: 'luceliariveracdsl@gmail.com' });
+  assert.equal(resultado.estado, 'SIN_ENVIO');
+  assert.equal(e.envios(), 0);
+  assert.equal(e.consultas(), 0);
+  await assert.rejects(e.service.obtenerReemplazo({ ...p, idAnfitrion: 'x'.repeat(61) }),
+    (error) => error.statusCode === 400);
+});
