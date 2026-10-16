@@ -17,6 +17,7 @@ const ventaTransRoutes = require('./src/routes/ventatrans.routes');
 const transporteRoutes = require('./src/routes/transporte.routes');
 
 const sireRoutes = require('./src/routes/sire.routes');
+const sireComprasRoutes = require('./src/modules/sire/compras');
 const reporteRoutes = require('./src/routes/reporte.routes');
 const comprobanteRoutes = require('./src/routes/comprobante.routes');
 const asientodetRoutes = require('./src/routes/asientodet.routes');
@@ -52,6 +53,7 @@ app.use(presupuestoRoutes);
 app.use(ventaTransRoutes);
 app.use(transporteRoutes);
 
+app.use('/sire/compras', sireComprasRoutes);
 app.use(sireRoutes);
 app.use(reporteRoutes);
 app.use(comprobanteRoutes);

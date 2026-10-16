@@ -1,0 +1,168 @@
+const AdmZip = require('adm-zip');
+const fetch = require('node-fetch');
+const { obtenerTokenSunat } = require('../sire/sireSunatClient.service');
+
+// ------------------------------------------------------------------
+// Servicio de consulta de comprobantes de pago (consultacpe).
+// NO es SIRE: vive en otro host, otro scope, y no usa ticket ni periodo.
+// Comparte unicamente las credenciales (sire_* en mad_usuariocontabilidad).
+// ------------------------------------------------------------------
+
+const SCOPE_CPE = 'https://api-cpe.sunat.gob.pe';
+const CPE_BASE = 'https://api-cpe.sunat.gob.pe/v1/contribuyente/consultacpe/comprobantes';
+
+const FORMATOS = {
+  pdf: { sufijo: '01', extension: '.pdf' },
+  xml: { sufijo: '02', extension: '.xml' },
+  cdr: { sufijo: '03', extension: '.xml' },
+};
+
+const MENSAJES_HTTP = {
+  400: 'SUNAT rechazo la consulta del comprobante.',
+  401: 'El token CPE no tiene permiso sobre este recurso.',
+  403: 'El cliente SUNAT no habilito el recurso consultacpe.',
+  404: 'El comprobante no existe para la llave enviada.',
+  429: 'SUNAT esta limitando la frecuencia. Reintentar mas tarde.',
+};
+
+// El segmento "-2" de la llave se tomo de un repositorio de terceros.
+// NO esta verificado contra la documentacion oficial de SUNAT.
+const CODIGO_LLAVE = '2';
+
+const sinEspacios = (value = '') => String(value ?? '').trim();
+const soloDigitos = (value = '') => sinEspacios(value).replace(/\D/g, '');
+
+const obtenerTokenCpe = (args) =>
+  obtenerTokenSunat({ ...args, scope: SCOPE_CPE, mensajeError: 'SUNAT no devolvio token CPE.' });
+
+const construirLlaveCpe = ({ ruc, tipo, serie, numero, codigo = CODIGO_LLAVE }) => {
+  const rucLimpio = soloDigitos(ruc);
+  const tipoLimpio = sinEspacios(tipo).padStart(2, '0');
+  const serieLimpia = sinEspacios(serie).toUpperCase();
+  const numeroLimpio = soloDigitos(numero);
+  const codigoLimpio = sinEspacios(codigo) || CODIGO_LLAVE;
+
+  const faltan = [];
+  if (!rucLimpio) faltan.push('ruc');
+  if (!tipoLimpio) faltan.push('tipo');
+  if (!serieLimpia) faltan.push('serie');
+  if (!numeroLimpio) faltan.push('numero');
+  if (faltan.length) {
+    throw Object.assign(new Error(`Faltan datos del comprobante: ${faltan.join(', ')}.`), { statusCode: 400 });
+  }
+
+  return `${rucLimpio}-${tipoLimpio}-${serieLimpia}-${numeroLimpio}-${codigoLimpio}`;
+};
+
+// El ZIP de SUNAT puede venir plano o con un .zip adentro (CDR anidado).
+const extraerDesdeZip = (buffer, extensionPreferida) => {
+  const zip = new AdmZip(buffer);
+  const entradas = zip.getEntries().filter((item) => !item.isDirectory);
+  if (!entradas.length) {
+    throw Object.assign(new Error('El ZIP de SUNAT no contiene archivos.'), { statusCode: 502 });
+  }
+
+  const coinciden = entradas.filter((item) => item.entryName.toLowerCase().endsWith(extensionPreferida));
+  const candidatas = coinciden.length ? coinciden : entradas;
+  const elegida = candidatas.reduce((a, b) => ((b.header?.size || 0) > (a.header?.size || 0) ? b : a));
+  const nombre = elegida.entryName;
+
+  let contenido = zip.readFile(elegida);
+  let anidado = false;
+
+  if (nombre.toLowerCase().endsWith('.zip')) {
+    const zipInterno = new AdmZip(contenido);
+    const internas = zipInterno.getEntries().filter((item) => !item.isDirectory);
+    if (internas.length) {
+      const mejor = internas.reduce((a, b) => ((b.header?.size || 0) > (a.header?.size || 0) ? b : a));
+      contenido = zipInterno.readFile(mejor);
+      anidado = true;
+    }
+  }
+
+  return { contenido, nombre, anidado };
+};
+
+const descargarComprobanteCpe = async ({
+  ruc,
+  tipo,
+  serie,
+  numero,
+  formato = 'xml',
+  codigo,
+  idAnfitrion,
+  documentoId,
+  db,
+  timeout = 30000,
+}) => {
+  const definicion = FORMATOS[sinEspacios(formato).toLowerCase()];
+  if (!definicion) {
+    throw Object.assign(new Error(`Formato no soportado: ${formato}. Usar pdf, xml o cdr.`), { statusCode: 400 });
+  }
+
+  const llave = construirLlaveCpe({ ruc, tipo, serie, numero, codigo });
+  const token = await obtenerTokenCpe({ idAnfitrion, documentoId, db });
+  const url = `${CPE_BASE}/${llave}/${definicion.sufijo}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      Origin: 'https://e-factura.sunat.gob.pe',
+      Referer: 'https://e-factura.sunat.gob.pe/',
+    },
+    timeout,
+  });
+
+  const texto = await response.text();
+  let data = null;
+  try {
+    data = texto ? JSON.parse(texto) : null;
+  } catch (error) {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const mensaje =
+      (data && (data.msg || data.message || data.error)) ||
+      MENSAJES_HTTP[response.status] ||
+      `SUNAT respondio HTTP ${response.status}.`;
+    throw Object.assign(new Error(mensaje), { statusCode: response.status, respuestaSunat: data || texto.slice(0, 300) });
+  }
+
+  const base64Archivo = data?.valArchivo || '';
+  if (!base64Archivo) {
+    throw Object.assign(
+      new Error(data?.msg || data?.message || 'SUNAT no devolvio archivo para el comprobante solicitado.'),
+      { statusCode: 404, respuestaSunat: data }
+    );
+  }
+
+  const bufferZip = Buffer.from(base64Archivo, 'base64');
+  if (bufferZip.slice(0, 2).toString('utf8') !== 'PK') {
+    throw Object.assign(new Error('La respuesta de SUNAT no contiene un ZIP valido.'), { statusCode: 502 });
+  }
+
+  const { contenido, nombre, anidado } = extraerDesdeZip(bufferZip, definicion.extension);
+
+  return {
+    contenido,
+    nombre_archivo: nombre,
+    formato: sinEspacios(formato).toLowerCase(),
+    llave,
+    url,
+    zip_anidado: anidado,
+    cod_ruc: data?.codRuc || null,
+    nom_archivo: data?.nomArchivo || null,
+  };
+};
+
+module.exports = {
+  descargarComprobanteCpe,
+  construirLlaveCpe,
+  obtenerTokenCpe,
+  SCOPE_CPE,
+  CPE_BASE,
+  FORMATOS,
+};

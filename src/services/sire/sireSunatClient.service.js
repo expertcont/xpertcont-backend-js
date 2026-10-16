@@ -34,7 +34,9 @@ const obtenerCredencialesSire = async ({ idAnfitrion, documentoId, db }) => {
   return credenciales;
 };
 
-const obtenerTokenSire = async ({ idAnfitrion, documentoId, db }) => {
+const SCOPE_SIRE = 'https://api-sire.sunat.gob.pe';
+
+const obtenerTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError, db }) => {
   const credenciales = await obtenerCredencialesSire({ idAnfitrion, documentoId, db });
   const clientId = limpiarTexto(credenciales.sire_id);
   const clientSecret = limpiarTexto(credenciales.sire_secret);
@@ -44,7 +46,7 @@ const obtenerTokenSire = async ({ idAnfitrion, documentoId, db }) => {
   const url = `https://api-seguridad.sunat.gob.pe/v1/clientessol/${clientId}/oauth2/token/`;
   const body = new URLSearchParams({
     grant_type: 'password',
-    scope: 'https://api-sire.sunat.gob.pe',
+    scope,
     client_id: clientId,
     client_secret: clientSecret,
     username,
@@ -63,11 +65,14 @@ const obtenerTokenSire = async ({ idAnfitrion, documentoId, db }) => {
   const data = await response.json();
 
   if (!response.ok || !data.access_token) {
-    throw new Error(data.error_description || data.error || 'SUNAT no devolvio token SIRe.');
+    throw new Error(data.error_description || data.error || mensajeError);
   }
 
   return data.access_token;
 };
+
+const obtenerTokenSire = (args) =>
+  obtenerTokenSunat({ ...args, scope: SCOPE_SIRE, mensajeError: 'SUNAT no devolvio token SIRe.' });
 
 const generarTicketPropuestaSire = async ({
   idAnfitrion,
@@ -238,6 +243,8 @@ module.exports = {
   normalizarIdLibroSire,
   obtenerCredencialesSire,
   obtenerTokenSire,
+  obtenerTokenSunat,
+  SCOPE_SIRE,
   generarTicketPropuestaSire,
   consultarEstadoTicketSire,
   descargarPropuestaSire,
