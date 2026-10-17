@@ -12,11 +12,11 @@ const handler = (accion) => async (req, res) => {
   } catch (error) {
     const status = error.statusCode || 500;
     if (status >= 500) console.error('Error SIRE Compras:', error.message);
-    return res.status(status).json({ success: false, message: error.codigo === 'SIRE_RESPUESTA_NO_JSON'
+    return res.status(status).json({ success: false, message: (error.codigo === 'SIRE_RESPUESTA_NO_JSON' || error.codigo === 'SIRE_PERSONALIZADA_MIGRACION')
       ? error.mensajePublico : status >= 500
       ? 'No se pudo completar la consulta de SIRE Compras. Revisa la configuracion del servicio y vuelve a intentar.' : error.message });
   }
 };
-return { recuperar: handler('recuperar'), generarTicket: handler('generarTicket'), consultar: handler('consultar'), descargar: handler('descargar') };
+return { ...Object.fromEntries(['listarPersonalizada','importarPersonalizada','crearPersonalizada','editarPersonalizada','eliminarPersonalizada'].map(accion => [accion, handler(accion)])), recuperar: handler('recuperar'), generarTicket: handler('generarTicket'), consultar: handler('consultar'), descargar: handler('descargar') };
 
 };

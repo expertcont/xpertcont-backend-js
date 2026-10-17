@@ -12,12 +12,25 @@ const validar = (entrada = {}) => {
 const recuperar = async (entrada) => {
   const p = validar(entrada);
   const ticketGuardado = await tickets.obtenerDatosTicketPropuestaSire(p);
-  const [propuesta, sistema] = await Promise.all([
+  const resultados = await Promise.allSettled([
     repo.obtenerPropuesta(p, ticketGuardado?.sire_tpropuesta || ''), comprasSistema.obtenerComprasSistema(p),
   ]);
-  const ticket = ticketGuardado?.sire_tpropuesta || propuesta?.ticket || '';
-  return { ticket, fecha_generacion: ticketGuardado?.sire_tpropuesta_fecha_generacion || null,
-    propuesta, sistema, comparacion: propuesta ? compararCompras(propuesta.detalle, sistema) : [] };
+  const ticket = ticketGuardado?.sire_tpropuesta || '';
+  const advertencias = [];
+  for (const [i, resultado] of resultados.entries()) {
+    if (resultado.status !== 'rejected') continue;
+    if (!ticket) throw resultado.reason;
+    console.error('Error recuperando SIRE Compras (' + (i === 0 ? 'propuesta' : 'registro') + '):', resultado.reason.message);
+    advertencias.push(i === 0
+      ? 'El ticket se recupero, pero no se pudo cargar la propuesta guardada. Vuelve a consultar su estado.'
+      : 'El ticket se recupero, pero no se pudieron cargar las compras del sistema. La comparacion no esta disponible.');
+  }
+  const propuesta = resultados[0].status === 'fulfilled' ? resultados[0].value : null;
+  const sistemaDisponible = resultados[1].status === 'fulfilled';
+  const sistema = sistemaDisponible ? resultados[1].value : [];
+  return { ticket: ticket || propuesta?.ticket || '', fecha_generacion: ticketGuardado?.sire_tpropuesta_fecha_generacion || null,
+    propuesta, sistema, sistema_disponible: sistemaDisponible, advertencia: advertencias.join(' '),
+    comparacion: propuesta && sistemaDisponible ? compararCompras(propuesta.detalle, sistema) : [] };
 };
 const generarTicket = async (entrada) => sunat.generarTicketPropuestaSire({
   ...validar(entrada), reutilizarExistente: entrada.reutilizar_existente !== false,

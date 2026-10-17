@@ -14,12 +14,12 @@ const linea = (cambios = {}) => {
 };
 const archivo = (cambios = {}) => Buffer.from(cabecera + '\r\n' + linea(cambios) + '\r\n');
 const parsear = (buffer = archivo()) => parsearCompras({ buffer, documentoId: contexto.documento_id, periodo: '2026-09' });
-function entorno({ registros, ticket = 'COMPRA1', cambiaTicket = false } = {}) {
+function entorno({ registros, ticket = 'COMPRA1', cambiaTicket = false, fallo = '' } = {}) {
   let consultasTicket = 0;
   const llamadas = { guardar: [], descargar: 0, generar: [] };
   const service = crearServicio({
     propuestas: {
-      obtenerPropuesta: async () => ({ ticket, detalle: parsear() }),
+      obtenerPropuesta: async () => { if (fallo === 'propuesta') throw Error('tabla ausente'); return { ticket, detalle: parsear() }; },
       guardarPropuesta: async (...args) => { llamadas.guardar.push(args); },
     },
     tickets: {
@@ -34,7 +34,7 @@ function entorno({ registros, ticket = 'COMPRA1', cambiaTicket = false } = {}) {
       consultarEstadoTicketSire: async p => { assert.equal(p.idLibro, '080000'); return { registros: registros || [] }; },
       descargarPropuestaSire: async p => { assert.equal(p.idLibro, '080000'); llamadas.descargar++; return { buffer: archivo() }; },
     },
-    comprasSistema: { obtenerComprasSistema: async () => parsear() },
+    comprasSistema: { obtenerComprasSistema: async () => { if (fallo === 'sistema') throw Error('columna ausente'); return parsear(); } },
     leerArchivo: leerArchivoPropuesta,
   });
   return { service, llamadas };
@@ -115,4 +115,20 @@ test('rechazo SUNAT y cambio de ticket durante descarga conservan la propuesta p
   await assert.rejects(cambio.service.consultar({ ...contexto, ticket: 'COMPRA1' }), error => error.statusCode === 409);
   assert.equal(cambio.llamadas.guardar.length, 0);
   await assert.rejects(entorno().service.consultar({ ...contexto, ticket: 'ANTERIOR' }), error => error.statusCode === 409);
+});
+
+test('reabrir compras recupera ticket y fecha sin solicitar uno nuevo aunque fallen lecturas auxiliares', async () => {
+  for (const fallo of ['propuesta', 'sistema']) {
+    const e = entorno({ fallo });
+    const r = await e.service.recuperar(contexto);
+    assert.equal(r.ticket, 'COMPRA1');
+    assert.equal(r.fecha_generacion, null);
+    assert.ok(r.advertencia);
+    assert.deepEqual(r.comparacion, []);
+    assert.equal(e.llamadas.generar.length, 0);
+    if (fallo === 'sistema') assert.equal(r.sistema_disponible, false);
+  }
+});
+test('sin ticket guardado no oculta fallos como ausencia de datos', async () => {
+  await assert.rejects(entorno({ ticket: '', fallo: 'propuesta' }).service.recuperar(contexto), /tabla ausente/);
 });

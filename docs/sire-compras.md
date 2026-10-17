@@ -40,3 +40,46 @@ La lectura actual de `mct_asientocontable` esta aislada en `infrastructure/compr
 Solo el punto de composicion utiliza la conexion PostgreSQL y la integracion SUNAT compartida. Ningun caso de uso importa controladores o servicios de Comercial ni de Transportes.
 
 Esta reorganizacion conserva las URL y la tabla de propuestas existentes; no necesita otro cambio de esquema.
+
+
+## Propuesta personalizada (borrador de trabajo)
+
+Instalar primero docs/sql/mco_sire_propuesta.sql si el modulo no esta instalado, y luego
+**docs/sql/mco_sire_personalizada.sql** en la BD del backend. No se ejecutan migraciones automaticamente.
+Desplegar backend y frontend. No requiere cambios en Comercial ni en Transportes.
+
+En Compras > Propuesta personalizada, usar Cargar propuesta SUNAT despues de consultar/importar
+el ticket. La carga agrega todos los comprobantes nuevos como DECLARAR; es idempotente y no
+sobrescribe decisiones ni ediciones. El archivo original de SUNAT permanece intacto.
+Si SUNAT elimina o cambia un comprobante en otro ticket, se conserva el borrador existente
+para revision manual; la carga nunca elimina registros automaticamente.
+
+- Agregar: alta manual con validacion de fecha, proveedor, moneda e importes.
+- Editar: cambia datos, motivo y estado. Se conserva original e historial de versiones.
+- Excluir: baja logica con motivo obligatorio. Puede recuperarse con Incluir en el periodo.
+- Pendiente: motivo/documentacion faltante y periodo futuro obligatorio. Se muestra en el
+  periodo de origen, en el de destino y en los posteriores mientras siga pendiente.
+  No pasa a DECLARAR automaticamente: el operador debe revisarlo e incluirlo explicitamente.
+- Al incluirlo en otro periodo, queda asignado solo a ese destino; en el origen se muestra
+  la asignacion y se bloquea su edicion para evitar una doble inclusion entre periodos.
+- Exportar por declarar: todos los DECLARAR asignados al periodo actual, independiente de
+  los filtros de pantalla. Exportar revision: las filas visibles con estado, motivo y periodos.
+  Ambos son Excel de trabajo, no archivos de reemplazo RCE ni presentaciones a SUNAT.
+
+API bajo /sire/compras:
+
+| Metodo | Ruta | Uso |
+| --- | --- | --- |
+| GET | /personalizada/:periodo/:id_anfitrion/:documento_id | Lista y recupera decisiones persistidas |
+| POST | /personalizada/importar | Agrega comprobantes del ultimo ticket importado |
+| POST | /personalizada | Crea compra manual |
+| PUT | /personalizada/:id_compra | Edita compra y estado |
+| DELETE | /personalizada/:id_compra | Excluye con motivo, sin borrar original |
+
+Mutaciones: enviar id_anfitrion, documento_id y periodo en body. PUT/DELETE requieren
+version entera actual. PUT/POST reciben comprobante con los campos RCE normalizados,
+estado (DECLARAR/EXCLUIDO/PENDIENTE), motivo y periodo_destino para pendientes.
+Un conflicto de version o comprobante duplicado devuelve HTTP 409.
+El alcance por anfitrion/RUC/periodo se aplica en cada consulta y actualizacion.
+
+Pruebas: node --test src/modules/sire/compras/tests/personalizada.test.js
