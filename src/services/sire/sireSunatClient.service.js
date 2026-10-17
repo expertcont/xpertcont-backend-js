@@ -100,7 +100,11 @@ const generarTicketPropuestaSire = async ({
   const token = await obtenerTokenSire({ idAnfitrion, documentoId, db });
   const periodoSire = normalizarPeriodoSire(periodo);
   const aliasLibro = obtenerAliasLibroPropuesta(idLibroSire);
-  const url = `https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/${aliasLibro}/propuesta/web/propuesta/${periodoSire}/exportapropuesta?codTipoArchivo=0`;
+  // RCE y RVIE tienen operaciones distintas para descargar la propuesta.
+  const operacion = idLibroSire === '080000'
+    ? 'exportacioncomprobantepropuesta?codTipoArchivo=0&codOrigenEnvio=2'
+    : 'exportapropuesta?codTipoArchivo=0';
+  const url = `https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/${aliasLibro}/propuesta/web/propuesta/${periodoSire}/${operacion}`;
 
   const response = await fetch(url, {
     method: 'GET',
@@ -111,10 +115,19 @@ const generarTicketPropuestaSire = async ({
     },
   });
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch (_) {
+    const libro = idLibroSire === '080000' ? 'Compras (RCE)' : 'Ventas (RVIE)';
+    const mensaje = `SUNAT devolvio una respuesta no JSON al generar el ticket de ${libro} (HTTP ${response.status || 'desconocido'}). Intenta nuevamente o revisa la disponibilidad del servicio.`;
+    throw Object.assign(new Error(mensaje), {
+      statusCode: 502, codigo: 'SIRE_RESPUESTA_NO_JSON', mensajePublico: mensaje,
+    });
+  }
 
-  if (!response.ok || !data.numTicket) {
-    throw new Error(data.msg || data.message || data.error || 'SUNAT no devolvio ticket de propuesta SIRe.');
+  if (!response.ok || !data?.numTicket) {
+    throw new Error(data?.msg || data?.message || data?.error || 'SUNAT no devolvio ticket de propuesta SIRe.');
   }
 
   const fechaGeneracion = new Date().toISOString();
