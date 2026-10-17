@@ -46,10 +46,18 @@ const consultar = async (entrada) => {
     && String(r.perTributario) === p.periodo.replace('-', '') && Number(r.codProceso) === 10
     && (!r.codLibro || String(r.codLibro) === p.idLibro));
   if (!registro) return { listo: false, message: 'SUNAT aun no devuelve el ticket de compras solicitado.' };
-  if ([registro.codEstadoProceso, registro.detalleTicket?.codEstadoEnvio].map(String).includes('03')) throw fallo('SUNAT rechazo la descarga de la propuesta de compras.', 422);
-  const nombreArchivo = registro.archivoReporte?.find(r => r.nomArchivoReporte)?.nomArchivoReporte;
-  if (!['04', '06'].includes(String(registro.codEstadoProceso)) || !nombreArchivo) return { listo: false, message: registro.desEstadoProceso || 'La propuesta de compras sigue en proceso.' };
-  const archivo = await sunat.descargarPropuestaSire({ ...p, ticket, nombreArchivo });
+  const lista = valor => Array.isArray(valor) ? valor : valor ? [valor] : [];
+  const detalles = lista(registro.detalleTicket).filter(r => !r.numTicket || String(r.numTicket) === String(ticket));
+  const codigo = valor => String(valor ?? '').padStart(2, '0');
+  if ([registro.codEstadoProceso, ...detalles.map(r => r.codEstadoEnvio)].map(codigo).includes('03')) throw fallo('SUNAT rechazo la descarga de la propuesta de compras.', 422);
+  const reportes = lista(registro.archivoReporte);
+  const reporte = reportes.find(r => r.nomArchivoReporte) || detalles.find(r => r.nomArchivoReporte);
+  const nombreArchivo = reporte?.nomArchivoReporte;
+  const estado = codigo(registro.codEstadoProceso ?? detalles[0]?.codEstadoEnvio);
+  if (!['04', '06'].includes(estado) || !nombreArchivo) return { listo: false, message: registro.desEstadoProceso || 'La propuesta de compras sigue en proceso.' };
+  const tipoArchivo = reporte.codTipoArchivoReporte !== undefined
+    ? reporte.codTipoArchivoReporte : reporte.codTipoAchivoReporte;
+  const archivo = await sunat.descargarPropuestaSire({ ...p, ticket, nombreArchivo, codTipoArchivoReporte: tipoArchivo });
   const detalle = parsearTextoCompras({ contenido: leerArchivo(archivo.buffer), documentoId: p.documentoId, periodo: p.periodo });
   // No sobrescribir una propuesta si otro usuario genero un ticket nuevo durante la descarga.
   const actual = await tickets.obtenerDatosTicketPropuestaSire(p);

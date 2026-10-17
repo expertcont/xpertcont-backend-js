@@ -180,12 +180,13 @@ const descargarPropuestaSire = async ({
   idLibro = '014',
   ticket,
   nombreArchivo,
+  codTipoArchivoReporte = '01',
   db,
 }) => {
   const idLibroSire = normalizarIdLibroSire(idLibro);
   const token = await obtenerTokenSire({ idAnfitrion, documentoId, db });
   const periodoSire = normalizarPeriodoSire(periodo);
-  const url = `https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/archivoreporte?nomArchivoReporte=${encodeURIComponent(nombreArchivo)}&codTipoArchivoReporte=01&codLibro=${idLibroSire}&perTributario=${periodoSire}&codProceso=10&numTicket=${encodeURIComponent(ticket)}`;
+  const url = `https://api-sire.sunat.gob.pe/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/archivoreporte?nomArchivoReporte=${encodeURIComponent(nombreArchivo)}&codTipoArchivoReporte=${encodeURIComponent(codTipoArchivoReporte)}&codLibro=${idLibroSire}&perTributario=${periodoSire}&codProceso=10&numTicket=${encodeURIComponent(ticket)}`;
 
   const response = await fetch(url, {
     method: 'GET',

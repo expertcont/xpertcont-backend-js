@@ -16,7 +16,7 @@ const archivo = (cambios = {}) => Buffer.from(cabecera + '\r\n' + linea(cambios)
 const parsear = (buffer = archivo()) => parsearCompras({ buffer, documentoId: contexto.documento_id, periodo: '2026-09' });
 function entorno({ registros, ticket = 'COMPRA1', cambiaTicket = false, fallo = '' } = {}) {
   let consultasTicket = 0;
-  const llamadas = { guardar: [], descargar: 0, generar: [] };
+  const llamadas = { guardar: [], descargar: 0, generar: [], archivos: [] };
   const service = crearServicio({
     propuestas: {
       obtenerPropuesta: async () => { if (fallo === 'propuesta') throw Error('tabla ausente'); return { ticket, detalle: parsear() }; },
@@ -32,7 +32,7 @@ function entorno({ registros, ticket = 'COMPRA1', cambiaTicket = false, fallo = 
     sunat: {
       generarTicketPropuestaSire: async p => { llamadas.generar.push(p); return { ticket: 'COMPRA2' }; },
       consultarEstadoTicketSire: async p => { assert.equal(p.idLibro, '080000'); return { registros: registros || [] }; },
-      descargarPropuestaSire: async p => { assert.equal(p.idLibro, '080000'); llamadas.descargar++; return { buffer: archivo() }; },
+      descargarPropuestaSire: async p => { assert.equal(p.idLibro, '080000'); llamadas.descargar++; llamadas.archivos.push(p); return { buffer: archivo() }; },
     },
     comprasSistema: { obtenerComprasSistema: async () => { if (fallo === 'sistema') throw Error('columna ausente'); return parsear(); } },
     leerArchivo: leerArchivoPropuesta,
@@ -131,4 +131,20 @@ test('reabrir compras recupera ticket y fecha sin solicitar uno nuevo aunque fal
 });
 test('sin ticket guardado no oculta fallos como ausencia de datos', async () => {
   await assert.rejects(entorno({ ticket: '', fallo: 'propuesta' }).service.recuperar(contexto), /tabla ausente/);
+});
+
+test('consulta RCE acepta detalleTicket como lista y respeta el tipo de archivo devuelto', async () => {
+  const e=entorno({registros:[{...listo,codEstadoProceso:6,archivoReporte:[],detalleTicket:[{numTicket:'COMPRA1',codEstadoEnvio:'06',nomArchivoReporte:'compras.zip',codTipoArchivoReporte:null}]}]});
+  assert.equal((await e.service.consultar({...contexto,ticket:'COMPRA1'})).listo,true);
+  assert.equal(e.llamadas.archivos[0].codTipoArchivoReporte,null);
+});
+test('rechazo en detalleTicket lista no descarga aunque la cabecera indique terminado', async () => {
+  const e=entorno({registros:[{...listo,detalleTicket:[{numTicket:'COMPRA1',codEstadoEnvio:'03'}]}]});
+  await assert.rejects(e.service.consultar({...contexto,ticket:'COMPRA1'}),err=>err.statusCode===422);
+  assert.equal(e.llamadas.descargar,0);
+});
+test('detalle de otro ticket no habilita descarga ni provoca rechazo del solicitado', async () => {
+  const e=entorno({registros:[{...listo,archivoReporte:[],detalleTicket:[{numTicket:'OTRO',codEstadoEnvio:'06',nomArchivoReporte:'otro.zip'}]}]});
+  assert.equal((await e.service.consultar({...contexto,ticket:'COMPRA1'})).listo,false);
+  assert.equal(e.llamadas.descargar,0);
 });

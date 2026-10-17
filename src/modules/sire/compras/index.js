@@ -7,7 +7,7 @@ const sunat = require('../../../services/sire/sireSunatClient.service');
 const { leerArchivoPropuesta } = require('./infrastructure/archivoPropuesta');
 const servicio = require('./application/sireCompras.service')({ propuestas, comprasSistema, tickets, sunat, leerArchivo: leerArchivoPropuesta });
 const personalizada = require('./application/personalizada.service')({
-  repo: require('./infrastructure/personalizada.repository')(pool), propuestas, tickets, validar: servicio.validar,
+  repo: require('./infrastructure/personalizada.repository')(pool), propuestas, tickets, validar: servicio.validar, consultarPropuesta: servicio.consultar,
 });
 Object.assign(servicio, personalizada);
 const controller = require('./http/controller')(servicio);

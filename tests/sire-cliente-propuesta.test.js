@@ -13,7 +13,7 @@ function cliente(html=false) {
   const fetch=async url=>{
     urls.push(url);
     if(url.includes('/oauth2/'))return {ok:true,json:async()=>({access_token:'TOKEN'})};
-    return {ok:!html,status:html?404:200,json:async()=>{if(html)throw new SyntaxError('Unexpected token <');return {numTicket:'TICKET1'};}};
+    return {ok:!html,status:html?404:200,buffer:async()=>Buffer.from('ZIP'),headers:{get:()=> 'application/zip'},json:async()=>{if(html)throw new SyntaxError('Unexpected token <');return {numTicket:'TICKET1'};}};
   };
   const module={exports:{}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/services/sire/sireSunatClient.service.js'),'utf8'),{
@@ -51,4 +51,11 @@ test('respuesta HTML produce error controlado y no persiste un ticket',async()=>
     return true;
   });
   assert.equal(e.guardados.length,0);
+});
+
+test('descarga respeta tipo de reporte recibido, incluyendo null, y conserva default de Ventas',async()=>{
+ for(const tipo of [null,'02',undefined]){
+  const e=cliente();await e.api.descargarPropuestaSire({...params,idLibro:tipo===undefined?'014':'008',ticket:'TICKET1',nombreArchivo:'compras.zip',codTipoArchivoReporte:tipo});
+  assert.equal(new URL(e.urls[1]).searchParams.get('codTipoArchivoReporte'),tipo===undefined?'01':String(tipo));
+ }
 });

@@ -76,3 +76,31 @@ test('repositorio parametriza empresa, periodo y version, y conserva historial',
  await repo.actualizar(p,'7',2,{clave:'KEY',comprobante:compra,estado:'EXCLUIDO',motivo:'No aplica',periodo_destino:'2026-10'});
  assert.match(calls[1].sql,/id_usuario=\$1 AND documento_id=\$2/);assert.match(calls[1].sql,/version=\$5/);assert.match(calls[1].sql,/jsonb_build_array/);assert.equal(calls[1].args[4],2);
 });
+
+function importacion({listo=true,cambia=false,error=false}={}){
+ let consultas=0,descargas=0,guardados=0,ticketsLeidos=0;
+ const service=crearServicio({
+  validar:crearBase({}).validar,
+  tickets:{obtenerDatosTicketPropuestaSire:async()=>({sire_tpropuesta:cambia && ++ticketsLeidos>1?'NUEVO':'TICKET'})},
+  propuestas:{obtenerPropuesta:async()=>++consultas===1?null:{detalle:[compra]}},
+  consultarPropuesta:async p=>{assert.equal(p.ticket,'TICKET');assert.equal(p.documento_id,contexto.documento_id);descargas++;if(error)throw Object.assign(Error('Error descargando'),{statusCode:502});return {listo,message:'SUNAT sigue procesando el ticket.'};},
+  repo:{importar:async()=>{guardados++;return 1;}},
+ });
+ return {service,get descargas(){return descargas;},get guardados(){return guardados;}};
+}
+test('personalizada consulta y descarga automaticamente si solo existe el ticket',async()=>{
+ const e=importacion();assert.equal((await e.service.importarPersonalizada(contexto)).cantidad,1);
+ assert.equal(e.descargas,1);assert.equal(e.guardados,1);
+});
+test('SUNAT en proceso informa pendiente sin devolver 422 ni crear compras',async()=>{
+ const e=importacion({listo:false});const r=await e.service.importarPersonalizada(contexto);
+ assert.equal(r.pendiente,true);assert.equal(r.cantidad,0);assert.equal(e.guardados,0);
+});
+test('cambio de ticket durante recuperacion bloquea carga de la propuesta anterior',async()=>{
+ const e=importacion({cambia:true});await assert.rejects(e.service.importarPersonalizada(contexto),err=>err.statusCode===409);
+ assert.equal(e.guardados,0);
+});
+test('fallo de descarga no crea una propuesta personalizada incompleta',async()=>{
+ const e=importacion({error:true});await assert.rejects(e.service.importarPersonalizada(contexto),err=>err.statusCode===502);
+ assert.equal(e.guardados,0);
+});

@@ -1,13 +1,20 @@
 const {fallo,clave,validarCompra,validarDecision}=require('../domain/personalizada');
-module.exports = ({repo,propuestas,tickets,validar}) => {
+module.exports = ({repo,propuestas,tickets,validar,consultarPropuesta}) => {
  const traducir = async trabajo => {try{return await trabajo();}catch(e){if(e.code==='23505')throw fallo('Este comprobante ya existe en la propuesta personalizada de la empresa.',409);if(e.code==='42P01')throw Object.assign(fallo('Falta instalar el SQL mco_sire_personalizada.sql en la base de datos.',503),{codigo:'SIRE_PERSONALIZADA_MIGRACION',mensajePublico:'La propuesta personalizada necesita actualizar su configuracion en la base de datos.'});throw e;}};
  const listarPersonalizada = entrada => traducir(async()=>({registros:await repo.listar(validar(entrada))}));
  const importarPersonalizada = entrada => traducir(async()=>{
    const p=validar(entrada);
    const datos=await tickets.obtenerDatosTicketPropuestaSire(p);
    if(!datos?.sire_tpropuesta)throw fallo('Primero recupera el ticket e importa la propuesta SUNAT.');
-   const propuesta=await propuestas.obtenerPropuesta(p,datos.sire_tpropuesta);
-   if(!propuesta)throw fallo('Consulta el estado del ticket para importar la propuesta SUNAT antes de personalizarla.');
+   let propuesta=await propuestas.obtenerPropuesta(p,datos.sire_tpropuesta);
+   if(!propuesta){
+     const resultado=await consultarPropuesta({...entrada,ticket:datos.sire_tpropuesta});
+     if(!resultado.listo)return {cantidad:0,pendiente:true,message:resultado.message || 'La propuesta SUNAT sigue en proceso. Vuelve a cargarla en unos momentos.'};
+     const actual=await tickets.obtenerDatosTicketPropuestaSire(p);
+     if(actual?.sire_tpropuesta!==datos.sire_tpropuesta)throw fallo('El ticket cambio durante la descarga. Actualiza la lista antes de cargar la propuesta.',409);
+     propuesta=await propuestas.obtenerPropuesta(p,datos.sire_tpropuesta);
+     if(!propuesta)throw fallo('La descarga termino pero no se encontro el detalle guardado. Vuelve a consultar el ticket.',409);
+   }
    const rows=propuesta.detalle.map(r=>{const comprobante=validarCompra(r,p.periodo);return {clave:clave(comprobante),comprobante};});
    if(new Set(rows.map(r=>r.clave)).size!==rows.length)throw fallo('La propuesta contiene comprobantes duplicados. Revisa el archivo antes de cargarlo.');
    const cantidad=await repo.importar(p,datos.sire_tpropuesta,rows);

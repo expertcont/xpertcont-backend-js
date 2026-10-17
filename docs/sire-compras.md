@@ -48,8 +48,9 @@ Instalar primero docs/sql/mco_sire_propuesta.sql si el modulo no esta instalado,
 **docs/sql/mco_sire_personalizada.sql** en la BD del backend. No se ejecutan migraciones automaticamente.
 Desplegar backend y frontend. No requiere cambios en Comercial ni en Transportes.
 
-En Compras > Propuesta personalizada, usar Cargar propuesta SUNAT despues de consultar/importar
-el ticket. La carga agrega todos los comprobantes nuevos como DECLARAR; es idempotente y no
+En Compras > Propuesta personalizada, usar Cargar propuesta SUNAT con un ticket generado.
+Si falta el detalle, consulta y descarga el ticket automaticamente antes de cargar las compras.
+Si SUNAT sigue procesando, informa el estado sin generar otro ticket ni devolver el anterior 422. La carga agrega todos los comprobantes nuevos como DECLARAR; es idempotente y no
 sobrescribe decisiones ni ediciones. El archivo original de SUNAT permanece intacto.
 Si SUNAT elimina o cambia un comprobante en otro ticket, se conserva el borrador existente
 para revision manual; la carga nunca elimina registros automaticamente.
