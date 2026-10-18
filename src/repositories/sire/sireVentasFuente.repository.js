@@ -13,7 +13,7 @@ const obtenerFuenteVentas = async (p, db = pool) => {
   // Adaptar las columnas de Comercial al contrato de lectura SIRE, sin tocar sus registros.
   return {
     rubro: 'COMERCIAL',
-    tabla: `(SELECT v.*,
+    tabla: `(SELECT v.*,'COMERCIAL'::text AS sire_rubro,
       v.r_base002 AS r_gravado,v.r_base003 AS r_exonerado,v.r_base004 AS r_inafecto,
       v.r_igv002 AS r_igv,NULL::numeric AS precio_neto,'COMERCIAL'::text AS tipo_operacion,
       v.r_id_doc AS cliente_id_doc,v.r_documento_id AS cliente_documento_id,v.r_razon_social AS cliente,

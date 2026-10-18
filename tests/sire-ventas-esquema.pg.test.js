@@ -135,7 +135,10 @@ test('SIRE Ventas: esquema nuevo, notas, aceptacion y reemplazo', {
     // El mismo periodo y RUC comercial debe leer mve_venta, con correlativos rellenados.
     // La fuente de Transporte se elimina para detectar cualquier cruce accidental.
     await pg.exec(`CREATE TABLE mve_venta AS SELECT id_usuario,documento_id,periodo,r_cod,r_serie,
-      LPAD(r_numero,10,'0')::varchar AS r_numero,elemento,r_fecemi,r_fecemi_ref,r_cod_ref,r_serie_ref,
+      LPAD(r_numero,10,'0')::varchar AS r_numero,elemento,
+      CASE WHEN r_cod NOT IN ('07','08') AND r_cod_ref IN ('07','08') THEN r_fecemi_ref ELSE r_fecemi END AS r_fecemi,
+      CASE WHEN r_cod NOT IN ('07','08') AND r_cod_ref IN ('07','08') THEN r_fecemi ELSE r_fecemi_ref END AS r_fecemi_ref,
+      r_cod_ref,r_serie_ref,
       CASE WHEN r_numero_ref IS NULL THEN NULL ELSE LPAD(r_numero_ref,10,'0') END AS r_numero_ref,
       registrado,cliente_id_doc AS r_id_doc,cliente_documento_id AS r_documento_id,cliente AS r_razon_social,
       r_gravado AS r_base002,r_exonerado AS r_base003,0::numeric AS r_base004,r_igv AS r_igv002,
@@ -145,6 +148,7 @@ test('SIRE Ventas: esquema nuevo, notas, aceptacion y reemplazo', {
       TRUNCATE mve_transventa;`);
     const comercial = await repo.obtenerRegistroSireTransporteQuery([p.periodo,p.idAnfitrion,p.documentoId]);
     assert.equal(comercial.length,5);
+    assert.equal(comercial.find(r => r.tipo_comprobante === '07' && r.serie === 'FC01' && r.numero.endsWith('1')).fecha_emision, '2024-09-03');
     assert.equal((await repo.obtenerComparacionSireTransporteQuery(p)).length,0);
     // Las diferencias reales siguen apareciendo aunque la identidad coincida sin ceros.
     await query("UPDATE mve_venta SET r_monto_total=r_monto_total+1 WHERE r_cod='01' AND elemento=1");

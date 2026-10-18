@@ -10,6 +10,7 @@ const monto = campo => `CASE WHEN COALESCE(tv.registrado,1)=0 THEN 0
 // Registro de ventas SIRe para operaciones de transporte.
 const obtenerRegistroSireTransporteQuery = async (params) => {
   const fuente = await obtenerFuenteVentas({ idAnfitrion: params[1] });
+  const documento = expresionesVenta('tv', { fechaMovimiento: fuente.rubro === 'COMERCIAL' });
   const result = await pool.query(
     `
       SELECT
@@ -88,6 +89,7 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
 
 const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro }) => {
   const fuente = await obtenerFuenteVentas({ idAnfitrion });
+  const documento = expresionesVenta('tv', { fechaMovimiento: fuente.rubro === 'COMERCIAL' });
   const vigente=await obtenerPropuestaGuardadaSireTransporteQuery({idAnfitrion,documentoId,periodo,idLibro,ticket:''});
   if (!vigente || !['PARSEADO','COMPARADO'].includes(vigente.estado)) throw Object.assign(
     new Error('Primero importa la propuesta SUNAT del ticket vigente antes de comparar.'),{statusCode:409});

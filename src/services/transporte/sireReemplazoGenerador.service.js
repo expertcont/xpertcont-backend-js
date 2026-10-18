@@ -24,7 +24,7 @@ const generarArchivo = ({ documentoId, periodo, razonSocial, ventas }) => {
   if (!campo(razonSocial)) fallo('No se encontro la razon social del emisor.');
   const grupos = new Map();
   for (const v of ventas) {
-    const identidad = identidadVenta(v);
+    const identidad = identidadVenta(v, { fechaMovimiento: v.sire_rubro === 'COMERCIAL' });
     const { principalNota, tipo } = identidad;
     if (!['01', '03', '07', '08'].includes(tipo)) continue;
     const serie = campo(identidad.serie);
