@@ -1,5 +1,6 @@
 const pool = require('../../db');
 const { registrarDatosPropuesta } = require('./sirePropuestaDatos.repository');
+const { obtenerFuenteVentas } = require('./sireVentasFuente.repository');
 const { adquirirCandado, liberarCandado, obtenerAceptacion } = require('./sireAceptacion.repository');
 const clave = (p) => [p.idAnfitrion, p.documentoId, p.periodo, p.idLibro];
 const obtenerUltimo = async (p, db = pool, incluirArchivo = false) => {
@@ -38,12 +39,13 @@ const actualizar = async (p, registro, datos, db) => {
   return result.rows[0];
 };
 const obtenerVentas = async (p, db) => {
+  const fuente = await obtenerFuenteVentas(p, db);
   const emisor = await db.query(`SELECT razon_social FROM mad_usuariocontabilidad WHERE id_usuario=$1 AND documento_id=$2 LIMIT 1`, clave(p).slice(0, 2));
   const result = await db.query(`SELECT to_jsonb(tv) || jsonb_build_object(
       'r_gravado', tv.r_gravado::text, 'r_exonerado', tv.r_exonerado::text,
       'r_igv', tv.r_igv::text, 'r_monto_total', tv.r_monto_total::text, 'precio_neto', tv.precio_neto::text) AS venta
-    FROM public.mve_transventa tv WHERE tv.id_usuario=$1 AND tv.documento_id=$2 AND tv.periodo=$3
-      AND tv.tipo_operacion IN ('B','E') ORDER BY tv.r_fecemi,tv.r_cod,tv.r_serie,tv.r_numero,tv.elemento`, clave(p).slice(0, 3));
+    FROM ${fuente.tabla} tv WHERE tv.id_usuario=$1::text AND tv.documento_id=$2::text AND tv.periodo=$3::text
+      AND ${fuente.filtro} ORDER BY tv.r_fecemi,tv.r_cod,tv.r_serie,tv.r_numero,tv.elemento`, clave(p).slice(0, 3));
   return { razonSocial: emisor.rows[0]?.razon_social, ventas: result.rows.map((r) => r.venta) };
 };
 const guardarActualizacion = async (p, registro, datos, db) => {
@@ -65,7 +67,7 @@ const invalidarPropuestas = async (p, registro, db) => {
     await db.query(`UPDATE public.mve_sire_propuesta_datos SET estado='REEMPLAZADO',
       observacion=$5, ctrl_mod=CURRENT_TIMESTAMP
       WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4
-        AND rubro='TRANSPORTE' AND estado IN ('PARSEADO','COMPARADO','DESCARGADO')
+        AND estado IN ('PARSEADO','COMPARADO','DESCARGADO')
         AND ($6::text IS NULL OR ticket<>$6::text)`,
     [...clave(p), `Reemplazada por envio ${registro.id_reemplazo}`, registro.ticket_actualizacion || null]);
     // Una descarga pendiente de la propuesta anterior no puede volver a activarla.

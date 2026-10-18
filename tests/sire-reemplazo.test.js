@@ -467,7 +467,8 @@ test('comparacion bloqueada mientras la propuesta nueva no esta importada', asyn
     if (sql.includes('to_regclass')) return { rows: [{ tabla: 'mve_sire_reemplazo' }] };
     if (sql.includes('actualizacion')) return { rows: [{ actualizacion: 'PENDIENTE' }] };
     throw Error('No debe comparar contra historial');
-  } }, '../../utils/sireVentaDocumento.utils': require('../src/utils/sireVentaDocumento.utils') });
+  } }, '../../utils/sireVentaDocumento.utils': require('../src/utils/sireVentaDocumento.utils'),
+    '../sire/sireVentasFuente.repository': { obtenerFuenteVentas: async () => ({ rubro: 'TRANSPORTE' }) } });
   await assert.rejects(repo.obtenerComparacionSireTransporteQuery(p), (e) => e.statusCode === 409);
   assert.equal(consultas, 3);
 });
@@ -535,7 +536,7 @@ test('repositorio solo borra ticket de descarga con reinicio explicito', async (
   const llamadas = [];
   const db = { query: async (sql, params) => { llamadas.push({ sql, params }); return { rows: [{}] }; } };
   const repo = cargar('../src/repositories/sire/sireReemplazo.repository.js', {
-    '../../db': db, './sireAceptacion.repository': {}, './sirePropuestaDatos.repository': {},
+    '../../db': db, './sireAceptacion.repository': {}, './sirePropuestaDatos.repository': {}, './sireVentasFuente.repository': {},
   });
   await repo.guardarActualizacion(p, { id_reemplazo: id }, { estado: 'ERROR', reiniciarTicket: true, error: 'Rechazada' }, db);
   await repo.guardarActualizacion(p, { id_reemplazo: id }, { estado: 'ERROR', error: 'Timeout' }, db);

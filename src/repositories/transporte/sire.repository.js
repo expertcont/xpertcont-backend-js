@@ -1,4 +1,5 @@
 const pool = require('../../db');
+const { obtenerFuenteVentas } = require('../sire/sireVentasFuente.repository');
 const { expresionesVenta } = require('../../utils/sireVentaDocumento.utils');
 const documento = expresionesVenta();
 const monto = campo => `CASE WHEN COALESCE(tv.registrado,1)=0 THEN 0
@@ -8,6 +9,7 @@ const monto = campo => `CASE WHEN COALESCE(tv.registrado,1)=0 THEN 0
 
 // Registro de ventas SIRe para operaciones de transporte.
 const obtenerRegistroSireTransporteQuery = async (params) => {
+  const fuente = await obtenerFuenteVentas({ idAnfitrion: params[1] });
   const result = await pool.query(
     `
       SELECT
@@ -22,7 +24,7 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
         tv.cliente AS cliente,
         ${monto('tv.r_gravado')}::numeric AS base_gravada,
         ${monto('tv.r_exonerado')}::numeric AS exonerado,
-        0::numeric AS inafecto,
+        ${monto('tv.r_inafecto')}::numeric AS inafecto,
         ${monto('tv.r_igv')}::numeric AS igv,
         ${monto('COALESCE(tv.r_monto_total,tv.precio_neto)')}::numeric AS total,
         COALESCE(NULLIF(to_jsonb(tv)->>'r_moneda', ''), 'PEN')::varchar AS moneda,
@@ -61,15 +63,15 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(tv.numero_rdi, '') <> '' AND COALESCE(rdi.estado, '') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', '') THEN 'RDI pendiente de CDR' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND (COALESCE(rdi.estado, '') = 'RECHAZADO' OR COALESCE(tv.cdr_nivel, '') = 'RECHAZADO' OR COALESCE(tv.cdr_descripcion, '') <> '' OR COALESCE(tv.estado_sunat, '') IN ('R', 'E')) THEN 'Rechazado/error SUNAT' END
         ], NULL) AS observaciones
-      FROM public.mve_transventa tv
-      LEFT JOIN public.mve_rdi_sunat rdi
+      FROM ${fuente.tabla} tv
+      LEFT JOIN ${fuente.rdi} rdi
         ON rdi.id_usuario = tv.id_usuario
        AND rdi.documento_id = tv.documento_id
        AND rdi.numero_rdi = tv.numero_rdi
       WHERE tv.periodo = $1::text
         AND tv.id_usuario = $2::text
         AND tv.documento_id = $3::text
-        AND tv.tipo_operacion IN ('B', 'E')
+        AND ${fuente.filtro}
         AND ${documento.tipo} IN ('01', '03', '07', '08')
       ORDER BY
         ${documento.fecha} ASC,
@@ -85,6 +87,7 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
 };
 
 const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro }) => {
+  const fuente = await obtenerFuenteVentas({ idAnfitrion });
   const vigente=await obtenerPropuestaGuardadaSireTransporteQuery({idAnfitrion,documentoId,periodo,idLibro,ticket:''});
   if (!vigente || !['PARSEADO','COMPARADO'].includes(vigente.estado)) throw Object.assign(
     new Error('Primero importa la propuesta SUNAT del ticket vigente antes de comparar.'),{statusCode:409});
@@ -105,7 +108,6 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
            AND documento_id = $2::text
            AND periodo = $3::text
            AND id_libro = $4::text
-           AND rubro = 'TRANSPORTE'
            AND estado IN ('PARSEADO', 'COMPARADO', 'DESCARGADO')
          ORDER BY fecha_descarga DESC NULLS LAST, fecha_generacion DESC, ticket DESC
          LIMIT 1
@@ -150,7 +152,7 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           tv.cliente::varchar AS cliente,
           ${monto('tv.r_gravado')}::numeric AS base_gravada,
           ${monto('tv.r_exonerado')}::numeric AS exonerado,
-          0::numeric AS inafecto,
+          ${monto('tv.r_inafecto')}::numeric AS inafecto,
           ${monto('tv.r_igv')}::numeric AS igv,
           ${monto('COALESCE(tv.r_monto_total,tv.precio_neto)')}::numeric AS total,
           COALESCE(NULLIF(to_jsonb(tv)->>'r_moneda', ''), 'PEN')::varchar AS moneda,
@@ -159,11 +161,11 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           NULL::varchar AS nombre_archivo,
           NULL::text AS raw_linea,
           COALESCE(tv.registrado, 1)::integer AS registrado
-        FROM public.mve_transventa tv
+        FROM ${fuente.tabla} tv
        WHERE tv.id_usuario = $1::text
          AND tv.documento_id = $2::text
          AND tv.periodo = $3::text
-         AND tv.tipo_operacion IN ('B', 'E')
+         AND ${fuente.filtro}
          AND ${documento.tipo} IN ('01', '03', '07', '08')
       ),
       -- Normalizar solo correlativos numericos; conservar el numero original para mostrarlo.
@@ -382,7 +384,6 @@ const obtenerPropuestaGuardadaSireTransporteQuery = async ({ idAnfitrion, docume
     `SELECT ticket AS id_propuesta, ticket, nombre_archivo, estado, cantidad_registros, fecha_generacion
        FROM public.mve_sire_propuesta_datos
       WHERE id_usuario = $1::text AND documento_id = $2::text AND periodo = $3::text AND id_libro = $4::text
-        AND rubro = 'TRANSPORTE'
         AND estado IN ('GENERADO','PARSEADO','COMPARADO','DESCARGADO')
         AND ($5::text = '' OR ticket = $5::text)
         AND ticket=COALESCE(NULLIF((SELECT sire_tpropuesta FROM public.mct_contabilidadticket t
