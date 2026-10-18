@@ -10,6 +10,7 @@ const leerArchivoPropuesta = (buffer) => {
     if (files[0].header.size > 30 * 1024 * 1024) throw error('La propuesta descomprimida supera el limite de 30 MB.');
     contenido = zip.readFile(files[0]);
   }
-  return contenido.toString('utf8');
+  try { return new TextDecoder('utf-8', {fatal:true}).decode(contenido); }
+  catch (_) { return new TextDecoder('windows-1252').decode(contenido); }
 };
 module.exports = { leerArchivoPropuesta };

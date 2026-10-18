@@ -10,5 +10,7 @@ module.exports = (controller) => {
   router.post('/personalizada', controller.crearPersonalizada);
   router.put('/personalizada/:id_compra', controller.editarPersonalizada);
   router.delete('/personalizada/:id_compra', controller.eliminarPersonalizada);
+  router.get('/personalizada/conciliacion/:id_propuesta/:periodo/:id_anfitrion/:documento_id', controller.revisarConciliacion);
+  router.post('/personalizada/conciliar/:id_propuesta', controller.confirmarConciliacion);
   return router;
 };

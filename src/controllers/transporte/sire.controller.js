@@ -41,7 +41,7 @@ const obtenerRegistroSireTransporte = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener Reporte SIRE de transporte:', error);
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: 'Error interno obteniendo Reporte SIRE de transporte.',
     });

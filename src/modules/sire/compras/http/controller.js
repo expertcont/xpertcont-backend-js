@@ -1,7 +1,7 @@
 module.exports = (service) => {
 const handler = (accion) => async (req, res) => {
   try {
-    const result = await service[accion]({ ...req.query, ...req.body, ...req.params });
+    const result = await service[accion]({ ...req.query, ...req.body, ...req.params, usuario_ajuste: req.user?.email || req.auth?.payload?.email || null });
     if (accion === 'descargar') {
       const nombre = String(result.nombre_archivo || 'propuesta_compras.zip').split(/[\\/]/).pop().replace(/[^A-Za-z0-9_.-]/g, '_');
       res.setHeader('Content-Disposition', `attachment; filename="${nombre}"`);
@@ -17,6 +17,6 @@ const handler = (accion) => async (req, res) => {
       ? 'No se pudo completar la consulta de SIRE Compras. Revisa la configuracion del servicio y vuelve a intentar.' : error.message });
   }
 };
-return { ...Object.fromEntries(['listarPersonalizada','importarPersonalizada','crearPersonalizada','editarPersonalizada','eliminarPersonalizada'].map(accion => [accion, handler(accion)])), recuperar: handler('recuperar'), generarTicket: handler('generarTicket'), consultar: handler('consultar'), descargar: handler('descargar') };
+return { ...Object.fromEntries(['listarPersonalizada','importarPersonalizada','crearPersonalizada','editarPersonalizada','eliminarPersonalizada','revisarConciliacion','confirmarConciliacion'].map(accion => [accion, handler(accion)])), recuperar: handler('recuperar'), generarTicket: handler('generarTicket'), consultar: handler('consultar'), descargar: handler('descargar') };
 
 };

@@ -12,7 +12,7 @@ const validar = (entrada = {}) => {
   const documentoId = String(entrada.documentoId || '').trim();
   const match = String(entrada.periodo || '').match(/^(\d{4})-?(0[1-9]|1[0-2])$/);
   const idLibro = sire.normalizarIdLibroSire(String(entrada.idLibro || '014'));
-  if (!idAnfitrion || idAnfitrion.length > 60 || !/^\d{11}$/.test(documentoId) || !match || idLibro !== '140000') {
+  if (!idAnfitrion || idAnfitrion.length > 50 || !/^\d{11}$/.test(documentoId) || !match || idLibro !== '140000') {
     throw errorHttp('Indica usuario, RUC de 11 digitos, periodo YYYY-MM o YYYYMM y libro RVIE (014).', 400);
   }
   const periodo = `${match[1]}-${match[2]}`;
@@ -27,7 +27,7 @@ const resultado = (registro, reutilizado = false) => ({
   periodo: registro.periodo, id_libro: registro.id_libro, nombre_archivo: registro.nombre_archivo,
   hash_archivo: registro.hash_archivo, cantidad_registros: registro.cantidad_registros,
   resumen: registro.resumen, fuente: registro.fuente, ticket_actualizacion: registro.ticket_actualizacion,
-  estado_actualizacion: registro.estado_actualizacion, id_propuesta_actualizada: registro.id_propuesta_actualizada,
+  estado_actualizacion: registro.estado_actualizacion, id_propuesta_actualizada: registro.estado_actualizacion === 'ACTUALIZADO' ? registro.ticket_actualizacion : null,
   error_actualizacion: registro.error_actualizacion,
   estado: registro.estado, ticket_reemplazo: registro.ticket_reemplazo || null,
   codigo_estado_sunat: registro.codigo_estado_sunat || null,

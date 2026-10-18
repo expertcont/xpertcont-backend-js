@@ -25,7 +25,7 @@ const sincronizarReemplazo = async (p, registro, db) => {
     const importacion = await guardarPropuestaVentasSire({ ...p, db, ticket: actual.ticket_actualizacion,
       nombreArchivo: reporte.nomArchivoReporte, buffer: archivo.buffer });
     return await repository.guardarActualizacion(p, actual, {
-      estado: 'ACTUALIZADO', idPropuesta: importacion.id_propuesta,
+      estado: 'ACTUALIZADO', ticket: importacion.ticket,
     }, db);
   } catch (error) {
     // El reemplazo sigue TERMINADO aunque falle la descarga o la base local.

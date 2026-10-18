@@ -2,6 +2,17 @@ const repository = require('../../repositories/transporte/sire.repository');
 const sireRepository = require('../../repositories/sire/sire.repository');
 const sireSunatClient = require('../sire/sireSunatClient.service');
 const { guardarPropuestaVentasSire } = require('../sire/sirePropuestaStore.service');
+const { registrarDatosPropuesta,obtenerArchivoPropuesta } = require('../../repositories/sire/sirePropuestaDatos.repository');
+
+const normalizarContexto = p => {
+  const idAnfitrion=String(p.idAnfitrion || '').trim(),documentoId=String(p.documentoId || '').trim();
+  const mes=String(p.periodo || '').match(/^(\d{4})-?(0[1-9]|1[0-2])$/);
+  const idLibro=sireSunatClient.normalizarIdLibroSire(p.idLibro || '014');
+  if (!idAnfitrion || idAnfitrion.length>50 || !/^\d{11}$/.test(documentoId) || !mes || idLibro!=='140000') {
+    throw Object.assign(new Error('Indica usuario, RUC de 11 digitos, periodo valido y libro RVIE.'),{statusCode:400});
+  }
+  return { ...p,idAnfitrion,documentoId,periodo:mes[1]+'-'+mes[2],idLibro };
+};
 
 const obtenerRegistroSireTransporte = async ({ idAnfitrion, documentoId, periodo }) => {
   const data = await repository.obtenerRegistroSireTransporteQuery([periodo, idAnfitrion, documentoId]);
@@ -66,7 +77,8 @@ const obtenerComparacionSireTransporte = async ({
   return { data, resumen };
 };
 
-const obtenerUltimaPropuestaSireTransporte = async (params) => {
+const obtenerUltimaPropuestaSireTransporte = async (entrada) => {
+  const params=normalizarContexto(entrada);
   const idLibro = sireSunatClient.normalizarIdLibroSire(params.idLibro || '014');
   const datosTicket = await sireRepository.obtenerDatosTicketPropuestaSire({ ...params, idLibro });
   const ticketGuardado = datosTicket?.sire_tpropuesta || '';
@@ -94,27 +106,20 @@ const obtenerUltimaPropuestaSireTransporte = async (params) => {
   return {
     ticket,
     reutilizado: Boolean(ticket),
-    fecha_generacion: ticketGuardado ? datosTicket?.sire_tpropuesta_fecha_generacion || null : null,
+    fecha_generacion: datosTicket?.sire_tpropuesta_fecha_generacion || propuesta?.fecha_generacion || null,
     nombre_archivo_rep: propuesta?.nombre_archivo || '',
     importacion: propuesta && ['PARSEADO', 'COMPARADO'].includes(propuesta.estado)
-      ? { id_propuesta: propuesta.id_propuesta, cantidad_registros: propuesta.cantidad_registros }
+      ? { id_propuesta: propuesta.ticket, ticket: propuesta.ticket, cantidad_registros: propuesta.cantidad_registros }
       : null,
   };
 };
 
-const generarTicketPropuestaSireTransporte = async ({
-  idAnfitrion,
-  documentoId,
-  periodo,
-  idLibro = '014',
-  reutilizarExistente = true,
-}) => sireSunatClient.generarTicketPropuestaSire({
-  idAnfitrion,
-  documentoId,
-  periodo,
-  idLibro,
-  reutilizarExistente,
-});
+const generarTicketPropuestaSireTransporte = async (p) => {
+  const contexto=normalizarContexto(p);
+  const resultado=await sireSunatClient.generarTicketPropuestaSire(contexto);
+  await registrarDatosPropuesta({ ...contexto,ticket:resultado.ticket,fechaGeneracion:resultado.fecha_generacion });
+  return resultado;
+};
 
 const consultarEstadoPropuestaSireTransporte = async ({
   idAnfitrion,
@@ -161,27 +166,19 @@ const consultarEstadoPropuestaSireTransporte = async ({
   };
 };
 
-const descargarPropuestaSireTransporte = async ({
-  idAnfitrion,
-  documentoId,
-  periodo,
-  idLibro = '014',
-  ticket,
-  nombreArchivo,
-}) => sireSunatClient.descargarPropuestaSire({
-  idAnfitrion,
-  documentoId,
-  periodo,
-  idLibro,
-  ticket,
-  nombreArchivo,
-});
+const descargarPropuestaSireTransporte = async (entrada) => {
+  const p=normalizarContexto(entrada);
+  const guardado=await obtenerArchivoPropuesta(p);
+  if (guardado) return { buffer:guardado.archivo,nombre_archivo_rep:guardado.nombre_archivo,
+    content_type:guardado.archivo.subarray(0,2).toString()==='PK'?'application/zip':'text/plain; charset=utf-8' };
+  return sireSunatClient.descargarPropuestaSire(p);
+};
 
 module.exports = {
   obtenerUltimaPropuestaSireTransporte,
-  obtenerRegistroSireTransporte,
-  obtenerComparacionSireTransporte,
+  obtenerRegistroSireTransporte: p=>obtenerRegistroSireTransporte(normalizarContexto(p)),
+  obtenerComparacionSireTransporte: p=>obtenerComparacionSireTransporte(normalizarContexto(p)),
   generarTicketPropuestaSireTransporte,
-  consultarEstadoPropuestaSireTransporte,
+  consultarEstadoPropuestaSireTransporte: p=>consultarEstadoPropuestaSireTransporte(normalizarContexto(p)),
   descargarPropuestaSireTransporte,
 };

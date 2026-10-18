@@ -85,3 +85,7 @@ El boton realiza el POST de aceptacion y una consulta inmediata del ticket. Si s
 usar Consultar aceptacion. Al volver a la pestana se recupera el envio guardado.
 Un resultado incierto bloquea repetir el envio hasta verificarlo.
 Para usarlo, desplegar tambien xpertcont-frontend-react.
+# Esquema vigente
+
+El backend ya utiliza las tablas recreadas por el usuario. Consultar [SIRE Ventas: esquema actual](sire-ventas-esquema-actual.md). Las instrucciones SQL de instalacion antiguas que aparecen mas abajo no corresponden al esquema vigente y no deben reaplicarse.
+

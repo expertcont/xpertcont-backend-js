@@ -9,7 +9,7 @@ const validarContexto = (entrada = {}) => {
   const documentoId = String(entrada.documentoId || '').trim();
   const periodoEntrada = String(entrada.periodo || '').trim();
   const match = periodoEntrada.match(/^(\d{4})-?(0[1-9]|1[0-2])$/);
-  if (!idAnfitrion || idAnfitrion.length > 60 || !/^\d{11}$/.test(documentoId) || !match) {
+  if (!idAnfitrion || idAnfitrion.length > 50 || !/^\d{11}$/.test(documentoId) || !match) {
     throw errorHttp('Indica id_anfitrion, un RUC de 11 digitos y periodo YYYY-MM o YYYYMM valido.', 400);
   }
   const idLibro = sire.normalizarIdLibroSire(String(entrada.idLibro || '014'));
@@ -28,7 +28,7 @@ const resultado = (registro, reutilizado = false) => ({
   accion: 'ACEPTAR',
   origen: 'TRANSPORTE',
   id_aceptacion: registro.id_aceptacion,
-  id_propuesta: registro.id_propuesta,
+  id_propuesta: registro.ticket_propuesta,
   documento_id: registro.documento_id,
   periodo: registro.periodo,
   id_libro: registro.id_libro,
@@ -50,8 +50,8 @@ const resultado = (registro, reutilizado = false) => ({
 const aceptarPropuesta = async (entrada) => {
   const p = validarContexto(entrada);
   if (p.confirmar !== true) throw errorHttp('Confirma explicitamente la aceptacion con confirmar: true.', 400);
-  if (!/^\d+$/.test(String(p.idPropuesta || '')) || !String(p.ticketPropuesta || '').trim()) {
-    throw errorHttp('Indica id_propuesta y ticket_propuesta de la propuesta revisada.', 400);
+  if (!String(p.ticketPropuesta || '').trim() || String(p.ticketPropuesta).trim().length > 50) {
+    throw errorHttp('Indica ticket_propuesta de la propuesta revisada.', 400);
   }
   const candado = await repository.adquirirCandado(p);
   if (!candado) throw errorHttp('La presentacion de este periodo ya se esta procesando.', 409);
@@ -70,8 +70,8 @@ const aceptarPropuesta = async (entrada) => {
     if (!propuesta || !['PARSEADO', 'COMPARADO'].includes(propuesta.estado)) {
       throw errorHttp('Primero importa y revisa la propuesta SUNAT del periodo.', 409);
     }
-    if (String(propuesta.id_propuesta) !== String(p.idPropuesta)
-      || propuesta.ticket !== String(p.ticketPropuesta).trim()) {
+    if (propuesta.ticket !== String(p.ticketPropuesta).trim()
+      || (p.idPropuesta && String(p.idPropuesta) !== propuesta.ticket)) {
       throw errorHttp('La propuesta revisada no coincide con la ultima propuesta guardada. Recarga antes de aceptar.', 409);
     }
     await repository.registrarIntento(p, propuesta, candado.client);

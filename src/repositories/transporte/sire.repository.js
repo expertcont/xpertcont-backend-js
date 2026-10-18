@@ -1,31 +1,37 @@
 const pool = require('../../db');
+const { expresionesVenta } = require('../../utils/sireVentaDocumento.utils');
+const documento = expresionesVenta();
+const monto = campo => `CASE WHEN COALESCE(tv.registrado,1)=0 THEN 0
+  WHEN ${documento.tipo}='07' THEN -ABS(COALESCE(${campo},0))
+  WHEN ${documento.tipo}='08' THEN ABS(COALESCE(${campo},0)) ELSE COALESCE(${campo},0) END`;
+
 
 // Registro de ventas SIRe para operaciones de transporte.
 const obtenerRegistroSireTransporteQuery = async (params) => {
   const result = await pool.query(
     `
       SELECT
-        CAST(tv.r_fecemi AS varchar(10)) AS fecha_emision,
-        COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) AS tipo_comprobante,
-        COALESCE(NULLIF(tv.r_serie_ref, ''), tv.r_serie) AS serie,
-        COALESCE(NULLIF(tv.r_numero_ref, ''), tv.r_numero) AS numero,
+        CAST(${documento.fecha} AS varchar(10)) AS fecha_emision,
+        ${documento.tipo} AS tipo_comprobante,
+        ${documento.serie} AS serie,
+        ${documento.numero} AS numero,
         tv.elemento,
         tv.tipo_operacion,
         tv.cliente_id_doc AS tipo_doc_cliente,
         tv.cliente_documento_id AS nro_doc_cliente,
         tv.cliente AS cliente,
-        CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_gravado, 0) END::numeric AS base_gravada,
-        CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_exonerado, 0) END::numeric AS exonerado,
+        ${monto('tv.r_gravado')}::numeric AS base_gravada,
+        ${monto('tv.r_exonerado')}::numeric AS exonerado,
         0::numeric AS inafecto,
-        CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_igv, 0) END::numeric AS igv,
-        CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_monto_total, tv.precio_neto, 0) END::numeric AS total,
+        ${monto('tv.r_igv')}::numeric AS igv,
+        ${monto('COALESCE(tv.r_monto_total,tv.precio_neto)')}::numeric AS total,
         COALESCE(NULLIF(to_jsonb(tv)->>'r_moneda', ''), 'PEN')::varchar AS moneda,
         CASE
           WHEN COALESCE(tv.registrado, 1) = 0 THEN 'ANULADO'
           WHEN COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
           WHEN COALESCE(tv.numero_rdi, '') = ''
            AND COALESCE(tv.cdr_descripcion, '') <> '' THEN 'RECHAZADO'
-          WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03'
+          WHEN ${documento.tipo} = '03'
            AND COALESCE(tv.numero_rdi, '') = '' THEN 'SIN ENVIO SUNAT'
           WHEN COALESCE(tv.numero_rdi, '') <> ''
            AND COALESCE(rdi.estado, '') = 'ACEPTADO'
@@ -34,9 +40,9 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
            AND COALESCE(rdi.estado, '') = 'RECHAZADO' THEN 'RECHAZADO'
           WHEN COALESCE(tv.numero_rdi, '') <> ''
            AND COALESCE(rdi.estado, '') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', '') THEN 'RDI PENDIENTE CDR'
-          WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01'
+          WHEN ${documento.tipo} = '01'
            AND COALESCE(tv.r_vfirmado, '') <> '' THEN 'ACEPTADO'
-          WHEN COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '01' THEN 'SIN ENVIO SUNAT'
+          WHEN ${documento.tipo} = '01' THEN 'SIN ENVIO SUNAT'
           ELSE COALESCE(NULLIF(tv.estado_sunat, ''), 'PENDIENTE')
         END AS estado_sunat,
         CASE
@@ -49,8 +55,8 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
         COALESCE(rdi.respuesta_codigo, tv.cdr_codigo, CASE WHEN COALESCE(tv.estado_sunat, '') = 'A' THEN '0' ELSE NULL END) AS codigo_cdr,
         COALESCE(rdi.respuesta_desc, tv.cdr_descripcion) AS descripcion_cdr,
         ARRAY_REMOVE(ARRAY[
-          CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Boleta sin RDI' END,
-          CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) = '03' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Sin envio SUNAT' END,
+          CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND ${documento.tipo} = '03' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Boleta sin RDI' END,
+          CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND ${documento.tipo} = '03' AND COALESCE(tv.numero_rdi, '') = '' THEN 'Sin envio SUNAT' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(tv.numero_rdi, '') <> '' AND rdi.numero_rdi IS NULL THEN 'Inconsistencia local: RDI no encontrado' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND COALESCE(tv.numero_rdi, '') <> '' AND COALESCE(rdi.estado, '') IN ('PENDIENTE', 'GENERADO', 'ENVIADO', 'INCIERTO', '') THEN 'RDI pendiente de CDR' END,
           CASE WHEN COALESCE(tv.registrado, 1) = 1 AND COALESCE(tv.r_vfirmado, '') = '' AND (COALESCE(rdi.estado, '') = 'RECHAZADO' OR COALESCE(tv.cdr_nivel, '') = 'RECHAZADO' OR COALESCE(tv.cdr_descripcion, '') <> '' OR COALESCE(tv.estado_sunat, '') IN ('R', 'E')) THEN 'Rechazado/error SUNAT' END
@@ -60,16 +66,16 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
         ON rdi.id_usuario = tv.id_usuario
        AND rdi.documento_id = tv.documento_id
        AND rdi.numero_rdi = tv.numero_rdi
-      WHERE tv.periodo = $1
-        AND tv.id_usuario = $2
-        AND tv.documento_id = $3
+      WHERE tv.periodo = $1::text
+        AND tv.id_usuario = $2::text
+        AND tv.documento_id = $3::text
         AND tv.tipo_operacion IN ('B', 'E')
-        AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) IN ('01', '03', '07', '08')
+        AND ${documento.tipo} IN ('01', '03', '07', '08')
       ORDER BY
-        tv.r_fecemi ASC,
-        COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) ASC,
-        COALESCE(NULLIF(tv.r_serie_ref, ''), tv.r_serie) ASC,
-        NULLIF(REGEXP_REPLACE(COALESCE(NULLIF(tv.r_numero_ref, ''), tv.r_numero), '\\D', '', 'g'), '')::bigint ASC NULLS LAST,
+        ${documento.fecha} ASC,
+        ${documento.tipo} ASC,
+        ${documento.serie} ASC,
+        NULLIF(REGEXP_REPLACE(${documento.numero}, '\\D', '', 'g'), '')::bigint ASC NULLS LAST,
         tv.elemento ASC
     `,
     params
@@ -79,37 +85,40 @@ const obtenerRegistroSireTransporteQuery = async (params) => {
 };
 
 const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro }) => {
+  const vigente=await obtenerPropuestaGuardadaSireTransporteQuery({idAnfitrion,documentoId,periodo,idLibro,ticket:''});
+  if (!vigente || !['PARSEADO','COMPARADO'].includes(vigente.estado)) throw Object.assign(
+    new Error('Primero importa la propuesta SUNAT del ticket vigente antes de comparar.'),{statusCode:409});
   const tabla = await pool.query("SELECT to_regclass('public.mve_sire_reemplazo') AS tabla");
   if (tabla.rows[0]?.tabla) {
     const ultimo = await pool.query(`SELECT to_jsonb(r)->>'estado_actualizacion' AS actualizacion
-      FROM public.mve_sire_reemplazo r WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3
-        AND id_libro=$4 AND estado='TERMINADO' ORDER BY fecha_preparacion DESC LIMIT 1`, [idAnfitrion,documentoId,periodo,idLibro]);
+      FROM public.mve_sire_reemplazo r WHERE id_usuario=$1::text AND documento_id=$2::text AND periodo=$3::text
+        AND id_libro=$4::text AND estado='TERMINADO' ORDER BY fecha_preparacion DESC LIMIT 1`, [idAnfitrion,documentoId,periodo,idLibro]);
     if (ultimo.rows[0] && ultimo.rows[0].actualizacion !== 'ACTUALIZADO') throw Object.assign(
       new Error('El reemplazo termino. Actualiza la propuesta SUNAT antes de volver a comparar.'), { statusCode: 409 });
   }
   const result = await pool.query(
     `
       WITH propuesta AS (
-        SELECT id_propuesta, ticket, nombre_archivo
-          FROM public.mve_sire_propuesta
-         WHERE id_usuario = $1
-           AND documento_id = $2
-           AND periodo = $3
-           AND id_libro = $4
-           AND origen = 'TRANSPORTE'
+        SELECT id_usuario, documento_id, periodo, ticket, nombre_archivo
+          FROM public.mve_sire_propuesta_datos
+         WHERE id_usuario = $1::text
+           AND documento_id = $2::text
+           AND periodo = $3::text
+           AND id_libro = $4::text
+           AND rubro = 'TRANSPORTE'
            AND estado IN ('PARSEADO', 'COMPARADO', 'DESCARGADO')
-         ORDER BY fecha_descarga DESC, id_propuesta DESC
+         ORDER BY fecha_descarga DESC NULLS LAST, fecha_generacion DESC, ticket DESC
          LIMIT 1
       ),
       sire_datos AS (
         SELECT
-          d.id_detalle::varchar AS id_origen,
+          CONCAT(d.r_cod,'-',d.r_serie,'-',d.r_numero)::varchar AS id_origen,
           'SIRE'::varchar(10) AS origen,
           d.linea,
           d.fecha_emision::date AS fecha_emision,
-          d.tipo_comprobante,
-          d.serie,
-          d.numero,
+          d.r_cod AS tipo_comprobante,
+          d.r_serie AS serie,
+          d.r_numero AS numero,
           d.tipo_doc_cliente,
           d.nro_doc_cliente,
           d.cliente,
@@ -123,26 +132,27 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           p.ticket,
           p.nombre_archivo,
           d.raw_linea
-        FROM public.mve_sire_propuesta_det d
-        JOIN propuesta p ON p.id_propuesta = d.id_propuesta
+        FROM public.mve_sire_propuesta d
+        JOIN propuesta p ON p.id_usuario=d.id_usuario AND p.documento_id=d.documento_id
+          AND p.periodo=d.periodo AND p.ticket=d.ticket
       ),
       xpert_datos AS (
         SELECT
           CONCAT(tv.r_cod, '-', tv.r_serie, '-', tv.r_numero, '-', tv.elemento)::varchar AS id_origen,
           'XPERT'::varchar(10) AS origen,
           NULL::integer AS linea,
-          tv.r_fecemi::date AS fecha_emision,
-          COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod)::varchar AS tipo_comprobante,
-          COALESCE(NULLIF(tv.r_serie_ref, ''), tv.r_serie)::varchar AS serie,
-          COALESCE(NULLIF(tv.r_numero_ref, ''), tv.r_numero)::varchar AS numero,
+          ${documento.fecha}::date AS fecha_emision,
+          ${documento.tipo}::varchar AS tipo_comprobante,
+          ${documento.serie}::varchar AS serie,
+          ${documento.numero}::varchar AS numero,
           tv.cliente_id_doc::varchar AS tipo_doc_cliente,
           tv.cliente_documento_id::varchar AS nro_doc_cliente,
           tv.cliente::varchar AS cliente,
-          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_gravado, 0) END::numeric AS base_gravada,
-          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_exonerado, 0) END::numeric AS exonerado,
+          ${monto('tv.r_gravado')}::numeric AS base_gravada,
+          ${monto('tv.r_exonerado')}::numeric AS exonerado,
           0::numeric AS inafecto,
-          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_igv, 0) END::numeric AS igv,
-          CASE WHEN COALESCE(tv.registrado, 1) = 0 THEN 0 ELSE COALESCE(tv.r_monto_total, 0) END::numeric AS total,
+          ${monto('tv.r_igv')}::numeric AS igv,
+          ${monto('COALESCE(tv.r_monto_total,tv.precio_neto)')}::numeric AS total,
           COALESCE(NULLIF(to_jsonb(tv)->>'r_moneda', ''), 'PEN')::varchar AS moneda,
           COALESCE(NULLIF(to_jsonb(tv)->>'r_tc', '')::numeric, 1)::numeric AS tipo_cambio,
           NULL::varchar AS ticket,
@@ -150,11 +160,11 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
           NULL::text AS raw_linea,
           COALESCE(tv.registrado, 1)::integer AS registrado
         FROM public.mve_transventa tv
-       WHERE tv.id_usuario = $1
-         AND tv.documento_id = $2
-         AND tv.periodo = $3
+       WHERE tv.id_usuario = $1::text
+         AND tv.documento_id = $2::text
+         AND tv.periodo = $3::text
          AND tv.tipo_operacion IN ('B', 'E')
-         AND COALESCE(NULLIF(tv.r_cod_ref, ''), tv.r_cod) IN ('01', '03', '07', '08')
+         AND ${documento.tipo} IN ('01', '03', '07', '08')
       ),
       -- Normalizar solo correlativos numericos; conservar el numero original para mostrarlo.
       sire_claves AS (
@@ -369,13 +379,15 @@ const obtenerComparacionSireTransporteQuery = async ({ idAnfitrion, documentoId,
 
 const obtenerPropuestaGuardadaSireTransporteQuery = async ({ idAnfitrion, documentoId, periodo, idLibro, ticket }, db = pool) => {
   const result = await db.query(
-    `SELECT id_propuesta, ticket, nombre_archivo, estado, cantidad_registros
-       FROM public.mve_sire_propuesta
-      WHERE id_usuario = $1 AND documento_id = $2 AND periodo = $3 AND id_libro = $4
-        AND origen = 'TRANSPORTE'
-        AND estado IN ('PARSEADO','COMPARADO','DESCARGADO')
-        AND ($5::varchar = '' OR ticket = $5)
-      ORDER BY fecha_descarga DESC, id_propuesta DESC
+    `SELECT ticket AS id_propuesta, ticket, nombre_archivo, estado, cantidad_registros, fecha_generacion
+       FROM public.mve_sire_propuesta_datos
+      WHERE id_usuario = $1::text AND documento_id = $2::text AND periodo = $3::text AND id_libro = $4::text
+        AND rubro = 'TRANSPORTE'
+        AND estado IN ('GENERADO','PARSEADO','COMPARADO','DESCARGADO')
+        AND ($5::text = '' OR ticket = $5::text)
+        AND ticket=COALESCE(NULLIF((SELECT sire_tpropuesta FROM public.mct_contabilidadticket t
+          WHERE t.id_usuario=$1::text AND t.documento_id=$2::text AND t.periodo=$3::text AND t.id_libro=$4::text LIMIT 1),''),ticket)
+      ORDER BY fecha_generacion DESC, fecha_descarga DESC NULLS LAST, ticket DESC
       LIMIT 1`,
     [idAnfitrion, documentoId, periodo, idLibro, ticket]
   );
@@ -386,7 +398,7 @@ const obtenerReemplazoTerminadoQuery = async ({ idAnfitrion, documentoId, period
   const tabla = await pool.query("SELECT to_regclass('public.mve_sire_reemplazo') AS tabla");
   if (!tabla.rows[0]?.tabla) return null;
   const result = await pool.query(`SELECT ticket_actualizacion,estado_actualizacion FROM public.mve_sire_reemplazo
-    WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4 AND estado='TERMINADO'
+    WHERE id_usuario=$1::text AND documento_id=$2::text AND periodo=$3::text AND id_libro=$4::text AND estado='TERMINADO'
     ORDER BY fecha_preparacion DESC LIMIT 1`, [idAnfitrion,documentoId,periodo,idLibro]);
   return result.rows[0] || null;
 };

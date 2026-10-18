@@ -18,6 +18,7 @@ function entorno({ ticket = 'GUARDADO', reemplazo = null, fallo = '', propuesta 
     } },
     '../sire/sireSunatClient.service': { normalizarIdLibroSire: () => '140000' },
     '../sire/sirePropuestaStore.service': {},
+    '../../repositories/sire/sirePropuestaDatos.repository': {},
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/services/transporte/sire.service.js'), 'utf8'), {
     module, require: id => { if (!(id in deps)) throw Error(id); return deps[id]; }, console: { error() {} },

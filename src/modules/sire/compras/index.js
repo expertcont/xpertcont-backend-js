@@ -5,10 +5,11 @@ const comprasSistema = require('./infrastructure/comprasSistema.repository')(poo
 const tickets = require('../../../repositories/sire/sire.repository');
 const sunat = require('../../../services/sire/sireSunatClient.service');
 const { leerArchivoPropuesta } = require('./infrastructure/archivoPropuesta');
+const personalizadaRepo = require('./infrastructure/personalizada.repository')(pool);
 const servicio = require('./application/sireCompras.service')({ propuestas, comprasSistema, tickets, sunat, leerArchivo: leerArchivoPropuesta });
 const personalizada = require('./application/personalizada.service')({
-  repo: require('./infrastructure/personalizada.repository')(pool), propuestas, tickets, validar: servicio.validar, consultarPropuesta: servicio.consultar,
+  repo: personalizadaRepo, propuestas, tickets, validar: servicio.validar, consultarPropuesta: servicio.consultar,
 });
-Object.assign(servicio, personalizada);
+Object.assign(servicio, personalizada, require('./application/conciliacion.service')({repo:personalizadaRepo,validar:servicio.validar}));
 const controller = require('./http/controller')(servicio);
 module.exports = require('./http/routes')(controller);

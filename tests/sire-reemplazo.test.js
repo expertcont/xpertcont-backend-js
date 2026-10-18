@@ -400,7 +400,7 @@ test('sincronizacion invalida historial, guarda ticket nuevo y reanuda descarga 
       invalidarPropuestas: async () => orden.push('INVALIDAR'),
       guardarActualizacion: async (params, registro, datos) => {
         persistido = { ...registro, estado_actualizacion: datos.estado,
-          ticket_actualizacion: datos.ticket || registro.ticket_actualizacion, id_propuesta_actualizada: datos.idPropuesta };
+          ticket_actualizacion: datos.ticket || registro.ticket_actualizacion };
         orden.push(datos.estado); return persistido;
       },
     },
@@ -411,14 +411,14 @@ test('sincronizacion invalida historial, guarda ticket nuevo y reanuda descarga 
       descargarPropuestaSire: async () => { orden.push('DESCARGAR'); return { buffer: Buffer.from('ZIP') }; },
     },
     '../sire/sirePropuestaStore.service': { guardarPropuestaVentasSire: async (params) => {
-      assert.equal(params.ticket, 'NUEVA10'); assert.ok(params.db); orden.push('IMPORTAR'); return { id_propuesta: 'NUEVA' };
+      assert.equal(params.ticket, 'NUEVA10'); assert.ok(params.db); orden.push('IMPORTAR'); return { ticket: 'NUEVA10', id_propuesta: 'NUEVA10' };
     } },
   });
   await service.sincronizarReemplazo(p, persistido, {});
   assert.deepEqual(orden, ['INVALIDAR', 'GENERAR_DESCARGA', 'PENDIENTE']);
   disponible = true;
   const r = await service.sincronizarReemplazo(p, persistido, {});
-  assert.equal(r.estado_actualizacion, 'ACTUALIZADO'); assert.equal(r.id_propuesta_actualizada, 'NUEVA');
+  assert.equal(r.estado_actualizacion, 'ACTUALIZADO'); assert.equal(r.ticket_actualizacion, 'NUEVA10');
   assert.equal(orden.filter((a) => a === 'GENERAR_DESCARGA').length, 1);
   const antes = orden.length;
   await service.sincronizarReemplazo(p, r, {}); assert.equal(orden.length, antes);
@@ -435,7 +435,7 @@ test('fallo de actualizacion conserva reemplazo TERMINADO y permite reanudar sin
   const r = await service.sincronizarReemplazo(p, { estado: 'TERMINADO', ticket_actualizacion: 'NUEVA10' }, {});
   assert.equal(r.estado, 'TERMINADO'); assert.equal(r.estado_actualizacion, 'ERROR'); assert.match(r.error_actualizacion, /no disponible/);
 });
-test('importacion bloquea tickets anteriores tras reemplazo y conserva detalle del historial', async () => {
+test('importacion bloquea tickets anteriores y conserva los datos generales del historial', async () => {
   const consultas = [];
   const db = { query: async (sql) => {
     consultas.push(sql);
@@ -447,6 +447,8 @@ test('importacion bloquea tickets anteriores tras reemplazo y conserva detalle d
   } };
   const store = cargar('../src/services/sire/sirePropuestaStore.service.js', {
     'adm-zip': AdmZip, '../../db': { connect: async () => { throw Error('No debe adquirir otra conexion'); } },
+    'node:crypto': require('node:crypto'),
+    '../../repositories/sire/sirePropuestaDatos.repository': { registrarDatosPropuesta: async () => ({}) },
     '../../utils/libreria.utils': { convertirFechaStringComplete: (v) => v ? v.split('/').reverse().join('-') : null, corregirTCPEN: () => '1' },
   });
   const entrada = { ...p, idLibro: '140000', buffer: Buffer.from('CABECERA\n' + linea()), nombreArchivo: 'propuesta.txt', db };
@@ -454,19 +456,20 @@ test('importacion bloquea tickets anteriores tras reemplazo y conserva detalle d
   assert.ok(consultas.some((sql) => sql.includes('advisory_xact_lock')));
   assert.ok(!consultas.some((sql) => sql.includes('DELETE')));
   const resultado = await store.guardarPropuestaVentasSire({ ...entrada, ticket: 'NUEVA10' });
-  assert.equal(resultado.id_propuesta, 'NUEVA'); assert.equal(resultado.cantidad_registros, 1);
-  assert.ok(!consultas.some((sql) => sql.includes('DELETE')));
+  assert.equal(resultado.id_propuesta, 'NUEVA10'); assert.equal(resultado.cantidad_registros, 1);
+  assert.ok(!consultas.some((sql) => sql.includes('DELETE FROM public.mve_sire_propuesta_datos')));
 });
 test('comparacion bloqueada mientras la propuesta nueva no esta importada', async () => {
   let consultas = 0;
   const repo = cargar('../src/repositories/transporte/sire.repository.js', { '../../db': { query: async (sql) => {
     consultas++;
+    if (sql.includes('SELECT ticket AS id_propuesta')) return { rows: [{ estado: 'PARSEADO' }] };
     if (sql.includes('to_regclass')) return { rows: [{ tabla: 'mve_sire_reemplazo' }] };
     if (sql.includes('actualizacion')) return { rows: [{ actualizacion: 'PENDIENTE' }] };
     throw Error('No debe comparar contra historial');
-  } } });
+  } }, '../../utils/sireVentaDocumento.utils': require('../src/utils/sireVentaDocumento.utils') });
   await assert.rejects(repo.obtenerComparacionSireTransporteQuery(p), (e) => e.statusCode === 409);
-  assert.equal(consultas, 2);
+  assert.equal(consultas, 3);
 });
 test('rechazo explicito de descarga permite un ticket nuevo al actualizar sin repetir el reemplazo', async () => {
   for (const detalle of [false, true]) {
@@ -532,13 +535,14 @@ test('repositorio solo borra ticket de descarga con reinicio explicito', async (
   const llamadas = [];
   const db = { query: async (sql, params) => { llamadas.push({ sql, params }); return { rows: [{}] }; } };
   const repo = cargar('../src/repositories/sire/sireReemplazo.repository.js', {
-    '../../db': db, './sireAceptacion.repository': {},
+    '../../db': db, './sireAceptacion.repository': {}, './sirePropuestaDatos.repository': {},
   });
   await repo.guardarActualizacion(p, { id_reemplazo: id }, { estado: 'ERROR', reiniciarTicket: true, error: 'Rechazada' }, db);
   await repo.guardarActualizacion(p, { id_reemplazo: id }, { estado: 'ERROR', error: 'Timeout' }, db);
-  assert.match(llamadas[0].sql, /ticket_actualizacion=CASE WHEN \$10 THEN NULL ELSE COALESCE/);
-  assert.equal(llamadas[0].params[9], true); assert.equal(llamadas[1].params[9], false);
-  assert.doesNotMatch(llamadas[0].sql, /ticket_reemplazo\s*=/);
+  const escrituras = llamadas.filter(x => x.sql.includes('UPDATE public.mve_sire_reemplazo'));
+  assert.match(escrituras[0].sql, /ticket_actualizacion=CASE WHEN \$9::boolean THEN NULL ELSE COALESCE/);
+  assert.equal(escrituras[0].params[8], true); assert.equal(escrituras[1].params[8], false);
+  assert.doesNotMatch(escrituras[0].sql, /ticket_reemplazo\s*=/);
 });
 
 test('recupera reemplazo de anfitrion correo de mas de 20 caracteres sin enviar a SUNAT', async () => {

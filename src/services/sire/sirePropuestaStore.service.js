@@ -1,4 +1,6 @@
 const AdmZip = require('adm-zip');
+const { createHash } = require('node:crypto');
+const { registrarDatosPropuesta } = require('../../repositories/sire/sirePropuestaDatos.repository');
 const pool = require('../../db');
 const { convertirFechaStringComplete, corregirTCPEN } = require('../../utils/libreria.utils');
 
@@ -73,202 +75,85 @@ const parsearPropuestaVentasSire = ({ buffer, nombreArchivo = '' }) => {
         tipo_comprobante_ref: limitText(row[29], 2),
         serie_ref: limitText(row[30], 20),
         numero_ref: limitText(row[31], 30),
+        car_sunat: limitText(row[3], 50),
         raw_linea: line,
       };
     })
     .filter((row) => row.tipo_comprobante || row.serie || row.numero);
 };
 
-const sumar = (rows, key) => rows.reduce((acc, row) => acc + toNumber(row[key]), 0);
+const montos = ['base_exportacion','base_gravada','descuento_base_gravada','igv','descuento_igv',
+  'exonerado','inafecto','isc','ivap','icbp','otros','total'];
+const resumenMonedas = rows => {
+  const resultado = {};
+  for (const r of rows) {
+    const grupo = resultado[r.moneda] ||= { cantidad: 0, ...Object.fromEntries(montos.map(c => [c, 0n])) };
+    grupo.cantidad++;
+    for (const c of montos) grupo[c] += BigInt(Number(r[c] || 0).toFixed(2).replace('.', ''));
+  }
+  const importe = n => (n < 0n ? '-' : '') + String((n < 0n ? -n : n) / 100n) + '.' + String((n < 0n ? -n : n) % 100n).padStart(2, '0');
+  return Object.fromEntries(Object.entries(resultado).map(([moneda,g]) => [moneda,
+    { cantidad:g.cantidad, ...Object.fromEntries(montos.map(c => [c, importe(g[c])])) }]));
+};
+const respuesta = (ticket, rows) => ({
+  ticket, id_propuesta: ticket, // Alias HTTP para el frontend existente; no es un ID en PostgreSQL.
+  cantidad_registros: rows.length,
+  ...Object.fromEntries([['total_base_gravada','base_gravada'],['total_exonerado','exonerado'],
+    ['total_inafecto','inafecto'],['total_igv','igv'],['total_importe','total']]
+    .map(([salida,campo]) => [salida, rows.reduce((n,r) => n + Number(r[campo] || 0), 0)])),
+});
 
-const guardarPropuestaVentasSire = async ({
-  idAnfitrion,
-  documentoId,
-  periodo,
-  idLibro,
-  ticket,
-  nombreArchivo,
-  buffer,
-  db,
-}) => {
+const guardarPropuestaVentasSire = async ({ idAnfitrion, documentoId, periodo, idLibro='140000', ticket, nombreArchivo, buffer, db }) => {
+  const conflicto = message => Object.assign(new Error(message), { statusCode:409 });
+  if (idLibro !== '140000' || !idAnfitrion || idAnfitrion.length > 50 || !/^\d{11}$/.test(documentoId)
+      || !/^\d{4}-(0[1-9]|1[0-2])$/.test(periodo) || !ticket || String(ticket).length > 50 || !nombreArchivo || !Buffer.isBuffer(buffer)) {
+    throw Object.assign(new Error('Indica usuario, RUC, periodo, ticket y archivo RVIE validos.'), { statusCode:400 });
+  }
   const rows = parsearPropuestaVentasSire({ buffer, nombreArchivo });
+  const identidades = new Set();
+  for (const r of rows) {
+    const campos = r.raw_linea.split('|');
+    if (campos[0].trim() !== documentoId || campos[2].trim() !== periodo.replace('-', '')) throw conflicto('La propuesta descargada no corresponde al RUC y periodo solicitados.');
+    if (!/^\d{2}$/.test(r.tipo_comprobante) || !r.serie || r.serie.length > 5 || !r.numero || r.numero.length > 22) {
+      throw Object.assign(new Error('Comprobante RVIE con tipo, serie o numero incompatible con la clave de la tabla. Linea '+r.linea+'.'), { statusCode:422 });
+    }
+    const key = JSON.stringify([r.tipo_comprobante, r.serie, r.numero.replace(/^0+(?=\d)/,'')]);
+    if (identidades.has(key)) throw conflicto('La propuesta contiene un comprobante repetido. No se guardo una carga parcial.');
+    identidades.add(key);
+  }
   const client = db || await pool.connect();
-
+  const contexto = [idAnfitrion, documentoId, periodo];
   try {
     await client.query('BEGIN');
-    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',
-      [`sire-presentacion:${idAnfitrion}:${documentoId}:${periodo}:${idLibro}`]);
-    const tabla = await client.query("SELECT to_regclass('public.mve_sire_reemplazo') AS tabla");
-    if (tabla.rows[0]?.tabla) {
-      const reemplazo = await client.query(`SELECT ticket_actualizacion FROM public.mve_sire_reemplazo
-        WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4 AND estado='TERMINADO'
-        ORDER BY fecha_preparacion DESC LIMIT 1`, [idAnfitrion,documentoId,periodo,idLibro]);
-      if (reemplazo.rows[0] && reemplazo.rows[0].ticket_actualizacion !== ticket) {
-        throw Object.assign(new Error('La propuesta anterior fue reemplazada. Actualiza la descarga desde el resultado de reemplazo.'), { statusCode: 409 });
-      }
-    }
-    if (rows.some((r) => {
-      const campos = r.raw_linea.split('|');
-      return campos[0].trim() !== documentoId || campos[2].trim() !== periodo.replace('-', '');
-    })) throw new Error('La propuesta descargada no corresponde al RUC y periodo solicitados.');
-
-    const existing = await client.query(
-      `
-        SELECT id_propuesta
-          FROM public.mve_sire_propuesta
-         WHERE id_usuario = $1
-           AND documento_id = $2
-           AND periodo = $3
-           AND id_libro = $4
-           AND origen = 'TRANSPORTE'
-           AND ticket = $5
-         LIMIT 1
-      `,
-      [idAnfitrion, documentoId, periodo, idLibro, ticket]
-    );
-
-    let idPropuesta = existing.rows[0]?.id_propuesta;
-
-    if (idPropuesta) {
-      await client.query(
-        `
-          UPDATE public.mve_sire_propuesta
-             SET nombre_archivo = $2,
-                 estado = 'PARSEADO',
-                 cantidad_registros = $3,
-                 total_base_gravada = $4,
-                 total_exonerado = $5,
-                 total_inafecto = $6,
-                 total_igv = $7,
-                 total_importe = $8,
-                 fecha_descarga = CURRENT_TIMESTAMP,
-                 observacion = NULL,
-                 ctrl_mod = CURRENT_TIMESTAMP,
-                 ctrl_mod_us = $9
-           WHERE id_propuesta = $1
-        `,
-        [
-          idPropuesta,
-          nombreArchivo,
-          rows.length,
-          sumar(rows, 'base_gravada'),
-          sumar(rows, 'exonerado'),
-          sumar(rows, 'inafecto'),
-          sumar(rows, 'igv'),
-          sumar(rows, 'total'),
-          idAnfitrion,
-        ]
-      );
-
-      await client.query('DELETE FROM public.mve_sire_propuesta_det WHERE id_propuesta = $1', [idPropuesta]);
-    } else {
-      const inserted = await client.query(
-        `
-          INSERT INTO public.mve_sire_propuesta (
-            id_usuario, documento_id, periodo, id_libro, origen, ticket,
-            nombre_archivo, estado, cantidad_registros, total_base_gravada,
-            total_exonerado, total_inafecto, total_igv, total_importe, ctrl_crea_us
-          )
-          VALUES ($1, $2, $3, $4, 'TRANSPORTE', $5, $6, 'PARSEADO', $7, $8, $9, $10, $11, $12, $13)
-          RETURNING id_propuesta
-        `,
-        [
-          idAnfitrion,
-          documentoId,
-          periodo,
-          idLibro,
-          ticket,
-          nombreArchivo,
-          rows.length,
-          sumar(rows, 'base_gravada'),
-          sumar(rows, 'exonerado'),
-          sumar(rows, 'inafecto'),
-          sumar(rows, 'igv'),
-          sumar(rows, 'total'),
-          idAnfitrion,
-        ]
-      );
-
-      idPropuesta = inserted.rows[0].id_propuesta;
-    }
-
-    for (const row of rows) {
-      await client.query(
-        `
-          INSERT INTO public.mve_sire_propuesta_det (
-            id_propuesta, linea, fecha_emision, fecha_vencimiento,
-            tipo_comprobante, serie, numero, numero_final,
-            tipo_doc_cliente, nro_doc_cliente, cliente,
-            base_exportacion, base_gravada, descuento_base_gravada,
-            igv, descuento_igv, exonerado, inafecto, isc, ivap, icbp,
-            otros, total, moneda, tipo_cambio, fecha_emision_ref,
-            tipo_comprobante_ref, serie_ref, numero_ref, raw_linea
-          )
-          VALUES (
-            $1, $2, $3, $4,
-            $5, $6, $7, $8,
-            $9, $10, $11,
-            $12, $13, $14,
-            $15, $16, $17, $18, $19, $20, $21,
-            $22, $23, $24, $25, $26,
-            $27, $28, $29, $30
-          )
-        `,
-        [
-          idPropuesta,
-          row.linea,
-          row.fecha_emision,
-          row.fecha_vencimiento,
-          row.tipo_comprobante,
-          row.serie,
-          row.numero,
-          row.numero_final,
-          row.tipo_doc_cliente,
-          row.nro_doc_cliente,
-          row.cliente,
-          row.base_exportacion,
-          row.base_gravada,
-          row.descuento_base_gravada,
-          row.igv,
-          row.descuento_igv,
-          row.exonerado,
-          row.inafecto,
-          row.isc,
-          row.ivap,
-          row.icbp,
-          row.otros,
-          row.total,
-          row.moneda,
-          row.tipo_cambio,
-          row.fecha_emision_ref,
-          row.tipo_comprobante_ref,
-          row.serie_ref,
-          row.numero_ref,
-          row.raw_linea,
-        ]
-      );
-    }
-
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`sire-presentacion:${idAnfitrion}:${documentoId}:${periodo}:${idLibro}`]);
+    const actual = await client.query(`SELECT sire_tpropuesta FROM public.mct_contabilidadticket
+      WHERE id_usuario=$1::text AND documento_id=$2::text AND periodo=$3::text AND id_libro=$4::text FOR UPDATE`, [...contexto,idLibro]);
+    if (actual.rows[0]?.sire_tpropuesta && actual.rows[0].sire_tpropuesta !== ticket) throw conflicto('El ticket cambio durante la descarga. Recupera la ultima propuesta antes de importar.');
+    const reemplazo = await client.query(`SELECT ticket_actualizacion FROM public.mve_sire_reemplazo
+      WHERE id_usuario=$1::text AND documento_id=$2::text AND periodo=$3::text AND id_libro=$4::text AND estado='TERMINADO'
+      ORDER BY fecha_preparacion DESC LIMIT 1`, [...contexto,idLibro]);
+    if (reemplazo.rows[0] && reemplazo.rows[0].ticket_actualizacion !== ticket) throw conflicto('La propuesta anterior fue reemplazada. Actualiza la descarga desde el resultado de reemplazo.');
+    const h = await registrarDatosPropuesta({ idAnfitrion,documentoId,periodo,ticket },client);
+    const huella = createHash('sha256').update(buffer).digest('hex');
+    if (h.estado === 'REEMPLAZADO') throw conflicto('Esta descarga fue reemplazada y no puede volver a activarse.');
+    if (h.huella_archivo && h.huella_archivo !== huella) throw conflicto('SUNAT devolvio otro archivo para el mismo ticket. Se conservo el original.');
+    // Una sola tabla operativa por comprobante. Las descargas anteriores conservan su BYTEA en *_datos.
+    await client.query('DELETE FROM public.mve_sire_propuesta WHERE id_usuario=$1::text AND documento_id=$2::text AND periodo=$3::text',contexto);
+    const tipos = { linea:'integer',fecha_emision:'date',fecha_vencimiento:'date',tipo_comprobante:'varchar',serie:'varchar',numero:'varchar',numero_final:'varchar',
+      tipo_doc_cliente:'varchar',nro_doc_cliente:'varchar',cliente:'varchar',...Object.fromEntries(montos.map(c=>[c,'numeric'])),
+      moneda:'varchar',tipo_cambio:'numeric',fecha_emision_ref:'date',tipo_comprobante_ref:'varchar',serie_ref:'varchar',numero_ref:'varchar',car_sunat:'varchar',raw_linea:'text' };
+    const nombres = Object.keys(tipos);
+    if(rows.length) await client.query('INSERT INTO public.mve_sire_propuesta (id_usuario,documento_id,periodo,r_cod,r_serie,r_numero,ticket,'+nombres.join(',')+') '+
+      'SELECT $1::text,$2::text,$3::text,r.tipo_comprobante,r.serie,r.numero,$4::text,'+nombres.map(c=>'r.'+c).join(',')+
+      ' FROM jsonb_to_recordset($5::jsonb) AS r('+nombres.map(c=>c+' '+tipos[c]).join(',')+')',[...contexto,ticket,JSON.stringify(rows)]);
+    await client.query(`UPDATE public.mve_sire_propuesta_datos SET nombre_archivo=$5::text,archivo=$6::bytea,huella_archivo=$7::text,
+      cantidad_registros=$8::integer,totales_originales=$9::jsonb,estado='PARSEADO',estado_normalizacion='NORMALIZADO',normalizacion_version=1,
+      fecha_descarga=COALESCE(fecha_descarga,clock_timestamp()),ctrl_mod=clock_timestamp(),ctrl_mod_us=$1::text
+      WHERE id_usuario=$1::text AND documento_id=$2::text AND periodo=$3::text AND ticket=$4::text`,
+      [...contexto,ticket,nombreArchivo,buffer,huella,rows.length,JSON.stringify(resumenMonedas(rows))]);
     await client.query('COMMIT');
-
-    return {
-      id_propuesta: idPropuesta,
-      cantidad_registros: rows.length,
-      total_base_gravada: sumar(rows, 'base_gravada'),
-      total_exonerado: sumar(rows, 'exonerado'),
-      total_inafecto: sumar(rows, 'inafecto'),
-      total_igv: sumar(rows, 'igv'),
-      total_importe: sumar(rows, 'total'),
-    };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    if (!db) client.release();
-  }
+    return respuesta(ticket,rows);
+  } catch(error) { await client.query('ROLLBACK').catch(()=>{}); throw error; }
+  finally { if(!db)client.release(); }
 };
-
-module.exports = {
-  guardarPropuestaVentasSire,
-  parsearPropuestaVentasSire,
-};
+module.exports = { guardarPropuestaVentasSire, parsearPropuestaVentasSire };

@@ -26,6 +26,7 @@ const recuperar = async (entrada) => {
       : 'El ticket se recupero, pero no se pudieron cargar las compras del sistema. La comparacion no esta disponible.');
   }
   const propuesta = resultados[0].status === 'fulfilled' ? resultados[0].value : null;
+  if (propuesta?.conciliacion_pendiente) advertencias.push('La nueva descarga requiere conciliacion; la personalizada mantiene los ajustes anteriores.');
   const sistemaDisponible = resultados[1].status === 'fulfilled';
   const sistema = sistemaDisponible ? resultados[1].value : [];
   return { ticket: ticket || propuesta?.ticket || '', fecha_generacion: ticketGuardado?.sire_tpropuesta_fecha_generacion || null,
@@ -62,8 +63,8 @@ const consultar = async (entrada) => {
   // No sobrescribir una propuesta si otro usuario genero un ticket nuevo durante la descarga.
   const actual = await tickets.obtenerDatosTicketPropuestaSire(p);
   if (actual?.sire_tpropuesta !== ticket) throw fallo('Se genero otro ticket durante la descarga. Recupera el estado del periodo.', 409);
-  await repo.guardarPropuesta(p, ticket, nombreArchivo, archivo.buffer, detalle);
-  return { listo: true, cantidad_registros: detalle.length, message: 'Propuesta de compras recuperada y lista para comparar.' };
+  const guardado = await repo.guardarPropuesta(p, ticket, nombreArchivo, archivo.buffer, detalle);
+  return { listo: true, conciliacion_pendiente: Boolean(guardado?.conciliacion_pendiente), cantidad_registros: detalle.length, message: guardado?.conciliacion_pendiente ? 'Propuesta descargada. La nueva version requiere conciliacion antes de cambiar los ajustes del contador.' : 'Propuesta SUNAT importada en el detalle de compras.' };
 };
 const descargar = async (entrada) => {
   const p = validar(entrada);

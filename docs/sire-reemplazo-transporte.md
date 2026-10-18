@@ -115,3 +115,7 @@ Frontend: npm test -- --watchAll=false --runInBand --runTestsByPath src/componen
 SUNAT y persistencia simulados, con TXT/ZIP reales y verificacion HTTP local.
 
 Contrato consultado: https://cpe.sunat.gob.pe/sites/default/files/2026-10/Manual%20de%20servicios%20Web%20Api%20-%20SIRE_Ventas%20v32.pdf
+# Esquema vigente
+
+El backend ya utiliza las tablas recreadas por el usuario. Consultar [SIRE Ventas: esquema actual](sire-ventas-esquema-actual.md). Las instrucciones SQL de instalacion antiguas que aparecen mas abajo no corresponden al esquema vigente y no deben reaplicarse.
+

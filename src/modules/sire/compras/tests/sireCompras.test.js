@@ -6,7 +6,7 @@ const { leerArchivoPropuesta } = require('../infrastructure/archivoPropuesta');
 const crearServicio = require('../application/sireCompras.service');
 const parsearCompras = ({ buffer, ...contexto }) => parsearTextoCompras({ contenido: leerArchivoPropuesta(buffer), ...contexto });
 const contexto = { id_anfitrion: 'anfitrion.con.correo.largo@example.com', documento_id: '20123456789', periodo: '2026-09' };
-const cabecera = Array.from({ length: 33 }, (_, i) => `Columna${i}`).join('|');
+const cabecera = require('./fixtures/cabecera-rce.json').slice(0,33).join('|');
 const linea = (cambios = {}) => {
   const r = Array(33).fill('');
   Object.assign(r, { 0: contexto.documento_id, 1: 'EMPRESA', 2: '202609', 3: 'CAR', 4: '15/09/2026', 6: '01', 7: 'F001', 9: '000123', 11: '6', 12: '20999999999', 13: 'PROVEEDOR, SAC', 14: '100.00', 15: '18.00', 24: '118.00', 25: 'PEN', 26: '1' }, cambios);
@@ -16,7 +16,7 @@ const archivo = (cambios = {}) => Buffer.from(cabecera + '\r\n' + linea(cambios)
 const parsear = (buffer = archivo()) => parsearCompras({ buffer, documentoId: contexto.documento_id, periodo: '2026-09' });
 function entorno({ registros, ticket = 'COMPRA1', cambiaTicket = false, fallo = '' } = {}) {
   let consultasTicket = 0;
-  const llamadas = { guardar: [], descargar: 0, generar: [], archivos: [] };
+  const llamadas = { guardar: [], descargar: 0, generar: [], archivos: [], sincronizar: [] };
   const service = crearServicio({
     propuestas: {
       obtenerPropuesta: async () => { if (fallo === 'propuesta') throw Error('tabla ausente'); return { ticket, detalle: parsear() }; },
@@ -36,6 +36,7 @@ function entorno({ registros, ticket = 'COMPRA1', cambiaTicket = false, fallo = 
     },
     comprasSistema: { obtenerComprasSistema: async () => { if (fallo === 'sistema') throw Error('columna ausente'); return parsear(); } },
     leerArchivo: leerArchivoPropuesta,
+    sincronizarPersonalizada: async (...args) => { llamadas.sincronizar.push(args); },
   });
   return { service, llamadas };
 }
@@ -44,9 +45,9 @@ test('RCE interpreta el formato propio de compras y preserva proveedor, importes
   assert.equal(r.fecha_emision, '2026-09-15');
   assert.equal(r.numero, '000123');
   assert.equal(r.proveedor, 'PROVEEDOR, SAC');
-  assert.equal(r.base001, 100);
-  assert.equal(r.igv001, 18);
-  assert.equal(r.total, 118);
+  assert.equal(r.base001, '100.00');
+  assert.equal(r.igv001, '18.00');
+  assert.equal(r.total, '118.00');
   assert.equal(r.documento_proveedor, '20999999999');
 });
 test('RCE extrae un unico TXT del ZIP y admite propuesta vacia con cabecera', () => {
@@ -106,6 +107,7 @@ test('ticket, libro, periodo o proceso ajenos y ticket en proceso no importan ar
     assert.equal((await e.service.consultar({ ...contexto, ticket: 'COMPRA1' })).listo, false);
     assert.equal(e.llamadas.descargar, 0);
     assert.equal(e.llamadas.guardar.length, 0);
+    assert.equal(e.llamadas.sincronizar.length, 0);
   }
 });
 test('rechazo SUNAT y cambio de ticket durante descarga conservan la propuesta previa', async () => {

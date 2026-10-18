@@ -1,10 +1,11 @@
 const pool = require('../../db');
+const { registrarDatosPropuesta } = require('./sirePropuestaDatos.repository');
 const { adquirirCandado, liberarCandado, obtenerAceptacion } = require('./sireAceptacion.repository');
 const clave = (p) => [p.idAnfitrion, p.documentoId, p.periodo, p.idLibro];
 const obtenerUltimo = async (p, db = pool, incluirArchivo = false) => {
   const result = await db.query(`SELECT id_reemplazo, documento_id, periodo, id_libro,
       nombre_archivo, hash_archivo, cantidad_registros, estado, ticket_reemplazo,
-      codigo_estado_sunat, descripcion, fecha_preparacion, fecha_solicitud, fecha_actualizacion, resumen, fuente, ticket_actualizacion, estado_actualizacion, id_propuesta_actualizada, error_actualizacion
+      codigo_estado_sunat, descripcion, fecha_preparacion, fecha_solicitud, fecha_actualizacion, resumen, fuente, ticket_actualizacion, estado_actualizacion, error_actualizacion
       ${incluirArchivo ? ', archivo_zip' : ''}
     FROM public.mve_sire_reemplazo
     WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4 AND origen='TRANSPORTE'
@@ -23,14 +24,14 @@ const preparar = async (p, archivo, id, db) => {
 };
 const actualizar = async (p, registro, datos, db) => {
   const result = await db.query(`UPDATE public.mve_sire_reemplazo SET
-    estado=$6, ticket_reemplazo=COALESCE($7,ticket_reemplazo),
-    codigo_estado_sunat=$8, descripcion=$9, respuesta_sunat=$10::jsonb,
-    url_carga=COALESCE($11,url_carga), fecha_actualizacion=clock_timestamp(),
-    fecha_solicitud=CASE WHEN $6='ENVIANDO' THEN clock_timestamp() ELSE fecha_solicitud END
-    WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4 AND id_reemplazo=$5
+    estado=$6::text, ticket_reemplazo=COALESCE($7::text,ticket_reemplazo),
+    codigo_estado_sunat=$8::text, descripcion=$9::text, respuesta_sunat=$10::jsonb,
+    url_carga=COALESCE($11::text,url_carga), fecha_actualizacion=clock_timestamp(),
+    fecha_solicitud=CASE WHEN $6::text='ENVIANDO' THEN clock_timestamp() ELSE fecha_solicitud END
+    WHERE id_usuario=$1::text AND documento_id=$2::text AND periodo=$3::text AND id_libro=$4::text AND id_reemplazo=$5::uuid
     RETURNING id_reemplazo,documento_id,periodo,id_libro,nombre_archivo,hash_archivo,
       cantidad_registros,estado,ticket_reemplazo,codigo_estado_sunat,descripcion,
-      fecha_preparacion,fecha_solicitud,fecha_actualizacion,resumen,fuente,ticket_actualizacion,estado_actualizacion,id_propuesta_actualizada,error_actualizacion`,
+      fecha_preparacion,fecha_solicitud,fecha_actualizacion,resumen,fuente,ticket_actualizacion,estado_actualizacion,error_actualizacion`,
   [...clave(p), registro.id_reemplazo, datos.estado, datos.ticket || null, datos.codigo || null,
     datos.descripcion || null, JSON.stringify(datos.respuesta || null), datos.urlCarga || null]);
   if (!result.rows[0]) throw new Error('No se encontro el reemplazo preparado.');
@@ -46,24 +47,27 @@ const obtenerVentas = async (p, db) => {
   return { razonSocial: emisor.rows[0]?.razon_social, ventas: result.rows.map((r) => r.venta) };
 };
 const guardarActualizacion = async (p, registro, datos, db) => {
-  const result = await db.query(`UPDATE public.mve_sire_reemplazo SET
-    ticket_actualizacion=CASE WHEN $10 THEN NULL ELSE COALESCE($6,ticket_actualizacion) END, estado_actualizacion=$7,
-    id_propuesta_actualizada=COALESCE($8,id_propuesta_actualizada), error_actualizacion=$9,
-    fecha_actualizacion=clock_timestamp()
-    WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4 AND id_reemplazo=$5
-    RETURNING *`, [...clave(p), registro.id_reemplazo, datos.ticket || null, datos.estado,
-      datos.idPropuesta || null, datos.error || null, datos.reiniciarTicket === true]);
-  return result.rows[0];
+  await db.query('BEGIN');
+  try {
+    if (datos.ticket && !datos.reiniciarTicket) await registrarDatosPropuesta({ ...p,ticket:datos.ticket },db);
+    const result = await db.query(`UPDATE public.mve_sire_reemplazo SET
+      ticket_actualizacion=CASE WHEN $9::boolean THEN NULL ELSE COALESCE($6::text,ticket_actualizacion) END,
+      estado_actualizacion=$7::text,error_actualizacion=$8::text,fecha_actualizacion=clock_timestamp()
+      WHERE id_usuario=$1::text AND documento_id=$2::text AND periodo=$3::text AND id_libro=$4::text AND id_reemplazo=$5::uuid
+      RETURNING *`, [...clave(p),registro.id_reemplazo,datos.ticket || null,datos.estado,datos.error || null,datos.reiniciarTicket===true]);
+    if (!result.rows[0]) throw new Error('No se encontro el reemplazo para actualizar su propuesta.');
+    await db.query('COMMIT');return result.rows[0];
+  } catch(error) { await db.query('ROLLBACK').catch(()=>{});throw error; }
 };
 const invalidarPropuestas = async (p, registro, db) => {
   await db.query('BEGIN');
   try {
-    await db.query(`UPDATE public.mve_sire_propuesta SET estado='REEMPLAZADO',
+    await db.query(`UPDATE public.mve_sire_propuesta_datos SET estado='REEMPLAZADO',
       observacion=$5, ctrl_mod=CURRENT_TIMESTAMP
       WHERE id_usuario=$1 AND documento_id=$2 AND periodo=$3 AND id_libro=$4
-        AND origen='TRANSPORTE' AND estado IN ('PARSEADO','COMPARADO','DESCARGADO')
-        AND ($6::bigint IS NULL OR id_propuesta<>$6)`,
-    [...clave(p), `Reemplazada por envio ${registro.id_reemplazo}`, registro.id_propuesta_actualizada || null]);
+        AND rubro='TRANSPORTE' AND estado IN ('PARSEADO','COMPARADO','DESCARGADO')
+        AND ($6::text IS NULL OR ticket<>$6::text)`,
+    [...clave(p), `Reemplazada por envio ${registro.id_reemplazo}`, registro.ticket_actualizacion || null]);
     // Una descarga pendiente de la propuesta anterior no puede volver a activarla.
     if (!registro.ticket_actualizacion) await db.query(`UPDATE public.mct_contabilidadticket
       SET sire_tpropuesta='', sire_tpropuesta_fecha_generacion=NULL

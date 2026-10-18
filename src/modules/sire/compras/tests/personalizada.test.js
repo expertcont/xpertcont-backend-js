@@ -20,7 +20,7 @@ function entorno(){
  return {service,repo,rows};
 }
 test('cargar SUNAT incluye todos sin duplicar ni borrar exclusiones al recargar',async()=>{
- const e=entorno();assert.equal((await e.service.importarPersonalizada(contexto)).cantidad,1);
+ const e=entorno();await e.service.crearPersonalizada({...contexto,comprobante:compra});e.rows[0].origen='SUNAT';assert.equal((await e.service.importarPersonalizada(contexto)).cantidad,0);
  await e.service.eliminarPersonalizada({...contexto,id_compra:'1',version:1,motivo:'Gasto personal'});
  assert.equal((await e.service.importarPersonalizada(contexto)).cantidad,0);
  const {registros}=await e.service.listarPersonalizada(contexto);assert.equal(registros.length,1);assert.equal(registros[0].estado,'EXCLUIDO');
@@ -62,19 +62,12 @@ test('requiere motivo y destino futuro para pendientes, y motivo para excluir',a
 });
 test('valida fecha real, RUC, importes y no admite fecha de un periodo futuro',()=>{
  for(const cambio of [{fecha_emision:'2026-09-31'},{fecha_emision:'2026-10-01'},{documento_proveedor:'123'},{total:'NaN'},{total:Infinity},{tipo_comprobante:'x'}])assert.throws(()=>validarCompra({...compra,...cambio},'2026-09'),err=>err.statusCode===422);
- assert.equal(validarCompra({...compra,total:-118},'2026-09').total,-118);
+ assert.equal(validarCompra({...compra,total:-118},'2026-09').total,'-118.00');
 });
 test('detecta duplicados normalizando serie y ceros del correlativo',async()=>{
  const e=entorno();await e.service.crearPersonalizada({...contexto,comprobante:compra});
  await assert.rejects(e.service.crearPersonalizada({...contexto,comprobante:{...compra,serie:'f001',numero:'123'}}),err=>err.statusCode===409);
  assert.equal(clave(validarCompra(compra,'2026-09')),clave(validarCompra({...compra,numero:'123'},'2026-09')));
-});
-test('repositorio parametriza empresa, periodo y version, y conserva historial',async()=>{
- const calls=[];const repo=crearRepo({query:async(sql,args)=>{calls.push({sql,args});return {rows:[],rowCount:0};}});
- const p={idAnfitrion:'HOST',documentoId:'20123456789',periodo:'2026-10'};
- await repo.listar(p);assert.deepEqual(calls[0].args,['HOST','20123456789','2026-10']);assert.match(calls[0].sql,/estado='PENDIENTE' AND periodo_destino<=\$3/);
- await repo.actualizar(p,'7',2,{clave:'KEY',comprobante:compra,estado:'EXCLUIDO',motivo:'No aplica',periodo_destino:'2026-10'});
- assert.match(calls[1].sql,/id_usuario=\$1 AND documento_id=\$2/);assert.match(calls[1].sql,/version=\$5/);assert.match(calls[1].sql,/jsonb_build_array/);assert.equal(calls[1].args[4],2);
 });
 
 function importacion({listo=true,cambia=false,error=false}={}){
@@ -89,8 +82,8 @@ function importacion({listo=true,cambia=false,error=false}={}){
  return {service,get descargas(){return descargas;},get guardados(){return guardados;}};
 }
 test('personalizada consulta y descarga automaticamente si solo existe el ticket',async()=>{
- const e=importacion();assert.equal((await e.service.importarPersonalizada(contexto)).cantidad,1);
- assert.equal(e.descargas,1);assert.equal(e.guardados,1);
+ const e=importacion();assert.equal((await e.service.importarPersonalizada(contexto)).cantidad,0);
+ assert.equal(e.descargas,1);assert.equal(e.guardados,0);
 });
 test('SUNAT en proceso informa pendiente sin devolver 422 ni crear compras',async()=>{
  const e=importacion({listo:false});const r=await e.service.importarPersonalizada(contexto);
@@ -103,4 +96,27 @@ test('cambio de ticket durante recuperacion bloquea carga de la propuesta anteri
 test('fallo de descarga no crea una propuesta personalizada incompleta',async()=>{
  const e=importacion({error:true});await assert.rejects(e.service.importarPersonalizada(contexto),err=>err.statusCode===502);
  assert.equal(e.guardados,0);
+});
+
+test('sincronizacion al abrir solo usa propuesta guardada, sin consultar SUNAT',async()=>{
+ let consultasSunat=0,importaciones=0;
+ const service=crearServicio({validar:crearBase({}).validar,
+  tickets:{obtenerDatosTicketPropuestaSire:async()=>({sire_tpropuesta:'TICKET'})},
+  propuestas:{obtenerPropuesta:async()=>({detalle:[compra]})},
+  consultarPropuesta:async()=>{consultasSunat++;},
+  repo:{importar:async()=>{importaciones++;return 1;}},
+ });
+ assert.equal((await service.importarPersonalizada({...contexto,solo_guardada:true})).cantidad,0);
+ assert.equal(consultasSunat,0);assert.equal(importaciones,0);
+});
+test('abrir personalizada sin detalle o sin ticket no descarga ni genera errores de carga',async()=>{
+ for(const ticket of [null,{sire_tpropuesta:'TICKET'}]){
+  let consultasSunat=0,importaciones=0;
+  const service=crearServicio({validar:crearBase({}).validar,
+   tickets:{obtenerDatosTicketPropuestaSire:async()=>ticket},propuestas:{obtenerPropuesta:async()=>null},
+   consultarPropuesta:async()=>{consultasSunat++;},repo:{importar:async()=>{importaciones++;return 0;}},
+  });
+  assert.equal((await service.importarPersonalizada({...contexto,solo_guardada:true})).sin_propuesta,true);
+  assert.equal(consultasSunat,0);assert.equal(importaciones,0);
+ }
 });

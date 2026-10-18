@@ -41,19 +41,18 @@ const obtenerAceptacion = async (p, db = pool) => {
 const registrarIntento = async (p, propuesta, db) => {
   const result = await db.query(
     `INSERT INTO public.mve_sire_aceptacion
-       (id_usuario, documento_id, periodo, id_libro, origen, id_propuesta,
+       (id_usuario, documento_id, periodo, id_libro, origen,
         ticket_propuesta, estado, cantidad_registros, solicitado_por)
-     VALUES ($1, $2, $3, $4, 'TRANSPORTE', $5, $6, 'ENVIANDO', $7, $8)
+     VALUES ($1::text, $2::text, $3::text, $4::text, 'TRANSPORTE', $5::text, 'ENVIANDO', $6::integer, $7::text)
      ON CONFLICT (id_usuario, documento_id, periodo, id_libro, origen)
-     DO UPDATE SET id_propuesta = EXCLUDED.id_propuesta,
-       ticket_propuesta = EXCLUDED.ticket_propuesta,
+     DO UPDATE SET ticket_propuesta = EXCLUDED.ticket_propuesta,
        cantidad_registros = EXCLUDED.cantidad_registros,
        solicitado_por = EXCLUDED.solicitado_por, estado = 'ENVIANDO',
        ticket_aceptacion = NULL, codigo_estado_sunat = NULL,
        descripcion = NULL, respuesta_sunat = NULL, intentos = mve_sire_aceptacion.intentos + 1,
        fecha_solicitud = CURRENT_TIMESTAMP, fecha_actualizacion = CURRENT_TIMESTAMP
      RETURNING *`,
-    [...clave(p), propuesta.id_propuesta, propuesta.ticket, propuesta.cantidad_registros, p.solicitadoPor || null]
+    [...clave(p), propuesta.ticket, propuesta.cantidad_registros, p.solicitadoPor || null]
   );
   return result.rows[0];
 };

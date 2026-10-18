@@ -1,4 +1,5 @@
 const { prepararArchivo } = require('../sire/sireReemplazoArchivo.service');
+const { identidadVenta } = require('../../utils/sireVentaDocumento.utils');
 const fallo = (message) => { throw Object.assign(new Error(message), { statusCode: 409 }); };
 const texto = (value) => String(value ?? '').trim();
 const campo = (value) => {
@@ -23,11 +24,11 @@ const generarArchivo = ({ documentoId, periodo, razonSocial, ventas }) => {
   if (!campo(razonSocial)) fallo('No se encontro la razon social del emisor.');
   const grupos = new Map();
   for (const v of ventas) {
-    const principalNota = ['07', '08'].includes(texto(v.r_cod));
-    const tipo = principalNota ? texto(v.r_cod) : texto(v.r_cod_ref) || texto(v.r_cod);
+    const identidad = identidadVenta(v);
+    const { principalNota, tipo } = identidad;
     if (!['01', '03', '07', '08'].includes(tipo)) continue;
-    const serie = campo(principalNota ? v.r_serie : v.r_serie_ref || v.r_serie);
-    const numero = campo(principalNota ? v.r_numero : v.r_numero_ref || v.r_numero);
+    const serie = campo(identidad.serie);
+    const numero = campo(identidad.numero);
     if (!serie || !/^\d{1,8}$/.test(numero)) fallo(`Comprobante ${tipo}-${serie}-${numero}: serie o numero invalido.`);
     const moneda = campo(v.r_moneda || 'PEN');
     if (moneda !== 'PEN') fallo('La generacion automatica corresponde a comprobantes de transporte en PEN. Para otra moneda utiliza un archivo RVIE revisado.');
@@ -35,17 +36,17 @@ const generarArchivo = ({ documentoId, periodo, razonSocial, ventas }) => {
     const anulado = Number(v.registrado ?? 1) === 0;
     const c = Array(33).fill('');
     Object.assign(c, { 0: documentoId, 1: campo(razonSocial), 2: periodo.replace('-', ''),
-      4: fecha(v.r_fecemi), 6: tipo, 7: serie, 8: numero,
+      4: fecha(identidad.fecha), 6: tipo, 7: serie, 8: numero,
       10: campo(v.cliente_id_doc), 11: campo(v.cliente_documento_id), 12: campo(v.cliente),
       26: moneda, 27: '1.000' });
     if (nota) {
       const tipoOriginal = principalNota ? texto(v.r_cod_ref) : texto(v.r_cod);
       const serieOriginal = principalNota ? v.r_serie_ref : v.r_serie;
       const numeroOriginal = principalNota ? v.r_numero_ref : v.r_numero;
-      if (!['01', '03'].includes(tipoOriginal) || !serieOriginal || !numeroOriginal || !v.r_fecemi_ref) {
+      if (!['01', '03'].includes(tipoOriginal) || !serieOriginal || !numeroOriginal || !identidad.fechaOriginal) {
         fallo(`Nota ${tipo}-${serie}-${numero}: falta identificar fecha y comprobante original.`);
       }
-      Object.assign(c, { 28: fecha(v.r_fecemi_ref), 29: tipoOriginal, 30: campo(serieOriginal), 31: campo(numeroOriginal) });
+      Object.assign(c, { 28: fecha(identidad.fechaOriginal), 29: tipoOriginal, 30: campo(serieOriginal), 31: campo(numeroOriginal) });
     }
     const valores = { 14: centimos(v.r_gravado), 16: centimos(v.r_igv), 18: centimos(v.r_exonerado),
       25: centimos(v.r_monto_total ?? v.precio_neto) };
@@ -56,6 +57,7 @@ const generarArchivo = ({ documentoId, periodo, razonSocial, ventas }) => {
       let monto = valores[j] || 0n;
       if (anulado) monto = 0n;
       else if (tipo === '07') monto = monto > 0n ? -monto : monto;
+      else if (tipo === '08') monto = monto < 0n ? -monto : monto;
       c[j] = importe(monto);
     }
     const clave = [tipo, serie, numero.replace(/^0+(?=\d)/, '')].join('-');

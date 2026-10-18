@@ -19,7 +19,7 @@ function cargar(file, deps) {
 
 const parametros = {
   idAnfitrion: 'U', documentoId: '20123456789', periodo: '2024-09', idLibro: '014',
-  idPropuesta: '7', ticketPropuesta: 'DESCARGA1', confirmar: true,
+  idPropuesta: 'DESCARGA1', ticketPropuesta: 'DESCARGA1', confirmar: true,
 };
 
 function entorno({ previo = null, propuesta, fallo, estadoSunat, noCandado = false, falloGuardado = false, reemplazoActivo = null } = {}) {
@@ -73,7 +73,7 @@ function entorno({ previo = null, propuesta, fallo, estadoSunat, noCandado = fal
 test('validaciones rechazan confirmar ausente, RUC, mes, futuro, libro y propuesta incompletos antes de llamar SUNAT', async () => {
   for (const cambio of [
     { confirmar: false }, { documentoId: '123' }, { periodo: '2024-13' }, { periodo: '2999-01' },
-    { idLibro: '008' }, { idPropuesta: '' }, { ticketPropuesta: '' },
+    { idLibro: '008' }, { ticketPropuesta: '' },
   ]) {
     const e = entorno();
     await assert.rejects(e.service.aceptarPropuesta({ ...parametros, ...cambio }), (error) => error.statusCode === 400);
