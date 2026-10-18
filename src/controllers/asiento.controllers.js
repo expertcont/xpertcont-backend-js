@@ -83,6 +83,11 @@ const obtenerTodosAsientosCompra = async (req,res,next)=> {
 const obtenerTodosAsientosComparacion = async (req,res,next)=> {
     //Solo Cabeceras
     const {id_anfitrion, id_invitado, periodo, documento_id, id_libro} = req.params;
+    // Comparar correlativos numericos sin su relleno; conservar el numero original para mostrarlo.
+    // No usar cast a numero: admite correlativos largos y mantiene distintas las claves alfanumericas.
+    const numeroComparacion = (alias) => `CASE WHEN BTRIM(${alias}.r_numero) ~ '^[0-9]+$'
+        THEN COALESCE(NULLIF(LTRIM(BTRIM(${alias}.r_numero), '0'), ''), '0')
+        ELSE BTRIM(${alias}.r_numero) END`;
 
     let strSQL;
     strSQL = "SELECT ";
@@ -120,7 +125,7 @@ const obtenerTodosAsientosComparacion = async (req,res,next)=> {
        
     strSQL += "    AND t1.r_cod = t2.r_cod";
     strSQL += "    AND t1.r_serie = t2.r_serie";
-    strSQL += "    AND t1.r_numero = t2.r_numero";
+    strSQL += "    AND (" + numeroComparacion('t1') + ") = (" + numeroComparacion('t2') + ")";
     strSQL += "    AND t1.r_fecemi = t2.r_fecemi";
     strSQL += "    AND COALESCE(t1.r_monto_total,0) = COALESCE(t2.r_monto_total,0)";
     strSQL += "    AND t1.r_moneda = t2.r_moneda";
@@ -163,7 +168,7 @@ const obtenerTodosAsientosComparacion = async (req,res,next)=> {
        
     strSQL += "    AND t1.r_cod = t2.r_cod";
     strSQL += "    AND t1.r_serie = t2.r_serie";
-    strSQL += "    AND t1.r_numero = t2.r_numero";
+    strSQL += "    AND (" + numeroComparacion('t1') + ") = (" + numeroComparacion('t2') + ")";
     strSQL += "    AND t1.r_fecemi = t2.r_fecemi";
     strSQL += "    AND COALESCE(t1.r_monto_total,0) = COALESCE(t2.r_monto_total,0)";
     strSQL += "    AND t1.r_moneda = t2.r_moneda";
