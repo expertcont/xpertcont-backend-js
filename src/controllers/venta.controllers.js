@@ -179,7 +179,7 @@ const obtenerRegistroTodos = async (req, res, next) => {
     CASE WHEN r_cod_ref = '07' THEN r_base004 * -1 ELSE r_base004 END AS inafecta,
     CASE WHEN r_cod_ref = '07' THEN r_monto_icbp * -1 ELSE r_monto_icbp END AS r_monto_icbp,
     CASE WHEN r_cod_ref = '07' THEN r_monto_otros * -1 ELSE r_monto_otros END AS r_monto_otros,
-    CASE WHEN r_cod_ref = '07' THEN r_monto_total * -1 ELSE r_monto_total END AS r_monto_total,
+    CASE WHEN r_cod = '07' OR r_cod_ref = '07' THEN -ABS(r_monto_total) ELSE r_monto_total END AS r_monto_total,
 
     r_moneda,
     r_tc,
@@ -1643,11 +1643,13 @@ const filtroNotasCreditoVentasSQL = `
 // base del neto; los campos de pago no sustituyen el total del comprobante.
 const ventasNetasFiltradasSQL = `
   SELECT
-    CASE WHEN r_cod_ref = '07' THEN -r_monto_total ELSE r_monto_total END AS monto_venta,
-    NULLIF(BTRIM(forma_pago2), '') AS otro_pago,
+    CASE WHEN r_cod = '07' OR r_cod_ref = '07' THEN -ABS(r_monto_total) ELSE r_monto_total END AS monto_venta,
+    CASE WHEN r_cod = '07' OR r_cod_ref = '07' THEN NULL
+         ELSE NULLIF(BTRIM(forma_pago2), '') END AS otro_pago,
     CASE
+      -- La NC no tiene distribucion de pagos: descuenta su total del efectivo.
+      WHEN r_cod = '07' OR r_cod_ref = '07' THEN 0
       WHEN NULLIF(BTRIM(forma_pago2), '') IS NULL THEN 0
-      WHEN r_cod = '07' OR r_cod_ref = '07' THEN -ABS(COALESCE(efectivo2, 0))
       ELSE COALESCE(efectivo2, 0)
     END AS monto_otro_pago
   FROM mve_venta

@@ -82,8 +82,8 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
         assert.equal(Number(total.total), descuenta ? 900 : 1000);
         const detalle = await consultar('obtenerTotalRecaudacion', dia);
         const montos = Object.fromEntries(detalle.data.map(row => [row.recaudacion, Number(row.monto)]));
-        assert.equal(montos.EFECTIVO, descuenta ? 540 : 600);
-        assert.equal(montos.TARJETA, descuenta ? 360 : 400);
+        assert.equal(montos.EFECTIVO, descuenta ? 500 : 600);
+        assert.equal(montos.TARJETA, 400);
         assert.equal(montos.EFECTIVO + montos.TARJETA, Number(total.total));
       });
     }
@@ -121,8 +121,37 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
       assert.equal(total, sumaExcel);
       assert.equal(detalle.data.reduce((suma, row) => suma + Number(row.monto), 0), sumaExcel);
       const montos = Object.fromEntries(detalle.data.map(row => [row.recaudacion, Number(row.monto)]));
-      assert.equal(montos.TARJETA, 180);
-      assert.equal(montos.EFECTIVO, 1245);
+      assert.equal(montos.TARJETA, 200);
+      assert.equal(montos.EFECTIVO, 1225);
+    });
+
+    await t.test('NC: solo r_monto_total, sin depender del signo almacenado ni de campos de pago', async () => {
+      for (const [cod, codRef, monto] of [
+        ['07', '01', 100], ['07', '01', -100],
+        ['01', '07', 100], ['01', '07', -100],
+      ]) {
+        for (const [efectivo, pago2, efectivo2] of [
+          [null, null, null], [0, null, 0], [999, 'TARJETA', 888],
+        ]) {
+          await pg.exec('TRUNCATE mve_venta');
+          await pg.exec(`INSERT INTO mve_venta
+            (periodo,id_usuario,documento_id,r_cod,r_fecemi,r_monto_total,efectivo,forma_pago2,efectivo2)
+            VALUES ('2026-09','empresa','ruc','01','2026-09-19',1000,600,'TARJETA',400)`);
+          await pg.query(`INSERT INTO mve_venta
+            (periodo,id_usuario,documento_id,r_cod,r_cod_ref,r_fecemi,r_fecemi_ref,r_monto_total,efectivo,forma_pago2,efectivo2)
+            VALUES ('2026-09','empresa','ruc',$1,$2,'2026-09-19','2026-09-19',$3,$4,$5,$6)`,
+          [cod, codRef, monto, efectivo, pago2, efectivo2]);
+          for (const dia of ['19', '*']) {
+            const listado = await consultar('obtenerRegistroTodos', dia, '2026-09');
+            assert.equal(listado.reduce((suma, row) => suma + Number(row.r_monto_total), 0), 900);
+            assert.equal(Number((await consultar('obtenerTotalVentas', dia, '2026-09')).total), 900);
+            const detalle = await consultar('obtenerTotalRecaudacion', dia, '2026-09');
+            const montos = Object.fromEntries(detalle.data.map(row => [row.recaudacion, Number(row.monto)]));
+            assert.equal(montos.EFECTIVO, 500);
+            assert.equal(montos.TARJETA, 400);
+          }
+        }
+      }
     });
 
     await t.test('dia sin emisiones: total cero y desglose vacio', async () => {
