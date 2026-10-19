@@ -1643,6 +1643,7 @@ const filtroNotasCreditoVentasSQL = `
 // base del neto; los campos de pago no sustituyen el total del comprobante.
 const ventasNetasFiltradasSQL = `
   SELECT
+    ctrl_crea_us,
     CASE WHEN r_cod = '07' OR r_cod_ref = '07' THEN -ABS(r_monto_total) ELSE r_monto_total END AS monto_venta,
     CASE WHEN r_cod = '07' OR r_cod_ref = '07' THEN NULL
          ELSE NULLIF(BTRIM(forma_pago2), '') END AS otro_pago,
@@ -1748,14 +1749,8 @@ const obtenerTotalVentasUsuario = async (req, res) => {
 
   try {
     const query = `
-      SELECT COALESCE(SUM(r_monto_total), 0) AS monto, ctrl_crea_us as recaudacion
-      FROM mve_venta
-      WHERE periodo = $1
-        AND id_usuario = $2
-        AND documento_id = $3
-        AND registrado = 1
-        AND r_cod <> 'NP'
-        AND ($4::date IS NULL OR r_fecemi = $4::date)
+      SELECT COALESCE(SUM(monto_venta), 0) AS monto, ctrl_crea_us AS recaudacion
+      FROM (${ventasNetasFiltradasSQL}) AS ventas
       GROUP BY ctrl_crea_us
       ORDER BY monto
     `;

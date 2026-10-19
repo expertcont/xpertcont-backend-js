@@ -17,7 +17,7 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
   ) + source.slice(
     source.indexOf('const filtroNotasCreditoVentasSQL ='),
     source.indexOf('const obtenerTotalUnidades ='),
-  ) + '\nthis.handlers = { obtenerTotalVentas, obtenerTotalRecaudacion, obtenerRegistroTodos };', context);
+  ) + '\nthis.handlers = { obtenerTotalVentas, obtenerTotalRecaudacion, obtenerTotalVentasUsuario, obtenerRegistroTodos };', context);
 
   const consultar = async (handler, dia, periodo = '2026-10') => {
     let status = 200;
@@ -85,6 +85,8 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
         assert.equal(montos.EFECTIVO, descuenta ? 500 : 600);
         assert.equal(montos.TARJETA, 400);
         assert.equal(montos.EFECTIVO + montos.TARJETA, Number(total.total));
+        const records = await consultar('obtenerTotalVentasUsuario', dia);
+        assert.equal(records.data.reduce((suma, row) => suma + Number(row.monto), 0), Number(total.total));
       });
     }
 
@@ -101,6 +103,8 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
         assert.equal(total, descuenta ? 900 : 1000);
         const detalle = await consultar('obtenerTotalRecaudacion', dia);
         assert.equal(detalle.data.reduce((suma, row) => suma + Number(row.monto), 0), total);
+        const records = await consultar('obtenerTotalVentasUsuario', dia);
+        assert.equal(records.data.reduce((suma, row) => suma + Number(row.monto), 0), total);
       });
     }
 
@@ -178,6 +182,8 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
             assert.equal(total, esperado);
             const detalle = await consultar('obtenerTotalRecaudacion', dia, '2026-09');
             assert.equal(detalle.data.reduce((suma, row) => suma + Number(row.monto), 0), esperado);
+            const records = await consultar('obtenerTotalVentasUsuario', dia, '2026-09');
+            assert.equal(records.data.reduce((suma, row) => suma + Number(row.monto), 0), esperado);
           }
           // Si la factura tambien es del dia 30, las dos filas participan y se cancelan.
           // Si es del 29 o de agosto, la NC se excluye del dia 30 por la regla diaria.
@@ -200,6 +206,33 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
         VALUES ('2026-09','empresa','ruc','01','F001','0000420',1,'2026-09-29',75)`);
       await pg.exec("UPDATE mve_venta SET r_fecemi_ref='2026-08-29' WHERE elemento=2");
       assert.equal(Number((await consultar('obtenerTotalVentas', '*', '2026-09')).total), 75);
+    });
+
+    await t.test('RECORDS: agrupar por correo de registro y descontar la NC del usuario que la registro', async () => {
+      await pg.exec('TRUNCATE mve_venta');
+      await pg.exec(`INSERT INTO mve_venta
+        (periodo,id_usuario,documento_id,r_cod,r_serie,r_numero,elemento,r_cod_ref,r_fecemi,r_monto_total,ctrl_crea_us) VALUES
+        ('2026-09','empresa','ruc','01','F001','0000001',1,NULL,'2026-09-29',100,'ana@example.com'),
+        ('2026-09','empresa','ruc','01','F001','0000002',1,NULL,'2026-09-29',200,'luis@example.com'),
+        ('2026-09','empresa','ruc','01','F001','0000420',1,NULL,'2026-09-29',75,'ana@example.com'),
+        ('2026-09','empresa','ruc','01','F001','0000420',2,'07','2026-09-30',75,'luis@example.com')`);
+      const montosPorCorreo = async (dia) => {
+        const records = await consultar('obtenerTotalVentasUsuario', dia, '2026-09');
+        const total = Number((await consultar('obtenerTotalVentas', dia, '2026-09')).total);
+        assert.equal(records.data.reduce((suma, row) => suma + Number(row.monto), 0), total);
+        return Object.fromEntries(records.data.map(row => [row.recaudacion, Number(row.monto)]));
+      };
+      assert.deepEqual(await montosPorCorreo('*'), { 'ana@example.com': 175, 'luis@example.com': 125 });
+      assert.deepEqual(await montosPorCorreo('29'), { 'ana@example.com': 175, 'luis@example.com': 200 });
+      assert.deepEqual(await montosPorCorreo('30'), {});
+
+      // Si la factura es del mismo dia, la NC tambien descuenta en el filtro diario.
+      await pg.exec("UPDATE mve_venta SET r_fecemi='2026-09-30' WHERE elemento=1 AND r_numero='0000420'");
+      assert.deepEqual(await montosPorCorreo('30'), { 'ana@example.com': 75, 'luis@example.com': -75 });
+
+      // Si la factura es del mes anterior, la NC no afecta RECORDS de septiembre.
+      await pg.exec("UPDATE mve_venta SET periodo='2026-08', r_fecemi='2026-08-29' WHERE elemento=1 AND r_numero='0000420'");
+      assert.deepEqual(await montosPorCorreo('*'), { 'ana@example.com': 100, 'luis@example.com': 200 });
     });
 
     await t.test('dia sin emisiones: total cero y desglose vacio', async () => {
