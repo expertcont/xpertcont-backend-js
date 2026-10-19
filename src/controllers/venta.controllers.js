@@ -1633,8 +1633,8 @@ const filtroNotasCreditoVentasSQL = `
   AND (
     (r_cod <> '07' AND COALESCE(r_cod_ref, '') <> '07')
     OR (
-      ($4::date IS NOT NULL AND r_fecemi_ref = $4::date)
-      OR ($4::date IS NULL AND TO_CHAR(r_fecemi_ref, 'YYYY-MM') = $1)
+      ($4::date IS NOT NULL AND COALESCE(r_fecemi_ref, referencia.fecha_original) = $4::date)
+      OR ($4::date IS NULL AND TO_CHAR(COALESCE(r_fecemi_ref, referencia.fecha_original), 'YYYY-MM') = $1)
     )
   )
 `;
@@ -1652,7 +1652,27 @@ const ventasNetasFiltradasSQL = `
       WHEN NULLIF(BTRIM(forma_pago2), '') IS NULL THEN 0
       ELSE COALESCE(efectivo2, 0)
     END AS monto_otro_pago
-  FROM mve_venta
+  FROM mve_venta AS venta
+  LEFT JOIN LATERAL (
+    -- Las NC comerciales conservan la clave de la factura y otro elemento.
+    -- Si falta r_fecemi_ref, recuperar la fecha del documento original.
+    -- La agregacion evita duplicar importes y descarta referencias ambiguas.
+    SELECT CASE WHEN COUNT(DISTINCT original.r_fecemi) = 1
+                THEN MIN(original.r_fecemi) END AS fecha_original
+    FROM mve_venta AS original
+    WHERE venta.r_fecemi_ref IS NULL
+      AND (venta.r_cod = '07' OR venta.r_cod_ref = '07')
+      AND original.id_usuario = venta.id_usuario
+      AND original.documento_id = venta.documento_id
+      AND original.periodo <= venta.periodo
+      AND original.r_cod = CASE WHEN venta.r_cod_ref = '07' THEN venta.r_cod ELSE venta.r_cod_ref END
+      AND original.r_serie = CASE WHEN venta.r_cod_ref = '07' THEN venta.r_serie ELSE venta.r_serie_ref END
+      AND original.r_numero = CASE WHEN venta.r_cod_ref = '07' THEN venta.r_numero ELSE venta.r_numero_ref END
+      AND original.elemento = 1
+      AND original.r_cod NOT IN ('07', '08')
+      AND COALESCE(original.r_cod_ref, '') NOT IN ('07', '08')
+      AND original.r_fecemi <= venta.r_fecemi
+  ) AS referencia ON TRUE
   WHERE periodo = $1
     AND id_usuario = $2
     AND documento_id = $3

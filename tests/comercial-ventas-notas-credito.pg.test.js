@@ -154,6 +154,54 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
       }
     });
 
+    for (const tipo of ['elemento', 'directa']) {
+      for (const [nombre, periodoOriginal, fechaOriginal, totalMes, totalDia29, totalDia30] of [
+        ['caso reportado: factura 29/09 y NC 30/09', '2026-09', '2026-09-29', 0, 75, 0],
+        ['factura y NC del mismo dia', '2026-09', '2026-09-30', 0, 0, 0],
+        ['factura de agosto y NC de septiembre', '2026-08', '2026-08-29', 0, 0, 0],
+      ]) {
+        await t.test(`fecha de referencia nula (${tipo}): ${nombre}`, async () => {
+          await pg.exec('TRUNCATE mve_venta');
+          await pg.query(`INSERT INTO mve_venta
+            (periodo,id_usuario,documento_id,r_cod,r_serie,r_numero,elemento,r_fecemi,r_monto_total,efectivo,efectivo2)
+            VALUES ($1,'empresa','ruc','01','F001','0000420',1,$2,75,0,75)`,
+          [periodoOriginal, fechaOriginal]);
+          const esElemento = tipo === 'elemento';
+          await pg.query(`INSERT INTO mve_venta
+            (periodo,id_usuario,documento_id,r_cod,r_serie,r_numero,elemento,r_cod_ref,r_serie_ref,r_numero_ref,r_fecemi,r_fecemi_ref,r_monto_total,forma_pago2)
+            VALUES ('2026-09','empresa','ruc',$1,'F001',$2,$3,$4,'F001',$5,'2026-09-30',NULL,75,'YAPE')`,
+          [esElemento ? '01' : '07', esElemento ? '0000420' : '0000007', esElemento ? 2 : 1,
+            esElemento ? '07' : '01', esElemento ? '0000007' : '0000420']);
+
+          for (const [dia, esperado] of [['*', totalMes], ['29', totalDia29], ['30', totalDia30]]) {
+            const total = Number((await consultar('obtenerTotalVentas', dia, '2026-09')).total);
+            assert.equal(total, esperado);
+            const detalle = await consultar('obtenerTotalRecaudacion', dia, '2026-09');
+            assert.equal(detalle.data.reduce((suma, row) => suma + Number(row.monto), 0), esperado);
+          }
+          // Si la factura tambien es del dia 30, las dos filas participan y se cancelan.
+          // Si es del 29 o de agosto, la NC se excluye del dia 30 por la regla diaria.
+          const detalle30 = await consultar('obtenerTotalRecaudacion', '30', '2026-09');
+          assert.equal(detalle30.data.length, fechaOriginal === '2026-09-30' ? 1 : 0);
+        });
+      }
+    }
+
+    await t.test('fecha original: no usar otra empresa ni reemplazar una referencia explicita', async () => {
+      await pg.exec('TRUNCATE mve_venta');
+      await pg.exec(`INSERT INTO mve_venta
+        (periodo,id_usuario,documento_id,r_cod,r_serie,r_numero,elemento,r_cod_ref,r_fecemi,r_fecemi_ref,r_monto_total) VALUES
+        ('2026-09','otra-empresa','ruc','01','F001','0000420',1,NULL,'2026-09-29',NULL,75),
+        ('2026-09','empresa','otro-ruc','01','F001','0000420',1,NULL,'2026-09-29',NULL,75),
+        ('2026-09','empresa','ruc','01','F001','0000420',2,'07','2026-09-30',NULL,75)`);
+      assert.equal(Number((await consultar('obtenerTotalVentas', '*', '2026-09')).total), 0);
+      await pg.exec(`INSERT INTO mve_venta
+        (periodo,id_usuario,documento_id,r_cod,r_serie,r_numero,elemento,r_fecemi,r_monto_total)
+        VALUES ('2026-09','empresa','ruc','01','F001','0000420',1,'2026-09-29',75)`);
+      await pg.exec("UPDATE mve_venta SET r_fecemi_ref='2026-08-29' WHERE elemento=2");
+      assert.equal(Number((await consultar('obtenerTotalVentas', '*', '2026-09')).total), 75);
+    });
+
     await t.test('dia sin emisiones: total cero y desglose vacio', async () => {
       assert.equal(Number((await consultar('obtenerTotalVentas', '20')).total), 0);
       assert.equal((await consultar('obtenerTotalRecaudacion', '20')).data.length, 0);
