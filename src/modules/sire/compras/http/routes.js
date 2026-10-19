@@ -1,6 +1,15 @@
 const { Router } = require('express');
 module.exports = (controller) => {
   const router = Router();
+  router.get('/presentacion/:periodo/:id_anfitrion/:documento_id', controller.recuperarPresentacion);
+  router.post('/presentacion/revisar', controller.revisarPresentacion);
+  router.post('/presentacion/aceptar', controller.aceptarPropuesta);
+  router.post('/presentacion/reemplazo/preparar', controller.prepararReemplazo);
+  router.post('/presentacion/reemplazo/enviar', controller.enviarReemplazo);
+  router.get('/presentacion/reemplazo/archivo/:id_reemplazo/:periodo/:id_anfitrion/:documento_id', controller.descargarReemplazo);
+  router.post('/presentacion/consultar', controller.consultarPresentacion);
+  router.post('/presentacion/preliminar', controller.registrarPreliminar);
+  router.post('/presentacion/preliminar/consultar', controller.consultarPreliminar);
   router.get('/propuesta/:periodo/:id_anfitrion/:documento_id', controller.recuperar);
   router.post('/propuesta/ticket', controller.generarTicket);
   router.post('/propuesta/consultar', controller.consultar);

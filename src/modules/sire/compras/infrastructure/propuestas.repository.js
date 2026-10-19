@@ -1,1 +1,1 @@
-module.exports=pool=>{const r=require('./detalle.repository')(pool);return {obtenerPropuesta:r.obtenerPropuesta,guardarPropuesta:r.guardarPropuesta,obtenerArchivo:r.obtenerArchivo};};
+module.exports=pool=>{const r=require('./comprobantes.repository')(pool);return {obtenerPropuesta:r.obtenerPropuesta,guardarPropuesta:r.guardarPropuesta,obtenerArchivo:r.obtenerArchivo,registrarDatos:r.registrarDatos};};

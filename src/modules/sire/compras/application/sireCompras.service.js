@@ -1,4 +1,5 @@
 const { parsearTextoCompras, compararCompras } = require('../domain/compras');
+const { validarCompra } = require('../domain/personalizada');
 // Puertos inyectados: la aplicacion no conoce Express, PostgreSQL ni Comercial.
 module.exports = ({ propuestas: repo, comprasSistema, tickets, sunat, leerArchivo }) => {
 const fallo = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
@@ -6,7 +7,7 @@ const validar = (entrada = {}) => {
   const idAnfitrion = String(entrada.id_anfitrion || '').trim();
   const documentoId = String(entrada.documento_id || '').trim();
   const m = String(entrada.periodo || '').trim().match(/^(\d{4})-?(0[1-9]|1[0-2])$/);
-  if (!idAnfitrion || idAnfitrion.length > 60 || !/^\d{11}$/.test(documentoId) || !m) throw fallo('Selecciona una empresa con RUC de 11 digitos y un periodo valido.');
+  if (!idAnfitrion || idAnfitrion.length > 50 || !/^\d{11}$/.test(documentoId) || !m) throw fallo('Selecciona una empresa con RUC de 11 digitos y un periodo valido.');
   return { idAnfitrion, documentoId, periodo: `${m[1]}-${m[2]}`, idLibro: '080000' };
 };
 const recuperar = async (entrada) => {
@@ -19,23 +20,27 @@ const recuperar = async (entrada) => {
   const advertencias = [];
   for (const [i, resultado] of resultados.entries()) {
     if (resultado.status !== 'rejected') continue;
-    if (!ticket) throw resultado.reason;
+    if (i===0 && !ticket) throw resultado.reason;
+    if (i===1 && ['42P01','42703'].includes(resultado.reason.code)) continue;
     console.error('Error recuperando SIRE Compras (' + (i === 0 ? 'propuesta' : 'registro') + '):', resultado.reason.message);
     advertencias.push(i === 0
       ? 'El ticket se recupero, pero no se pudo cargar la propuesta guardada. Vuelve a consultar su estado.'
-      : 'El ticket se recupero, pero no se pudieron cargar las compras del sistema. La comparacion no esta disponible.');
+      : 'El registro interno opcional no esta disponible. Puedes trabajar con SUNAT y las compras por declarar.');
   }
   const propuesta = resultados[0].status === 'fulfilled' ? resultados[0].value : null;
   if (propuesta?.conciliacion_pendiente) advertencias.push('La nueva descarga requiere conciliacion; la personalizada mantiene los ajustes anteriores.');
-  const sistemaDisponible = resultados[1].status === 'fulfilled';
-  const sistema = sistemaDisponible ? resultados[1].value : [];
+  const sistema = resultados[1].status === 'fulfilled' ? resultados[1].value : [];
+  const sistemaDisponible = sistema.length>0;
   return { ticket: ticket || propuesta?.ticket || '', fecha_generacion: ticketGuardado?.sire_tpropuesta_fecha_generacion || null,
-    propuesta, sistema, sistema_disponible: sistemaDisponible, advertencia: advertencias.join(' '),
+    propuesta, sistema, sistema_disponible: sistemaDisponible, registro_interno_opcional:true, modo_trabajo:'CONTADOR', advertencia: advertencias.join(' '),
     comparacion: propuesta && sistemaDisponible ? compararCompras(propuesta.detalle, sistema) : [] };
 };
-const generarTicket = async (entrada) => sunat.generarTicketPropuestaSire({
-  ...validar(entrada), reutilizarExistente: entrada.reutilizar_existente !== false,
-});
+const generarTicket = async (entrada) => {
+  const p=validar(entrada);
+  const resultado=await sunat.generarTicketPropuestaSire({...p,reutilizarExistente:entrada.reutilizar_existente!==false});
+  await repo.registrarDatos(p,resultado.ticket,resultado.fecha_generacion);
+  return resultado;
+};
 const consultar = async (entrada) => {
   const p = validar(entrada);
   const datos = await tickets.obtenerDatosTicketPropuestaSire(p);
@@ -60,11 +65,12 @@ const consultar = async (entrada) => {
     ? reporte.codTipoArchivoReporte : reporte.codTipoAchivoReporte;
   const archivo = await sunat.descargarPropuestaSire({ ...p, ticket, nombreArchivo, codTipoArchivoReporte: tipoArchivo });
   const detalle = parsearTextoCompras({ contenido: leerArchivo(archivo.buffer), documentoId: p.documentoId, periodo: p.periodo });
+  detalle.forEach(r=>validarCompra(r,p.periodo));
   // No sobrescribir una propuesta si otro usuario genero un ticket nuevo durante la descarga.
   const actual = await tickets.obtenerDatosTicketPropuestaSire(p);
   if (actual?.sire_tpropuesta !== ticket) throw fallo('Se genero otro ticket durante la descarga. Recupera el estado del periodo.', 409);
   const guardado = await repo.guardarPropuesta(p, ticket, nombreArchivo, archivo.buffer, detalle);
-  return { listo: true, conciliacion_pendiente: Boolean(guardado?.conciliacion_pendiente), cantidad_registros: detalle.length, message: guardado?.conciliacion_pendiente ? 'Propuesta descargada. La nueva version requiere conciliacion antes de cambiar los ajustes del contador.' : 'Propuesta SUNAT importada en el detalle de compras.' };
+  return { listo: true, conciliacion_pendiente: Boolean(guardado?.conciliacion_pendiente), cantidad_registros: detalle.length, message: guardado?.conciliacion_pendiente ? 'Propuesta descargada. Revisa la conciliacion; tus ajustes siguen conservados.' : 'Propuesta SUNAT cargada automaticamente en Compras por declarar.' };
 };
 const descargar = async (entrada) => {
   const p = validar(entrada);

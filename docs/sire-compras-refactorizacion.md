@@ -103,3 +103,5 @@ No requiere compilar frontend.
 No se eliminan archivo, detalle JSONB, tablas antiguas ni historial. Tras migrar, nuevas ediciones
 solo existen en el detalle nuevo: volver al backend anterior requiere recuperar los ajustes
 posteriores o un respaldo consistente; no es un rollback automatico por solo desplegar codigo viejo.
+> El backend y frontend de Compras ya se adaptaron al esquema de comprobantes y datos generales. Ver [flujo vigente del contador](sire-compras-contador.md). El resumen que sigue documenta etapas anteriores; no volver a ejecutar su SQL de recreacion ni el migrador de detalle.
+

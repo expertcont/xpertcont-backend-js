@@ -1,6 +1,6 @@
 const {fallo,clave,validarCompra,validarDecision}=require('../domain/personalizada');
 module.exports = ({repo,propuestas,tickets,validar,consultarPropuesta}) => {
- const traducir = async trabajo => {try{return await trabajo();}catch(e){if(e.code==='23505')throw fallo('Este comprobante ya existe en la propuesta personalizada de la empresa.',409);if(e.code==='42P01')throw Object.assign(fallo('Falta completar la migracion a mco_sire_propuesta_det.',503),{codigo:'SIRE_PERSONALIZADA_MIGRACION',mensajePublico:'La propuesta personalizada necesita actualizar su configuracion en la base de datos.'});throw e;}};
+ const traducir = async trabajo => {try{return await trabajo();}catch(e){if(e.code==='23505')throw fallo('Este comprobante ya existe entre las compras de la empresa.',409);throw e;}};
  const listarPersonalizada = entrada => traducir(async()=>({registros:await repo.listar(validar(entrada))}));
  const importarPersonalizada = entrada => traducir(async()=>{
    const p=validar(entrada);
@@ -26,7 +26,7 @@ module.exports = ({repo,propuestas,tickets,validar,consultarPropuesta}) => {
  });
  const modificar = (entrada,eliminar=false) => traducir(async()=>{
    const p={...validar(entrada),usuarioAjuste:entrada.usuario_ajuste || null};
-   if(!/^[1-9]\d*$/.test(String(entrada.id_compra)) || !Number.isSafeInteger(entrada.version) || entrada.version<1)throw fallo('Indica el comprobante y su version.');
+   if(!/^c_[A-Za-z0-9_-]+$/.test(String(entrada.id_compra)) || !Number.isSafeInteger(entrada.version) || entrada.version<1)throw fallo('Actualiza la lista e indica el comprobante y su version.');
    const anterior=await repo.obtener(p,entrada.id_compra);
    if(!anterior)throw fallo('No se encontro el comprobante en esta empresa y periodo.',404);
    if(anterior.estado==='DECLARAR' && anterior.periodo_destino!==p.periodo)throw fallo('Este comprobante se asigno a otro periodo. Abre ese periodo para editarlo.',409);

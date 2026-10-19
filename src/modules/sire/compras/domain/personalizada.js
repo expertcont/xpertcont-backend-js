@@ -8,7 +8,7 @@ function validarCompra(entrada,periodo){
  for(const [col,a,t] of campos){
   if(t){r[a]=decimal(entrada[a],t==='cambio'?6:2);continue;}
   r[a]=String(entrada[a] ?? '').trim();
-  const limites={car_sunat:100,fecha_emision:10,fecha_vencimiento:10,tipo_comprobante:2,serie:20,ano_dam:4,numero:30,numero_final:30,tipo_doc_proveedor:2,documento_proveedor:20,proveedor:300,moneda:3,fecha_emision_ref:10,tipo_comprobante_ref:2,serie_ref:20,codigo_dam_dsi_ref:30,numero_ref:30,clasificacion_bienes_servicios:10};
+  const limites={car_sunat:100,fecha_emision:10,fecha_vencimiento:10,tipo_comprobante:2,serie:5,ano_dam:4,numero:22,numero_final:30,tipo_doc_proveedor:2,documento_proveedor:20,proveedor:300,moneda:3,fecha_emision_ref:10,tipo_comprobante_ref:2,serie_ref:20,codigo_dam_dsi_ref:30,numero_ref:30,clasificacion_bienes_servicios:10};
   const max=limites[col] || 60;
   if(r[a].length>max)throw fallo('El campo '+a+' es demasiado largo.');
  }

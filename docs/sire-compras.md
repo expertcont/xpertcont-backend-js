@@ -86,3 +86,5 @@ Un conflicto de version o comprobante duplicado devuelve HTTP 409.
 El alcance por anfitrion/RUC/periodo se aplica en cada consulta y actualizacion.
 
 Pruebas: node --test src/modules/sire/compras/tests/personalizada.test.js
+> Implementacion vigente: [SIRE Compras: trabajo del contador](sire-compras-contador.md). La pantalla principal es Compras por declarar y el registro interno es opcional. Las instrucciones antiguas de migracion/recreacion que siguen son historicas y no deben reaplicarse.
+

@@ -4,12 +4,13 @@ const BASE = 'https://api-sire.sunat.gob.pe';
 const PATH = '/v1/contribuyente/migeigv/libros/rvierce/receptorpropuesta/web/propuesta/upload';
 const CHUNK_BYTES = 5 * 1024 * 1024;
 
-const enviarArchivo = async ({ idAnfitrion, documentoId, periodo, buffer, nombreArchivo, db, guardarCarga }) => {
+const enviarArchivo = async ({ idAnfitrion, documentoId, periodo, buffer, nombreArchivo, db, guardarCarga, idLibro = '140000' }) => {
+  if (!['140000', '080000'].includes(idLibro)) throw Object.assign(new Error('Libro SIRE invalido.'), { statusCode: 400 });
   const token = await obtenerTokenSire({ idAnfitrion, documentoId, db });
   const headers = { Authorization: `Bearer ${token}`, 'Tus-Resumable': '1.0.0' };
   const metadata = { filename: nombreArchivo, filetype: 'application/zip', numRuc: documentoId,
-    perTributario: periodo.replace('-', ''), codOrigenEnvio: '2', codProceso: '3',
-    codTipoCorrelativo: '01', nomArchivoImportacion: nombreArchivo, codLibro: '140000' };
+    perTributario: periodo.replace('-', ''), codOrigenEnvio: '2', codProceso: idLibro === '080000' ? '61' : '3',
+    codTipoCorrelativo: '01', nomArchivoImportacion: nombreArchivo, codLibro: idLibro };
   const encoded = Object.entries(metadata).map(([k, v]) => `${k} ${Buffer.from(v).toString('base64')}`).join(',');
   let creada = false, ticket = null, urlCarga = null;
   const request = async (url, options) => {
@@ -18,7 +19,7 @@ const enviarArchivo = async ({ idAnfitrion, documentoId, periodo, buffer, nombre
     let data;
     try { data = raw ? JSON.parse(raw) : null; } catch (_) { data = null; }
     if (!response.ok) {
-      throw Object.assign(new Error(data?.msg || data?.message || 'SUNAT rechazo la carga RVIE.'), {
+      throw Object.assign(new Error(data?.msg || data?.message || 'SUNAT rechazo la carga SIRE.'), {
         statusCode: response.status >= 400 && response.status < 500 ? response.status : 502,
         resultadoIncierto: response.status >= 500 || [408, 409].includes(response.status) || (creada && response.status !== 422),
         respuestaSunat: data,

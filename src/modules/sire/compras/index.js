@@ -11,5 +11,11 @@ const personalizada = require('./application/personalizada.service')({
   repo: personalizadaRepo, propuestas, tickets, validar: servicio.validar, consultarPropuesta: servicio.consultar,
 });
 Object.assign(servicio, personalizada, require('./application/conciliacion.service')({repo:personalizadaRepo,validar:servicio.validar}));
+Object.assign(servicio, require('./application/presentacion.service')({
+  repo: require('./infrastructure/presentacion.repository')(pool),
+  comprobantes: personalizadaRepo,
+  sunat: require('./infrastructure/presentacionSunat')(),
+  validar: servicio.validar,
+}));
 const controller = require('./http/controller')(servicio);
 module.exports = require('./http/routes')(controller);

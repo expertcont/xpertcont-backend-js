@@ -21,4 +21,4 @@ La validacion basica tests/sire-ventas-esquema.pg.test.js paso usando PostgreSQL
 
 Tambien se verifico Comercial con ceros iniciales en mve_venta y mve_transventa vacia: los mismos documentos coinciden y una diferencia real de importe sigue apareciendo.
 
-Compras sigue pendiente de adaptar; no forma parte de esta entrega de backend de Ventas.
+Compras se adapto posteriormente al flujo del contador. Consultar [SIRE Compras: trabajo del contador](sire-compras-contador.md).
