@@ -1627,6 +1627,18 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
         return (jsonString);
 };
 
+// Las NC solo reducen las ventas cuando su referencia pertenece al filtro:
+// mismo dia en la vista diaria, mismo mes y anio en la vista mensual.
+const filtroNotasCreditoVentasSQL = `
+  AND (
+    r_cod <> '07'
+    OR (
+      ($4::date IS NOT NULL AND r_fecemi_ref = $4::date)
+      OR ($4::date IS NULL AND TO_CHAR(r_fecemi_ref, 'YYYY-MM') = $1)
+    )
+  )
+`;
+
 const obtenerTotalVentas = async (req, res) => {
   const { periodo, id_anfitrion, id_invitado, documento_id, dia } = req.params;
 
@@ -1641,8 +1653,7 @@ const obtenerTotalVentas = async (req, res) => {
   const fechaFiltro = dia !== '*' ? `${periodo}-${dia}` : null;
 
   try {
-    // Construcción dinámica de consulta
-    let query = `
+    const query = `
       SELECT COALESCE(SUM(r_monto_total), 0) AS total
       FROM mve_venta
       WHERE periodo = $1
@@ -1650,14 +1661,11 @@ const obtenerTotalVentas = async (req, res) => {
         AND documento_id = $3
         AND registrado = 1
         AND r_cod <> 'NP'
-        AND TO_CHAR(r_fecemi,'YYYY-MM') = periodo        
+        AND TO_CHAR(r_fecemi,'YYYY-MM') = periodo
+        AND ($4::date IS NULL OR r_fecemi = $4::date)
+        ${filtroNotasCreditoVentasSQL}
     `;
-    const params = [periodo, id_anfitrion, documento_id];
-
-    if (fechaFiltro) {
-      query += ` AND r_fecemi = $4`;
-      params.push(fechaFiltro);
-    }
+    const params = [periodo, id_anfitrion, documento_id, fechaFiltro];
 
     // Consulta del total de ventas
     const ventaResult = await pool.query(query, params);
@@ -1758,7 +1766,10 @@ const obtenerTotalRecaudacion = async (req, res) => {
           AND id_usuario = $2
           AND documento_id = $3
           AND registrado = 1
+          AND r_cod <> 'NP'
+          AND TO_CHAR(r_fecemi, 'YYYY-MM') = $1
           AND ($4::date IS NULL OR r_fecemi = $4::date)
+          ${filtroNotasCreditoVentasSQL}
         
         UNION ALL
         
@@ -1770,7 +1781,10 @@ const obtenerTotalRecaudacion = async (req, res) => {
           AND id_usuario = $2
           AND documento_id = $3
           AND registrado = 1
+          AND r_cod <> 'NP'
+          AND TO_CHAR(r_fecemi, 'YYYY-MM') = $1
           AND ($4::date IS NULL OR r_fecemi = $4::date)
+          ${filtroNotasCreditoVentasSQL}
         GROUP BY forma_pago2
       ) AS consulta
       WHERE monto IS NOT NULL and recaudacion IS NOT NULL
