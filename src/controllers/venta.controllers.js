@@ -1631,12 +1631,32 @@ const generaJsonPrevioCPEexpertcont = async( p_periodo,
 // mismo dia en la vista diaria, mismo mes y anio en la vista mensual.
 const filtroNotasCreditoVentasSQL = `
   AND (
-    r_cod <> '07'
+    (r_cod <> '07' AND COALESCE(r_cod_ref, '') <> '07')
     OR (
       ($4::date IS NOT NULL AND r_fecemi_ref = $4::date)
       OR ($4::date IS NULL AND TO_CHAR(r_fecemi_ref, 'YYYY-MM') = $1)
     )
   )
+`;
+
+// Mismos documentos y signo que el listado/Excel. El importe vendido es la
+// base del neto; los campos de pago no sustituyen el total del comprobante.
+const ventasNetasFiltradasSQL = `
+  SELECT
+    CASE WHEN r_cod_ref = '07' THEN -r_monto_total ELSE r_monto_total END AS monto_venta,
+    NULLIF(BTRIM(forma_pago2), '') AS otro_pago,
+    CASE
+      WHEN NULLIF(BTRIM(forma_pago2), '') IS NULL THEN 0
+      WHEN r_cod = '07' OR r_cod_ref = '07' THEN -ABS(COALESCE(efectivo2, 0))
+      ELSE COALESCE(efectivo2, 0)
+    END AS monto_otro_pago
+  FROM mve_venta
+  WHERE periodo = $1
+    AND id_usuario = $2
+    AND documento_id = $3
+    AND r_cod <> 'NP'
+    AND ($4::date IS NULL OR r_fecemi = $4::date)
+    ${filtroNotasCreditoVentasSQL}
 `;
 
 const obtenerTotalVentas = async (req, res) => {
@@ -1654,16 +1674,8 @@ const obtenerTotalVentas = async (req, res) => {
 
   try {
     const query = `
-      SELECT COALESCE(SUM(r_monto_total), 0) AS total
-      FROM mve_venta
-      WHERE periodo = $1
-        AND id_usuario = $2
-        AND documento_id = $3
-        AND registrado = 1
-        AND r_cod <> 'NP'
-        AND TO_CHAR(r_fecemi,'YYYY-MM') = periodo
-        AND ($4::date IS NULL OR r_fecemi = $4::date)
-        ${filtroNotasCreditoVentasSQL}
+      SELECT COALESCE(SUM(monto_venta), 0) AS total
+      FROM (${ventasNetasFiltradasSQL}) AS ventas
     `;
     const params = [periodo, id_anfitrion, documento_id, fechaFiltro];
 
@@ -1757,37 +1769,19 @@ const obtenerTotalRecaudacion = async (req, res) => {
 
   try {
     const query = `
-      SELECT * FROM (
-        SELECT 
-          'EFECTIVO'::varchar(50) AS recaudacion, 
-          SUM(efectivo)::numeric(14,2) AS monto
-        FROM mve_venta 
-        WHERE periodo = $1
-          AND id_usuario = $2
-          AND documento_id = $3
-          AND registrado = 1
-          AND r_cod <> 'NP'
-          AND TO_CHAR(r_fecemi, 'YYYY-MM') = $1
-          AND ($4::date IS NULL OR r_fecemi = $4::date)
-          ${filtroNotasCreditoVentasSQL}
-        
+      WITH ventas AS (${ventasNetasFiltradasSQL})
+      SELECT recaudacion, SUM(monto)::numeric(14,2) AS monto
+      FROM (
+        SELECT 'EFECTIVO'::text AS recaudacion,
+               monto_venta - monto_otro_pago AS monto
+        FROM ventas
         UNION ALL
-        
-        SELECT 
-          forma_pago2 AS recaudacion, 
-          SUM(efectivo2)::numeric(14,2) AS monto
-        FROM mve_venta 
-        WHERE periodo = $1
-          AND id_usuario = $2
-          AND documento_id = $3
-          AND registrado = 1
-          AND r_cod <> 'NP'
-          AND TO_CHAR(r_fecemi, 'YYYY-MM') = $1
-          AND ($4::date IS NULL OR r_fecemi = $4::date)
-          ${filtroNotasCreditoVentasSQL}
-        GROUP BY forma_pago2
-      ) AS consulta
-      WHERE monto IS NOT NULL and recaudacion IS NOT NULL
+        SELECT otro_pago AS recaudacion, monto_otro_pago AS monto
+        FROM ventas
+        WHERE otro_pago IS NOT NULL
+      ) AS pagos
+      GROUP BY recaudacion
+      ORDER BY recaudacion
     `;
 
     const params = [periodo, id_anfitrion, documento_id, fechaFiltro];

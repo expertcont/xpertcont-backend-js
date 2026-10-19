@@ -12,20 +12,23 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
   const source = fs.readFileSync(path.join(__dirname, '../src/controllers/venta.controllers.js'), 'utf8');
   const context = vm.createContext({ pool: pg, console });
   vm.runInContext(source.slice(
+    source.indexOf('const obtenerRegistroTodos ='),
+    source.indexOf('const obtenerRegistro ='),
+  ) + source.slice(
     source.indexOf('const filtroNotasCreditoVentasSQL ='),
     source.indexOf('const obtenerTotalUnidades ='),
-  ) + '\nthis.handlers = { obtenerTotalVentas, obtenerTotalRecaudacion };', context);
+  ) + '\nthis.handlers = { obtenerTotalVentas, obtenerTotalRecaudacion, obtenerRegistroTodos };', context);
 
-  const consultar = async (handler, dia) => {
-    let status;
+  const consultar = async (handler, dia, periodo = '2026-10') => {
+    let status = 200;
     let body;
     await context.handlers[handler]({ params: {
-      periodo: '2026-10', id_anfitrion: 'empresa', id_invitado: 'empresa',
+      periodo, id_anfitrion: 'empresa', id_invitado: 'empresa',
       documento_id: 'ruc', dia,
     } }, {
       status(value) { status = value; return this; },
       json(value) { body = value; },
-    });
+    }, (error) => { throw error; });
     assert.equal(status, 200);
     return body;
   };
@@ -36,6 +39,19 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
       r_cod text, r_fecemi date, r_fecemi_ref date, r_monto_total numeric,
       efectivo numeric, forma_pago2 text, efectivo2 numeric
     )`);
+    // Columnas leidas por el endpoint real del listado que alimenta el Excel.
+    await pg.exec(`ALTER TABLE mve_venta
+      ADD r_cod_ref text, ADD r_serie text, ADD r_numero text,
+      ADD r_serie_ref text, ADD r_numero_ref text, ADD r_fecvcto date,
+      ADD r_id_doc text, ADD r_documento_id text, ADD r_razon_social text,
+      ADD r_base001 numeric, ADD r_base002 numeric, ADD r_base003 numeric,
+      ADD r_base004 numeric, ADD r_igv002 numeric, ADD r_monto_icbp numeric,
+      ADD r_monto_otros numeric, ADD r_moneda text, ADD r_tc numeric,
+      ADD glosa text, ADD r_vfirmado text, ADD cdr_descripcion text,
+      ADD cdr_nivel text, ADD numero_rdi text, ADD gre_vfirmado text,
+      ADD gre_cod text, ADD gre_serie text, ADD gre_numero text,
+      ADD ctrl_crea_us text, ADD ctrl_crea text, ADD cdr_pendiente text,
+      ADD elemento integer`);
 
     const casos = [
       ['dia: referencia del mismo dia', '19', '2026-10-19', true],
@@ -52,12 +68,14 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
     for (const [nombre, dia, referencia, descuenta] of casos) {
       await t.test(nombre, async () => {
         await pg.exec('TRUNCATE mve_venta');
-        await pg.exec(`INSERT INTO mve_venta VALUES
+        await pg.exec(`INSERT INTO mve_venta
+          (periodo,id_usuario,documento_id,registrado,r_cod,r_fecemi,r_fecemi_ref,r_monto_total,efectivo,forma_pago2,efectivo2) VALUES
           ('2026-10', 'empresa', 'ruc', 1, '01', '2026-10-19', NULL, 1000, 600, 'TARJETA', 400),
           ('2026-10', 'empresa', 'ruc', 1, 'NP', '2026-10-19', NULL, 9999, 9999, 'TARJETA', 0),
-          ('2026-10', 'empresa', 'ruc', 0, '01', '2026-10-19', NULL, 9999, 9999, 'TARJETA', 0),
-          ('2026-10', 'empresa', 'ruc', 1, '01', '2026-09-19', NULL, 9999, 9999, 'TARJETA', 0)`);
-        await pg.query(`INSERT INTO mve_venta VALUES
+          ('2026-10', 'otra-empresa', 'ruc', 1, '01', '2026-10-19', NULL, 9999, 9999, 'TARJETA', 0),
+          ('2026-09', 'empresa', 'ruc', 1, '01', '2026-09-19', NULL, 9999, 9999, 'TARJETA', 0)`);
+        await pg.query(`INSERT INTO mve_venta
+          (periodo,id_usuario,documento_id,registrado,r_cod,r_fecemi,r_fecemi_ref,r_monto_total,efectivo,forma_pago2,efectivo2) VALUES
           ('2026-10', 'empresa', 'ruc', 1, '07', '2026-10-19', $1, -100, -60, 'TARJETA', -40)`, [referencia]);
 
         const total = await consultar('obtenerTotalVentas', dia);
@@ -69,6 +87,43 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
         assert.equal(montos.EFECTIVO + montos.TARJETA, Number(total.total));
       });
     }
+
+    for (const [nombre, dia, referencia, descuenta] of casos) {
+      await t.test(`NC en r_cod_ref: ${nombre}`, async () => {
+        await pg.exec('TRUNCATE mve_venta');
+        await pg.exec(`INSERT INTO mve_venta
+          (periodo,id_usuario,documento_id,r_cod,r_fecemi,r_monto_total)
+          VALUES ('2026-10','empresa','ruc','01','2026-10-19',1000)`);
+        await pg.query(`INSERT INTO mve_venta
+          (periodo,id_usuario,documento_id,r_cod,r_cod_ref,r_fecemi,r_fecemi_ref,r_monto_total,forma_pago2,efectivo2)
+          VALUES ('2026-10','empresa','ruc','01','07','2026-10-19',$1,100,'TARJETA',40)`, [referencia]);
+        const total = Number((await consultar('obtenerTotalVentas', dia)).total);
+        assert.equal(total, descuenta ? 900 : 1000);
+        const detalle = await consultar('obtenerTotalRecaudacion', dia);
+        assert.equal(detalle.data.reduce((suma, row) => suma + Number(row.monto), 0), total);
+      });
+    }
+
+    await t.test('septiembre: Excel real, caption y clic coinciden aunque los pagos esten incompletos', async () => {
+      await pg.exec('TRUNCATE mve_venta');
+      await pg.exec(`INSERT INTO mve_venta
+        (periodo,id_usuario,documento_id,registrado,r_cod,r_cod_ref,r_fecemi,r_fecemi_ref,r_monto_total,efectivo,forma_pago2,efectivo2) VALUES
+        ('2026-09','empresa','ruc',1,'01',NULL,'2026-09-10',NULL,1000,0,NULL,NULL),
+        ('2026-09','empresa','ruc',1,'03',NULL,'2026-09-15',NULL,500,350,'TARJETA',200),
+        ('2026-09','empresa','ruc',1,'07','01','2026-09-19','2026-09-10',-100,NULL,NULL,NULL),
+        ('2026-09','empresa','ruc',1,'01','07','2026-09-20','2026-09-15',50,0,'TARJETA',20),
+        ('2026-09','empresa','ruc',0,'NV',NULL,'2026-09-21',NULL,75,NULL,NULL,NULL)`);
+      const listadoExcel = await consultar('obtenerRegistroTodos', '*', '2026-09');
+      const sumaExcel = listadoExcel.reduce((suma, row) => suma + Number(row.r_monto_total), 0);
+      const total = Number((await consultar('obtenerTotalVentas', '*', '2026-09')).total);
+      const detalle = await consultar('obtenerTotalRecaudacion', '*', '2026-09');
+      assert.equal(sumaExcel, 1425);
+      assert.equal(total, sumaExcel);
+      assert.equal(detalle.data.reduce((suma, row) => suma + Number(row.monto), 0), sumaExcel);
+      const montos = Object.fromEntries(detalle.data.map(row => [row.recaudacion, Number(row.monto)]));
+      assert.equal(montos.TARJETA, 180);
+      assert.equal(montos.EFECTIVO, 1245);
+    });
 
     await t.test('dia sin emisiones: total cero y desglose vacio', async () => {
       assert.equal(Number((await consultar('obtenerTotalVentas', '20')).total), 0);
