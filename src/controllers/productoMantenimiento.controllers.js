@@ -31,6 +31,7 @@ function validarRangos(rangos) {
 
 // Guarda el producto y su escala completa usando una sola conexión/transacción.
 const guardarProductoMantenimiento = async (req, res) => {
+      //volver a enviar
   let client;
   let transaction = false;
   try {

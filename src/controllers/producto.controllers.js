@@ -243,6 +243,7 @@ const obtenerProducto = async (req,res,next)=> {
     } catch (error) {
         console.log(error.message);
     }
+    //volver a enviar
 };
 const obtenerProductoIgv = async (req,res,next)=> {
     try {
