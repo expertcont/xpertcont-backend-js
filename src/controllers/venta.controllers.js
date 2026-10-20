@@ -209,6 +209,8 @@ const obtenerRegistroTodos = async (req, res, next) => {
     ctrl_crea_us,
     ctrl_crea,
 
+    registrado,
+
     (r_cod || '-' || r_serie || '-' || r_numero || '-' || elemento)::varchar as comprobante_key,
     cdr_pendiente,
     elemento
