@@ -52,6 +52,13 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
       ADD gre_cod text, ADD gre_serie text, ADD gre_numero text,
       ADD ctrl_crea_us text, ADD ctrl_crea text, ADD cdr_pendiente text,
       ADD elemento integer`);
+    await pg.exec(`CREATE TABLE mve_ventadet (
+      periodo text, id_usuario text, documento_id text, r_cod text, r_serie text,
+      r_numero text, elemento integer, item integer, id_producto text,
+      descripcion text, cantidad numeric
+    ) PARTITION BY RANGE (periodo);
+    CREATE TABLE mve_ventadet_202609 PARTITION OF mve_ventadet FOR VALUES FROM ('2026-09') TO ('2026-10');
+    CREATE TABLE mve_ventadet_202610 PARTITION OF mve_ventadet FOR VALUES FROM ('2026-10') TO ('2026-11');`);
 
     const casos = [
       ['dia: referencia del mismo dia', '19', '2026-10-19', true],
@@ -238,6 +245,40 @@ test('Ventas y recaudacion: NC segun la fecha de referencia diaria o mensual', {
     await t.test('dia sin emisiones: total cero y desglose vacio', async () => {
       assert.equal(Number((await consultar('obtenerTotalVentas', '20')).total), 0);
       assert.equal((await consultar('obtenerTotalRecaudacion', '20')).data.length, 0);
+    });
+    await t.test('resumen: limita a dos items, busca todos y poda las otras particiones', async () => {
+      await pg.exec(`TRUNCATE mve_venta, mve_ventadet;
+        INSERT INTO mve_venta (periodo,id_usuario,documento_id,r_cod,r_serie,r_numero,elemento,r_fecemi,r_monto_total,r_cod_ref) VALUES
+        ('2026-10','empresa','ruc','01','F001','1',1,'2026-10-19',100,NULL),
+        ('2026-10','empresa','ruc','01','F001','1',2,'2026-10-19',20,'07'),
+        ('2026-10','empresa','ruc','01','F001','2',1,'2026-10-18',50,NULL);
+        INSERT INTO mve_ventadet VALUES
+        ('2026-10','empresa','ruc','01','F001','1',1,3,'P003','Arena',5),
+        ('2026-10','empresa','ruc','01','F001','1',1,1,'P001','Cemento',2),
+        ('2026-10','empresa','ruc','01','F001','1',1,2,'P002','Ladrillos',10),
+        ('2026-10','empresa','ruc','01','F001','1',2,1,'NC','Devolución',1),
+        ('2026-10','empresa','ruc','01','F001','2',1,1,'OTRODIA','Otro día',1),
+        ('2026-09','empresa','ruc','01','F001','1',1,1,'OTROMES','Otro mes',1),
+        ('2026-10','otra-empresa','ruc','01','F001','1',1,1,'OTROUSUARIO','Otro usuario',1),
+        ('2026-10','empresa','otro-ruc','01','F001','1',1,1,'OTRORUC','Otra empresa',1);`);
+      let consulta;
+      context.pool = { query: async (sql, params) => { consulta = { sql, params }; return pg.query(sql, params); } };
+      const rows = await consultar('obtenerRegistroTodos', '19');
+      context.pool = pg;
+      assert.equal(rows.length, 2);
+      const venta = rows.find(row => row.elemento === 1);
+      assert.equal(venta.detalle_cantidad, 3);
+      assert.deepEqual(venta.detalle_resumen, [
+        { descripcion: 'Cemento', cantidad: 2 }, { descripcion: 'Ladrillos', cantidad: 10 },
+      ]);
+      assert.equal(venta.detalle_busqueda, 'P001 Cemento P002 Ladrillos P003 Arena');
+      assert.equal(rows.find(row => row.elemento === 2).detalle_busqueda, 'NC Devolución');
+      assert.equal(Number(venta.r_monto_total), 100);
+      const plan = JSON.stringify((await pg.query(`EXPLAIN (FORMAT JSON) ${consulta.sql}`, consulta.params)).rows);
+      assert.match(plan, /mve_ventadet_202610/);
+      assert.doesNotMatch(plan, /mve_ventadet_202609/);
+      const mes = await consultar('obtenerRegistroTodos', '*');
+      assert.equal(mes.find(row => row.r_numero === '2').detalle_busqueda, 'OTRODIA Otro día');
     });
   } finally {
     await pg.close();

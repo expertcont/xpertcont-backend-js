@@ -232,7 +232,32 @@ const obtenerRegistroTodos = async (req, res, next) => {
     params.push(fechaFiltro);
   }
 
-  query += " ORDER BY r_fecemi DESC, r_cod, r_serie, r_numero DESC";
+  // Un solo agregado para las ventas filtradas. Los precios y el detalle completo
+  // se consultan al abrir el modal; el listado solo recibe dos items y texto buscable.
+  query = `WITH ventas AS (${query}), items AS (
+    SELECT d.r_cod, d.r_serie, d.r_numero, d.elemento, d.item,
+      d.id_producto, d.descripcion, d.cantidad,
+      ROW_NUMBER() OVER (
+        PARTITION BY d.r_cod, d.r_serie, d.r_numero, d.elemento ORDER BY d.item
+      ) AS posicion
+    FROM mve_ventadet d
+    WHERE d.periodo = $1 AND d.id_usuario = $2 AND d.documento_id = $3
+      AND EXISTS (
+        SELECT 1 FROM ventas v WHERE v.r_cod = d.r_cod AND v.r_serie = d.r_serie
+          AND v.r_numero = d.r_numero AND v.elemento = d.elemento
+      )
+  ), resumen AS (
+    SELECT r_cod, r_serie, r_numero, elemento, COUNT(*)::integer AS detalle_cantidad,
+      JSONB_AGG(JSONB_BUILD_OBJECT('descripcion', descripcion, 'cantidad', cantidad)
+        ORDER BY item) FILTER (WHERE posicion <= 2) AS detalle_resumen,
+      STRING_AGG(CONCAT_WS(' ', id_producto, descripcion), ' ' ORDER BY item) AS detalle_busqueda
+    FROM items GROUP BY r_cod, r_serie, r_numero, elemento
+  )
+  SELECT v.*, COALESCE(r.detalle_cantidad, 0) AS detalle_cantidad,
+    COALESCE(r.detalle_resumen, '[]'::jsonb) AS detalle_resumen,
+    COALESCE(r.detalle_busqueda, '') AS detalle_busqueda
+  FROM ventas v LEFT JOIN resumen r USING (r_cod, r_serie, r_numero, elemento)
+  ORDER BY v.r_fecemi DESC, v.r_cod, v.r_serie, v.r_numero DESC`;
 
   try {
     const { rows } = await pool.query(query, params);
