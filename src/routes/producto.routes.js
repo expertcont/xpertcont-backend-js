@@ -2,6 +2,10 @@ const {Router} = require('express');
 const multer = require('multer');
 const router = Router();
 const upload = multer();
+const { guardarProductoMantenimiento } = require('../controllers/productoMantenimiento.controllers');
+
+router.post('/ad_productomantenimiento/:id_anfitrion/:documento_id', guardarProductoMantenimiento);
+router.put('/ad_productomantenimiento/:id_anfitrion/:documento_id/:id_producto', guardarProductoMantenimiento);
 
 const {obtenerTodosProductos,obtenerProducto,crearProducto, actualizarProducto, eliminarProducto, obtenerProductoIgv, importarExcelProductos, eliminarProductoMasivo, obtenerTodosProductosPopUp, importarExcelProductosPrecios, obtenerTodosProductosPrecios, obtenerParametrosVenta, obtenerPreciosProducto, actualizarProductoPrecio, obtenerProductoPrecio, obtenerTodosGruposPopUp, crearGrupo, importarExcelGrupos, actualizarGrupo, eliminarGrupoMasivo, eliminarGrupo, clonarProducto, crearProductoPrecio, obtenerTodosProductosPopUpAlmacenable} = require('../controllers/producto.controllers')
 

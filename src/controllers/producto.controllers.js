@@ -22,6 +22,7 @@ const obtenerTodosProductos = async (req, res, next) => {
                 cont_und,
                 porc_igv,
                 origen,
+                activado, id_clase, id_subclase,
                 (precio_venta || '-' || cont_und || '-' || porc_igv)::varchar as auxiliar
             FROM mst_producto
             WHERE id_usuario = $1
@@ -56,6 +57,7 @@ const obtenerTodosProductosPrecios = async (req, res, next) => {
         mst_producto_precio.id_producto,
         mst_producto.nombre,
         mst_producto_precio.unidades AS descripcion,
+        mst_producto_precio.unidades,
         mst_producto_precio.precio_venta,
         mst_producto_precio.cant_min,
         mst_producto_precio.cant_max,
