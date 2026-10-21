@@ -2,6 +2,14 @@ const {Router} = require('express');
 const multer = require('multer');
 const router = Router();
 const upload = multer();
+const grupos = require('../controllers/productoGrupo.controllers');
+
+// Mantenimiento de grupos SKU; mantiene intactas las rutas anteriores.
+router.get('/ad_productogrupoconfig/:id_anfitrion/:documento_id', grupos.obtenerConfiguracionGrupos);
+router.get('/ad_productogrupo/:id_anfitrion/:documento_id', grupos.validarAccesoGrupos, grupos.obtenerGrupos);
+router.post('/ad_productogrupo/:id_anfitrion/:documento_id', grupos.validarAccesoGrupos, grupos.guardarGrupo);
+router.put('/ad_productogrupo/:id_anfitrion/:documento_id/:id_grupo', grupos.validarAccesoGrupos, grupos.guardarGrupo);
+router.delete('/ad_productogrupo/:id_anfitrion/:documento_id/:id_grupo', grupos.validarAccesoGrupos, grupos.eliminarGrupo);
 const { guardarProductoMantenimiento } = require('../controllers/productoMantenimiento.controllers');
 
 router.post('/ad_productomantenimiento/:id_anfitrion/:documento_id', guardarProductoMantenimiento);
