@@ -79,5 +79,17 @@ const descargar = async (entrada) => {
   if (!propuesta) throw fallo('Consulta e importa la propuesta antes de descargar su archivo.', 404);
   return propuesta;
 };
-return { recuperar, generarTicket, consultar, descargar, validar };
+// Solo diagnostico: devuelve el token SUNAT con scope api-cpe para pruebas manuales.
+// Este token NO debe persistirse ni mostrarse en produccion.
+const SCOPE_CPE = 'https://api-cpe.sunat.gob.pe';
+const generarToken = async (entrada) => {
+  const p = validar(entrada);
+  try {
+    const token = await sunat.obtenerTokenSunat({ ...p, scope: SCOPE_CPE, mensajeError: 'SUNAT no devolvio token.' });
+    return { token, longitud: token.length, scope: SCOPE_CPE };
+  } catch (error) {
+    throw Object.assign(error, { statusCode: 502, mensajePublico: `SUNAT rechazo la generacion del token: ${error.message}` });
+  }
+};
+return { recuperar, generarTicket, consultar, descargar, generarToken, validar };
 };
