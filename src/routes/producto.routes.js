@@ -4,13 +4,17 @@ const router = Router();
 const upload = multer();
 const grupos = require('../controllers/productoGrupo.controllers');
 
-// Mantenimiento de grupos SKU; mantiene intactas las rutas anteriores.
+// Grupos Color: configuración de pantalla y CRUD independiente del flujo histórico.
+// Flujo: ruta -> validarAccesoGrupos -> controlador -> servicio -> repositorio.
+// La consulta de configuración informa disponibilidad; las cuatro rutas de datos
+// comprueban comercial/SKU y reciben la empresa efectiva en req.grupoContexto.
 router.get('/ad_productogrupoconfig/:id_anfitrion/:documento_id', grupos.obtenerConfiguracionGrupos);
 router.get('/ad_productogrupo/:id_anfitrion/:documento_id', grupos.validarAccesoGrupos, grupos.obtenerGrupos);
 router.post('/ad_productogrupo/:id_anfitrion/:documento_id', grupos.validarAccesoGrupos, grupos.guardarGrupo);
 router.put('/ad_productogrupo/:id_anfitrion/:documento_id/:id_grupo', grupos.validarAccesoGrupos, grupos.guardarGrupo);
 router.delete('/ad_productogrupo/:id_anfitrion/:documento_id/:id_grupo', grupos.validarAccesoGrupos, grupos.eliminarGrupo);
 const { guardarProductoMantenimiento } = require('../controllers/productoMantenimiento.controllers');
+//nuevos
 
 router.post('/ad_productomantenimiento/:id_anfitrion/:documento_id', guardarProductoMantenimiento);
 router.put('/ad_productomantenimiento/:id_anfitrion/:documento_id/:id_producto', guardarProductoMantenimiento);

@@ -73,6 +73,7 @@ const listarEncomiendasPorEntregar = async ({ params, query }) => {
       limite,
       entregadas,
     });
+    const horaServidor = await repository.consultarHoraServidorQuery();
 
     return {
       status: 200,
@@ -80,6 +81,7 @@ const listarEncomiendasPorEntregar = async ({ params, query }) => {
         success: true,
         data,
         meta: {
+          hora_servidor: horaServidor,
           periodos: periodosBusqueda,
           cantidad_periodos: cantidadPeriodos,
           estado: entregadas ? 'entregadas' : 'pendientes',

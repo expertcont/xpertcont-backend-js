@@ -6,19 +6,36 @@ const vm = require('node:vm');
 
 function entorno({ rubro = 'COMERCIAL', sku = '1', rowCount = 1, codigoError } = {}) {
   const consultas = [];
-  const module = { exports: {} };
+  const errores = [];
   const pool = { query: async (sql, values) => {
     consultas.push({ sql, values });
     if (sql.includes('SELECT u.rubro')) return { rows: [{ rubro, producto_sku: sku }] };
     if (codigoError) throw Object.assign(new Error('Base de datos'), { code: codigoError });
     return { rowCount, rows: rowCount ? [{ id_grupo: 'G01', nombre: 'GRUPO' }] : [] };
   } };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/controllers/productoGrupo.controllers.js'), 'utf8'), {
-    module, require: id => id === '../db' ? pool : { resolverDocumentoId: async () => 'EMPRESA_MATRIZ' },
-  });
+  // Ejecutar las tres capas reales; únicamente se simulan la conexión y el
+  // resolvedor multiempresa. El caché conserva la identidad de los errores tipados.
+  const cache = new Map();
+  const src = path.join(__dirname, '../src');
+  const dbPath = path.join(src, 'db.js');
+  const utilsPath = path.join(src, 'utils/libreria.utils.js');
+  function cargar(archivo) {
+    if (archivo === dbPath) return pool;
+    if (archivo === utilsPath) return { resolverDocumentoId: async () => 'EMPRESA_MATRIZ' };
+    if (cache.has(archivo)) return cache.get(archivo).exports;
+    const module = { exports: {} };
+    cache.set(archivo, module);
+    vm.runInNewContext(fs.readFileSync(archivo, 'utf8'), {
+      module,
+      require: id => cargar(path.resolve(path.dirname(archivo), `${id}.js`)),
+      console: { error: (...args) => errores.push(args) },
+    }, { filename: archivo });
+    return module.exports;
+  }
+  const api = cargar(path.join(src, 'controllers/productoGrupo.controllers.js'));
   const res = { statusCode: 200, status(code) { this.statusCode = code; return this; }, json(data) { this.data = data; return this; }, sendStatus(code) { this.statusCode = code; return this; } };
   const req = { params: { id_anfitrion: 'propietario', documento_id: 'EMPRESA', id_grupo: 'G01' }, body: { id_grupo: 'G01', nombre: 'Grupo', descripcion: 'Detalle', ctrl_crea_us: 'invitado' } };
-  return { api: module.exports, consultas, req, res };
+  return { api, consultas, errores, req, res };
 }
 
 test('acceso denegado para otros rubros y SKU desactivado, ausente o distinto de 1', async () => {
@@ -28,6 +45,24 @@ test('acceso denegado para otros rubros y SKU desactivado, ausente o distinto de
     assert.equal(e.res.statusCode, 403);
     assert.equal(e.consultas.length, 1);
   }
+});
+
+test('configuración informa disponibilidad sin listar datos', async () => {
+  for (const sku of ['1', '0', null]) {
+    const e = entorno({ sku });
+    await e.api.obtenerConfiguracionGrupos(e.req, e.res);
+    assert.equal(e.res.statusCode, 200);
+    assert.equal(e.res.data.habilitado, sku === '1');
+    assert.equal(e.consultas.length, 1);
+  }
+});
+
+test('una petición incompleta falla con 400 sin ejecutar SQL', async () => {
+  const e = entorno();
+  e.req.params.documento_id = '';
+  await e.api.validarAccesoGrupos(e.req, e.res, () => assert.fail('No debe autorizar'));
+  assert.equal(e.res.statusCode, 400);
+  assert.equal(e.consultas.length, 0);
 });
 
 test('listado y escrituras usan la empresa resuelta, sin mezclar anfitriones', async () => {
@@ -72,5 +107,18 @@ test('duplicados, grupo ausente y referencias tienen respuestas controladas', as
     e.req.method = 'PUT'; e.req.grupoContexto = { id_anfitrion: 'propietario', documento: 'EMPRESA_MATRIZ' };
     await e.api[operacion](e.req, e.res, assert.fail);
     assert.equal(e.res.statusCode, status);
+  }
+});
+
+test('fallos técnicos conservan estado 500 y no exponen detalles al cliente', async () => {
+  for (const operacion of ['obtenerGrupos', 'guardarGrupo', 'eliminarGrupo']) {
+    const e = entorno({ codigoError: 'XX000' });
+    e.req.method = 'POST';
+    e.req.grupoContexto = { id_anfitrion: 'propietario', documento: 'EMPRESA_MATRIZ' };
+    await e.api[operacion](e.req, e.res);
+    assert.equal(e.res.statusCode, 500);
+    assert.equal(e.res.data.message, 'No se pudo completar la operación de grupos.');
+    assert.equal(e.errores.length, 1);
+    assert.equal(e.errores[0][1], 'Base de datos');
   }
 });

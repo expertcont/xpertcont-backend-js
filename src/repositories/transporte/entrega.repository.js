@@ -10,6 +10,15 @@
 const pool = require('../../db');
 const { columnasVentaTrans } = require('../transventaColumnas');
 
+// Texto de calendario de Lima; el driver no debe serializarlo como Date/UTC.
+const consultarHoraServidorQuery = async () => {
+  const { rows } = await pool.query(`
+    SELECT TO_CHAR(clock_timestamp() AT TIME ZONE 'America/Lima',
+                   'YYYY-MM-DD HH24:MI:SS.MS') AS hora_servidor
+  `);
+  return rows[0].hora_servidor;
+};
+
 // ---------------------------------------------------------------------------
 // Bandeja operativa de la agencia destino.
 //
@@ -290,6 +299,7 @@ const registrarLlegadaRealQuery = async ({
 };
 
 module.exports = {
+  consultarHoraServidorQuery,
   listarEncomiendasAgenciaQuery,
   registrarEntregaQuery,
   comprobarContraActivaQuery,
