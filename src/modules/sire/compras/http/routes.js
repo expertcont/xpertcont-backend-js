@@ -13,6 +13,7 @@ module.exports = (controller) => {
   router.get('/propuesta/:periodo/:id_anfitrion/:documento_id', controller.recuperar);
   router.post('/propuesta/ticket', controller.generarTicket);
   router.post('/propuesta/token', controller.generarToken);
+  router.post('/propuesta/xml', controller.descargarXmlComprobante);
   router.post('/propuesta/consultar', controller.consultar);
   router.get('/propuesta/archivo/:periodo/:id_anfitrion/:documento_id', controller.descargar);
   router.get('/personalizada/:periodo/:id_anfitrion/:documento_id', controller.listarPersonalizada);

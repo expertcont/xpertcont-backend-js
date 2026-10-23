@@ -2,7 +2,7 @@ module.exports = (service) => {
 const handler = (accion) => async (req, res) => {
   try {
     const result = await service[accion]({ ...req.query, ...req.body, ...req.params, usuario_ajuste: req.user?.email || req.auth?.payload?.email || null });
-    if (['descargar','descargarReemplazo'].includes(accion)) {
+    if (['descargar','descargarReemplazo','descargarXmlComprobante'].includes(accion)) {
       const nombre = String(result.nombre_archivo || 'propuesta_compras.zip').split(/[\\/]/).pop().replace(/[^A-Za-z0-9_.-]/g, '_');
       res.setHeader('Content-Disposition', `attachment; filename="${nombre}"`);
       res.setHeader('Content-Type', nombre.toLowerCase().endsWith('.zip') ? 'application/zip' : 'text/plain; charset=utf-8');
@@ -18,6 +18,6 @@ const handler = (accion) => async (req, res) => {
   }
 };
 return { ...Object.fromEntries(['listarPersonalizada','importarPersonalizada','crearPersonalizada','editarPersonalizada','eliminarPersonalizada','revisarConciliacion','confirmarConciliacion',
-  'recuperarPresentacion','revisarPresentacion','aceptarPropuesta','prepararReemplazo','enviarReemplazo','descargarReemplazo','consultarPresentacion','registrarPreliminar','consultarPreliminar'].map(accion => [accion, handler(accion)])), recuperar: handler('recuperar'), generarTicket: handler('generarTicket'), consultar: handler('consultar'), descargar: handler('descargar'), generarToken: handler('generarToken') };
+  'recuperarPresentacion','revisarPresentacion','aceptarPropuesta','prepararReemplazo','enviarReemplazo','descargarReemplazo','consultarPresentacion','registrarPreliminar','consultarPreliminar'].map(accion => [accion, handler(accion)])), recuperar: handler('recuperar'), generarTicket: handler('generarTicket'), consultar: handler('consultar'), descargar: handler('descargar'), generarToken: handler('generarToken'), descargarXmlComprobante: handler('descargarXmlComprobante') };
 
 };

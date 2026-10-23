@@ -1,5 +1,6 @@
 const { parsearTextoCompras, compararCompras } = require('../domain/compras');
 const { validarCompra } = require('../domain/personalizada');
+const { descargarComprobanteCpe } = require('../../../../services/cpe/consultacpe.service');
 // Puertos inyectados: la aplicacion no conoce Express, PostgreSQL ni Comercial.
 module.exports = ({ propuestas: repo, comprasSistema, tickets, sunat, leerArchivo }) => {
 const fallo = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
@@ -91,5 +92,25 @@ const generarToken = async (entrada) => {
     throw Object.assign(error, { statusCode: 502, mensajePublico: `SUNAT rechazo la generacion del token: ${error.message}` });
   }
 };
-return { recuperar, generarTicket, consultar, descargar, generarToken, validar };
+
+// Descarga XML individual via consultacpe: el token se obtiene dentro del
+// backend (scope api-cpe) con las credenciales de la BD y nunca viaja al navegador.
+const descargarXmlComprobante = async (entrada) => {
+  const p = validar(entrada);
+  try {
+    const resultado = await descargarComprobanteCpe({
+      ruc: p.documentoId,
+      tipo: entrada.tipo_comprobante,
+      serie: entrada.serie,
+      numero: entrada.numero,
+      formato: 'xml',
+      idAnfitrion: p.idAnfitrion,
+      documentoId: p.documentoId,
+    });
+    return { nombre_archivo: resultado.nombre_archivo, archivo: resultado.contenido };
+  } catch (error) {
+    throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: `SUNAT no devolvio el XML del comprobante: ${error.message}` });
+  }
+};
+return { recuperar, generarTicket, consultar, descargar, generarToken, descargarXmlComprobante, validar };
 };
