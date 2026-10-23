@@ -109,6 +109,8 @@ const descargarComprobanteCpe = async ({
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
+      // El WAF de SUNAT corta la conexion (socket hang up) si el request no parece navegador.
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       Origin: 'https://e-factura.sunat.gob.pe',
       Referer: 'https://e-factura.sunat.gob.pe/',
     },
