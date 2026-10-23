@@ -9,7 +9,7 @@ const { serialize } = require('node:v8');
 
 const generarTicketSireCredenciales = async (id_anfitrion,documento_id) => {
   const strSQL = `
-      SELECT sire_id,sire_secret,sire_sol,sire_solpwd FROM mad_usuariocontabilidad
+      SELECT sire_id,sire_secret,sire_sol,sunat_sol,sire_solpwd,sunat_solpwd FROM mad_usuariocontabilidad
       WHERE id_usuario = $1
       AND documento_id = $2
   `;
@@ -69,8 +69,8 @@ const generarTicketSireSunat = async (id_anfitrion,documento_id,periodo,id_libro
         'scope': 'https://api-sire.sunat.gob.pe',
         'client_id': rows[0].sire_id,
         'client_secret': rows[0].sire_secret,
-        'username': documento_id + rows[0].sire_sol,
-        'password': rows[0].sire_solpwd
+        'username': documento_id + (rows[0].sunat_sol || rows[0].sire_sol),
+        'password': rows[0].sunat_solpwd || rows[0].sire_solpwd
       });        
       const response = await fetch(sUrlSunatToken, {
         method: 'POST',
@@ -165,8 +165,8 @@ const generarTicketSireDescarga = async (req, res, bReturn) => {
         'scope': 'https://api-sire.sunat.gob.pe',
         'client_id': rows[0].sire_id,
         'client_secret': rows[0].sire_secret,
-        'username': documento_id + rows[0].sire_sol,
-        'password': rows[0].sire_solpwd
+        'username': documento_id + (rows[0].sunat_sol || rows[0].sire_sol),
+        'password': rows[0].sunat_solpwd || rows[0].sire_solpwd
       });        
       const response = await fetch(sUrlSunatToken, {
         method: 'POST',
@@ -236,8 +236,8 @@ const generarTicketSireEstado = async (req, res, next) => {
           'scope': 'https://api-sire.sunat.gob.pe',
           'client_id': rows[0].sire_id,
           'client_secret': rows[0].sire_secret,
-          'username': documento_id + rows[0].sire_sol,
-          'password': rows[0].sire_solpwd
+          'username': documento_id + (rows[0].sunat_sol || rows[0].sire_sol),
+          'password': rows[0].sunat_solpwd || rows[0].sire_solpwd
         });        
         const response = await fetch(sUrlSunatToken, {
           method: 'POST',

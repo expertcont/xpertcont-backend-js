@@ -16,9 +16,9 @@ const limpiarTexto = (value = '') => String(value ?? '').trim();
 
 const obtenerRucSire = (documentoId = '') => limpiarTexto(documentoId).replace(/\D/g, '');
 
-const obtenerUsuarioSolSire = ({ documentoId, sireSol }) => {
+const obtenerUsuarioSolSire = ({ documentoId, sol }) => {
   const ruc = obtenerRucSire(documentoId);
-  const usuarioSol = limpiarTexto(sireSol);
+  const usuarioSol = limpiarTexto(sol);
 
   if (!ruc || !usuarioSol) return `${ruc}${usuarioSol}`;
   return usuarioSol.startsWith(ruc) ? usuarioSol : `${ruc}${usuarioSol}`;
@@ -40,8 +40,9 @@ const obtenerTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
   const credenciales = await obtenerCredencialesSire({ idAnfitrion, documentoId, db });
   const clientId = limpiarTexto(credenciales.sire_id);
   const clientSecret = limpiarTexto(credenciales.sire_secret);
-  const username = obtenerUsuarioSolSire({ documentoId, sireSol: credenciales.sire_sol });
-  const password = limpiarTexto(credenciales.sire_solpwd);
+  const usuarioSol = limpiarTexto(credenciales.sunat_sol) || limpiarTexto(credenciales.sire_sol);
+  const username = obtenerUsuarioSolSire({ documentoId, sol: usuarioSol });
+  const password = limpiarTexto(credenciales.sunat_solpwd) || limpiarTexto(credenciales.sire_solpwd);
 
   const url = `https://api-seguridad.sunat.gob.pe/v1/clientessol/${clientId}/oauth2/token/`;
   const body = new URLSearchParams({

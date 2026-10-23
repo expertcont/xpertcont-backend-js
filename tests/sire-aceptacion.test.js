@@ -182,7 +182,7 @@ function clienteConFetch(fetch) {
   return cargar('../src/services/sire/sireSunatClient.service.js', {
     'node-fetch': fetch,
     '../../repositories/sire/sire.repository': {
-      obtenerCredencialesSire: async () => ({ sire_id: 'ID', sire_secret: 'SECRET', sire_sol: 'SOL', sire_solpwd: 'PWD' }),
+      obtenerCredencialesSire: async () => ({ sire_id: 'ID', sire_secret: 'SECRET', sunat_sol: 'SOL', sunat_solpwd: 'PWD' }),
     },
   });
 }

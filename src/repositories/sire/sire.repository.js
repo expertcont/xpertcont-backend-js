@@ -3,7 +3,7 @@ const pool = require('../../db');
 const obtenerCredencialesSire = async ({ idAnfitrion, documentoId }, db = pool) => {
   const result = await db.query(
     `
-      SELECT sire_id, sire_secret, sire_sol, sire_solpwd
+      SELECT sire_id, sire_secret, sire_sol, sunat_sol, sire_solpwd, sunat_solpwd
         FROM mad_usuariocontabilidad
        WHERE id_usuario = $1
          AND documento_id = $2

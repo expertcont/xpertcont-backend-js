@@ -7,7 +7,7 @@ function cliente(html=false) {
   const urls=[], guardados=[];
   const repository={
     obtenerDatosTicketPropuestaSire:async()=>null,
-    obtenerCredencialesSire:async()=>({sire_id:'ID',sire_secret:'SECRET',sire_sol:'USER',sire_solpwd:'PWD'}),
+    obtenerCredencialesSire:async()=>({sire_id:'ID',sire_secret:'SECRET',sunat_sol:'USER',sunat_solpwd:'PWD'}),
     registrarTicketPropuestaSire:async p=>{guardados.push(p);return p.ticket;}
   };
   const fetch=async url=>{
