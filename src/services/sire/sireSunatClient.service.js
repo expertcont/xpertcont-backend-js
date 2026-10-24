@@ -36,7 +36,17 @@ const obtenerCredencialesSire = async ({ idAnfitrion, documentoId, db }) => {
 
 const SCOPE_SIRE = 'https://api-sire.sunat.gob.pe';
 
-const obtenerTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError, db }) => {
+// Cache de tokens SUNAT: evita regenerar el token en cada consulta (SUNAT
+// limita los logins repetidos en masa). Se guarda por empresa+scope y se
+// reutiliza hasta ~5 min antes del exp del JWT (SUNAT emite 3600s de vigencia).
+// Si se cambian credenciales en la BD, el token anterior sigue vigente hasta 1h.
+const MARGEN_TOKEN_SEG = 300;
+const tokensEnCache = new Map();
+const decodificarJwt = (token = '') => {
+  try { return JSON.parse(Buffer.from(String(token).split('.')[1], 'base64').toString('utf8')); } catch { return null; }
+};
+
+const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError, db }) => {
   const credenciales = await obtenerCredencialesSire({ idAnfitrion, documentoId, db });
   const clientId = limpiarTexto(credenciales.sire_id);
   const clientSecret = limpiarTexto(credenciales.sire_secret);
@@ -70,6 +80,23 @@ const obtenerTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
   }
 
   return data.access_token;
+};
+
+// Devuelve el token del cache si existe; si no, lo genera una sola vez y lo
+// comparte con las llamadas concurrentes hasta su vencimiento.
+const obtenerTokenSunat = ({ idAnfitrion, documentoId, scope, mensajeError, db }) => {
+  const clave = `${idAnfitrion}|${documentoId}|${scope}`;
+  const cacheado = tokensEnCache.get(clave);
+  if (cacheado) return cacheado;
+  const promesa = generarTokenSunat({ idAnfitrion, documentoId, scope, mensajeError, db }).then((token) => {
+    const expiracion = decodificarJwt(token)?.exp;
+    const msVigencia = expiracion ? Math.max(0, (expiracion - MARGEN_TOKEN_SEG) * 1000 - Date.now()) : 0;
+    if (msVigencia > 0) setTimeout(() => tokensEnCache.delete(clave), msVigencia).unref();
+    return token;
+  });
+  tokensEnCache.set(clave, promesa);
+  promesa.catch(() => tokensEnCache.delete(clave));
+  return promesa;
 };
 
 const obtenerTokenSire = (args) =>
