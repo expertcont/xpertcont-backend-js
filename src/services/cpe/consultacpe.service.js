@@ -11,11 +11,16 @@ const { obtenerTokenSunat } = require('../sire/sireSunatClient.service');
 const SCOPE_CPE = 'https://api-cpe.sunat.gob.pe';
 const CPE_BASE = 'https://api-cpe.sunat.gob.pe/v1/contribuyente/consultacpe/comprobantes';
 
+// Sufijos de archivo (dos digitos, verificados contra el trafico del portal):
+// 01=PDF, 02=XML, 03=CDR. El "-2" final de la llave es el origen/rol de la
+// consulta (receptor) y tambien usa "-2" el portal en ambas llamadas.
 const FORMATOS = {
   pdf: { sufijo: '01', extension: '.pdf' },
   xml: { sufijo: '02', extension: '.xml' },
   cdr: { sufijo: '03', extension: '.xml' },
 };
+// Origen de la consulta: 2 = receptor (compras). El portal lo usa constante.
+const CODIGO_ORIGEN = '2';
 
 const MENSAJES_HTTP = {
   400: 'SUNAT rechazo la consulta del comprobante.',
@@ -25,28 +30,25 @@ const MENSAJES_HTTP = {
   429: 'SUNAT esta limitando la frecuencia. Reintentar mas tarde.',
 };
 
-// El segmento "-2" de la llave se tomo de un repositorio de terceros.
-// NO esta verificado contra la documentacion oficial de SUNAT.
-const CODIGO_LLAVE = '2';
-
 const sinEspacios = (value = '') => String(value ?? '').trim();
 const soloDigitos = (value = '') => sinEspacios(value).replace(/\D/g, '');
 
 const obtenerTokenCpe = (args) =>
   obtenerTokenSunat({ ...args, scope: SCOPE_CPE, mensajeError: 'SUNAT no devolvio token CPE.' });
 
-const construirLlaveCpe = ({ ruc, tipo, serie, numero, codigo = CODIGO_LLAVE }) => {
+const construirLlaveCpe = ({ ruc, tipo, serie, numero, codigo = CODIGO_ORIGEN }) => {
   const rucLimpio = soloDigitos(ruc);
   const tipoLimpio = sinEspacios(tipo).padStart(2, '0');
   const serieLimpia = sinEspacios(serie).toUpperCase();
   const numeroLimpio = soloDigitos(numero);
-  const codigoLimpio = sinEspacios(codigo) || CODIGO_LLAVE;
+  const codigoLimpio = sinEspacios(codigo) || CODIGO_ORIGEN;
 
   const faltan = [];
   if (!rucLimpio) faltan.push('ruc');
   if (!tipoLimpio) faltan.push('tipo');
   if (!serieLimpia) faltan.push('serie');
   if (!numeroLimpio) faltan.push('numero');
+  if (!codigoLimpio) faltan.push('codigo');
   if (faltan.length) {
     throw Object.assign(new Error(`Faltan datos del comprobante: ${faltan.join(', ')}.`), { statusCode: 400 });
   }
@@ -102,7 +104,15 @@ const descargarComprobanteCpe = async ({
 
   const llave = construirLlaveCpe({ ruc, tipo, serie, numero, codigo });
   const token = await obtenerTokenCpe({ idAnfitrion, documentoId, db });
+  // Igual que el portal e-factura: GET .../{llave}/{sufijo}, con el codigo de
+  // archivo como segmento final separado (verificado contra el trafico real).
   const url = `${CPE_BASE}/${llave}/${definicion.sufijo}`;
+
+  // Diagnostico: decodifica el JWT para verificar si el token incluye el
+  // recurso consultacpe. NO muestra el token completo ni credenciales.
+  const fragmentoJwt = token.split('.')[1];
+  const jwt = (() => { try { return JSON.parse(Buffer.from(fragmentoJwt, 'base64').toString('utf8')); } catch { return null; } })();
+  console.log('[SUNAT CPE] token aud:', JSON.stringify(jwt?.aud ?? null));
 
   const response = await fetch(url, {
     method: 'GET',
@@ -126,6 +136,7 @@ const descargarComprobanteCpe = async ({
   }
 
   if (!response.ok) {
+    console.error('[SUNAT CPE] HTTP', response.status, url, (texto || '').slice(0, 300));
     const mensaje =
       (data && (data.msg || data.message || data.error)) ||
       MENSAJES_HTTP[response.status] ||
