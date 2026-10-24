@@ -165,7 +165,7 @@ const obtenerVentasTrans = async ({ periodo, id_anfitrion, documento_id, dia, id
       idPuntoVenta,
     });
     const destinosPeriodo = incluirDestinos
-      ? await repository.obtenerDestinosPeriodo({ periodo, id_anfitrion, documento_id, idPuntoVenta })
+      ? await repository.obtenerDestinosPeriodo({ periodo, id_anfitrion, documento_id, idPuntoVenta, dia })
       : null;
 
     return {

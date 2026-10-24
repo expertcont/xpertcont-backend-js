@@ -62,5 +62,20 @@ test('opciones del periodo son opcionales y no cambian el contrato del listado a
   assert.equal(nuevo.body.meta.destinos_periodo, destinos);
   assert.equal(consultasDestinos, 1);
   assert.equal(filtros.idPuntoVenta, 'P');
-  assert.equal(filtros.dia, undefined);
+  assert.equal(filtros.dia, '23');
 });
+
+for (const origen of ['', 'ORIGEN']) {
+  test(`el dia filtra en SQL antes de obtener destinos distintos, origen ${origen || 'todos'}`, async () => {
+    let consulta;
+    let parametros;
+    const repo = cargar('../src/repositories/transporte/transventa.repository.js', {
+      '../../db': { query: async (sql, values) => { consulta = sql; parametros = values; return { rows: [] }; } },
+      '../transventaColumnas': {},
+    });
+    await repo.obtenerDestinosPeriodo({ periodo: '2026-10', id_anfitrion: 'U', documento_id: 'D', idPuntoVenta: origen, dia: '3' });
+    assert.deepEqual(Array.from(parametros), ['2026-10', 'U', 'D', ...(origen ? [origen] : []), '2026-10-03']);
+    assert.match(consulta, origen ? /tv.r_fecemi = \$5::date/ : /tv.r_fecemi = \$4::date/);
+    assert.match(consulta, /SELECT DISTINCT tv.id_punto_venta_dest/);
+  });
+}

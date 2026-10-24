@@ -149,11 +149,12 @@ const obtenerOperaciones = async ({
   return result.rows;
 };
 
-// Destinos con encomiendas en el periodo y agencia de origen. No depende del
-// dia ni del texto buscado: las opciones del selector deben permanecer estables.
-const obtenerDestinosPeriodo = async ({ periodo, id_anfitrion, documento_id, idPuntoVenta }) => {
+// Destinos con encomiendas en el dia y agencia de origen seleccionados.
+// Con dia='*' se consideran todos los movimientos del periodo.
+const obtenerDestinosPeriodo = async ({ periodo, id_anfitrion, documento_id, idPuntoVenta, dia = '*' }) => {
   const params = [periodo, id_anfitrion, documento_id];
   const porOrigen = idPuntoVenta ? ` AND tv.id_punto_venta = $${params.push(idPuntoVenta)}` : '';
+  const porDia = dia !== '*' ? ` AND tv.r_fecemi = $${params.push(`${periodo}-${String(dia).padStart(2, '0')}`)}::date` : '';
   const result = await pool.query(`
     SELECT DISTINCT tv.id_punto_venta_dest,
            COALESCE(NULLIF(TRIM(pv.nombre), ''), tv.id_punto_venta_dest::text) AS nombre
@@ -166,6 +167,7 @@ const obtenerDestinosPeriodo = async ({ periodo, id_anfitrion, documento_id, idP
        AND tv.tipo_operacion = 'E'
        AND NULLIF(TRIM(tv.id_punto_venta_dest::text), '') IS NOT NULL
        ${porOrigen}
+       ${porDia}
      ORDER BY nombre, tv.id_punto_venta_dest
   `, params);
   return result.rows;
