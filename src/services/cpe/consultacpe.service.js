@@ -137,7 +137,10 @@ const descargarComprobanteCpe = async ({
 
   if (!response.ok) {
     console.error('[SUNAT CPE] HTTP', response.status, url, (texto || '').slice(0, 300));
+    const detalles = Array.isArray(data?.errors) && data.errors.length
+      ? data.errors.map((e) => e.desError || e.msg).filter(Boolean).join(' ') : '';
     const mensaje =
+      detalles ||
       (data && (data.msg || data.message || data.error)) ||
       MENSAJES_HTTP[response.status] ||
       `SUNAT respondio HTTP ${response.status}.`;

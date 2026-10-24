@@ -21,6 +21,7 @@ function entorno({ registros, ticket = 'COMPRA1', cambiaTicket = false, fallo = 
     propuestas: {
       obtenerPropuesta: async () => { if (fallo === 'propuesta') throw Error('tabla ausente'); return { ticket, detalle: parsear() }; },
       guardarPropuesta: async (...args) => { llamadas.guardar.push(args); },
+      registrarDatos: async () => {},
     },
     tickets: {
       obtenerDatosTicketPropuestaSire: async p => {

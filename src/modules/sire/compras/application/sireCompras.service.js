@@ -95,11 +95,18 @@ const generarToken = async (entrada) => {
 
 // Descarga XML individual via consultacpe: el token se obtiene dentro del
 // backend (scope api-cpe) con las credenciales de la BD y nunca viaja al navegador.
+// La API consultacpe exige el RUC del EMISOR (proveedor) y que sea distinto
+// del RUC logueado: SUNAT responde codError 104 cuando se envia el RUC del
+// receptor en la llave (ej. 20539579356-01-F31P-24575-2).
 const descargarXmlComprobante = async (entrada) => {
   const p = validar(entrada);
+  const rucEmisor = String(entrada.ruc_emisor || '').replace(/\D/g, '');
+  if (rucEmisor.length !== 11 || rucEmisor === p.documentoId) {
+    throw fallo('La compra no tiene registrado un RUC de emisor distinto al RUC de la empresa. Revisa el registro en Compras por declarar.', 400);
+  }
   try {
     const resultado = await descargarComprobanteCpe({
-      ruc: p.documentoId,
+      ruc: rucEmisor,
       tipo: entrada.tipo_comprobante,
       serie: entrada.serie,
       numero: entrada.numero,
