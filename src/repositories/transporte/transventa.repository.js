@@ -149,6 +149,28 @@ const obtenerOperaciones = async ({
   return result.rows;
 };
 
+// Destinos con encomiendas en el periodo y agencia de origen. No depende del
+// dia ni del texto buscado: las opciones del selector deben permanecer estables.
+const obtenerDestinosPeriodo = async ({ periodo, id_anfitrion, documento_id, idPuntoVenta }) => {
+  const params = [periodo, id_anfitrion, documento_id];
+  const porOrigen = idPuntoVenta ? ` AND tv.id_punto_venta = $${params.push(idPuntoVenta)}` : '';
+  const result = await pool.query(`
+    SELECT DISTINCT tv.id_punto_venta_dest,
+           COALESCE(NULLIF(TRIM(pv.nombre), ''), tv.id_punto_venta_dest::text) AS nombre
+      FROM mve_transventa tv
+      LEFT JOIN mad_punto_venta pv
+        ON pv.id_usuario = tv.id_usuario
+       AND pv.documento_id = tv.documento_id
+       AND pv.id_punto_venta = tv.id_punto_venta_dest
+     WHERE tv.periodo = $1 AND tv.id_usuario = $2 AND tv.documento_id = $3
+       AND tv.tipo_operacion = 'E'
+       AND NULLIF(TRIM(tv.id_punto_venta_dest::text), '') IS NOT NULL
+       ${porOrigen}
+     ORDER BY nombre, tv.id_punto_venta_dest
+  `, params);
+  return result.rows;
+};
+
 // Una operacion por clave, con el nombre de su ruta.
 const obtenerOperacion = async ({ periodo, id_anfitrion, documento_id, cod, serie, num, elem }) => {
   const query = `
@@ -383,6 +405,7 @@ module.exports = {
   grabarEncomienda,
   obtenerOperacionCreada,
   obtenerOperaciones,
+  obtenerDestinosPeriodo,
   obtenerOperacion,
   obtenerEstadoSunat,
   obtenerRuta,

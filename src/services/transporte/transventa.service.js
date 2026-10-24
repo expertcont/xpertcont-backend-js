@@ -151,7 +151,7 @@ const crearVentaTrans = async (reqBody) => {
 // ---------------------------------------------------------------------------
 // Listar y obtener
 // ---------------------------------------------------------------------------
-const obtenerVentasTrans = async ({ periodo, id_anfitrion, documento_id, dia, idPuntoVentaCrudo, estadoCrudo }) => {
+const obtenerVentasTrans = async ({ periodo, id_anfitrion, documento_id, dia, idPuntoVentaCrudo, estadoCrudo, incluirDestinos = false }) => {
   const idPuntoVenta = normalizarTexto(idPuntoVentaCrudo);
   const estadoListado = normalizarTexto(estadoCrudo).toLowerCase();
 
@@ -164,12 +164,16 @@ const obtenerVentasTrans = async ({ periodo, id_anfitrion, documento_id, dia, id
       dia,
       idPuntoVenta,
     });
+    const destinosPeriodo = incluirDestinos
+      ? await repository.obtenerDestinosPeriodo({ periodo, id_anfitrion, documento_id, idPuntoVenta })
+      : null;
 
     return {
       status: 200,
       body: {
         success: true,
-        data: rows
+        data: rows,
+        ...(incluirDestinos ? { meta: { destinos_periodo: destinosPeriodo } } : {}),
       }
     };
   } catch (error) {

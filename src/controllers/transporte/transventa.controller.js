@@ -29,6 +29,7 @@ const obtenerVentasTrans = async (req, res) => {
     dia,
     idPuntoVentaCrudo: req.params.id_punto_venta || req.query?.id_punto_venta,
     estadoCrudo: req.query?.estado || req.query?.registrado,
+    incluirDestinos: req.query?.destinos_periodo === '1',
   });
 
   return res.status(respuesta.status).json(respuesta.body);
