@@ -116,7 +116,7 @@ const descargarXmlComprobante = async (entrada) => {
     });
     return { nombre_archivo: resultado.nombre_archivo, archivo: resultado.contenido };
   } catch (error) {
-    throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: `SUNAT no devolvio el XML del comprobante: ${error.message}` });
+    throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: error.mensajePublico || `SUNAT no devolvio el XML del comprobante: ${error.message}` });
   }
 };
 return { recuperar, generarTicket, consultar, descargar, generarToken, descargarXmlComprobante, validar };

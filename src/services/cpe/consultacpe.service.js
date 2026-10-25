@@ -1,6 +1,8 @@
 const AdmZip = require('adm-zip');
 const fetch = require('node-fetch');
 const { obtenerTokenSunat } = require('../sire/sireSunatClient.service');
+const { randomUUID } = require('crypto');
+const { resumirRespuesta, registrar } = require('./diagnosticoSunat');
 
 // ------------------------------------------------------------------
 // Servicio de consulta de comprobantes de pago (consultacpe).
@@ -24,8 +26,8 @@ const CODIGO_ORIGEN = '2';
 
 const MENSAJES_HTTP = {
   400: 'SUNAT rechazo la consulta del comprobante.',
-  401: 'El token CPE no tiene permiso sobre este recurso.',
-  403: 'El cliente SUNAT no habilito el recurso consultacpe.',
+  401: 'SUNAT rechazo la autorizacion de la consulta CPE.',
+  403: 'SUNAT denego el acceso a la consulta CPE.',
   404: 'El comprobante no existe para la llave enviada.',
   429: 'SUNAT esta limitando la frecuencia. Reintentar mas tarde.',
 };
@@ -103,7 +105,16 @@ const descargarComprobanteCpe = async ({
   }
 
   const llave = construirLlaveCpe({ ruc, tipo, serie, numero, codigo });
-  const token = await obtenerTokenCpe({ idAnfitrion, documentoId, db });
+  const contexto = { referencia: randomUUID(), rucEmpresa: documentoId, comprobante: llave, scope: SCOPE_CPE };
+  const diagnostico = {};
+  let etapa = 'token';
+  registrar(contexto, etapa, 'inicio');
+  try {
+  const token = await obtenerTokenCpe({ idAnfitrion, documentoId, db, diagnostico });
+  registrar(contexto, etapa, 'disponible', diagnostico);
+  etapa = 'descarga';
+  // El HTTP del token no describe la siguiente llamada al recurso CPE.
+  delete diagnostico.httpSunat;
   // Igual que el portal e-factura: GET .../{llave}/{sufijo}, con el codigo de
   // archivo como segmento final separado (verificado contra el trafico real).
   const url = `${CPE_BASE}/${llave}/${definicion.sufijo}`;
@@ -112,7 +123,9 @@ const descargarComprobanteCpe = async ({
   // recurso consultacpe. NO muestra el token completo ni credenciales.
   const fragmentoJwt = token.split('.')[1];
   const jwt = (() => { try { return JSON.parse(Buffer.from(fragmentoJwt, 'base64').toString('utf8')); } catch { return null; } })();
-  console.log('[SUNAT CPE] token aud:', JSON.stringify(jwt?.aud ?? null));
+  registrar(contexto, etapa, 'solicitando', {
+    ...diagnostico, audiencia: jwt?.aud ?? null, expiracion: jwt?.exp ?? null,
+  });
 
   const response = await fetch(url, {
     method: 'GET',
@@ -136,7 +149,7 @@ const descargarComprobanteCpe = async ({
   }
 
   if (!response.ok) {
-    console.error('[SUNAT CPE] HTTP', response.status, url, (texto || '').slice(0, 300));
+    Object.assign(diagnostico, { httpSunat: response.status }, resumirRespuesta(data, [token]));
     const detalles = Array.isArray(data?.errors) && data.errors.length
       ? data.errors.map((e) => e.desError || e.msg).filter(Boolean).join(' ') : '';
     const mensaje =
@@ -144,11 +157,12 @@ const descargarComprobanteCpe = async ({
       (data && (data.msg || data.message || data.error)) ||
       MENSAJES_HTTP[response.status] ||
       `SUNAT respondio HTTP ${response.status}.`;
-    throw Object.assign(new Error(mensaje), { statusCode: response.status, respuestaSunat: data || texto.slice(0, 300) });
+    throw Object.assign(new Error(mensaje), { statusCode: response.status });
   }
 
   const base64Archivo = data?.valArchivo || '';
   if (!base64Archivo) {
+    Object.assign(diagnostico, { httpSunat: response.status }, resumirRespuesta(data, [token]));
     throw Object.assign(
       new Error(data?.msg || data?.message || 'SUNAT no devolvio archivo para el comprobante solicitado.'),
       { statusCode: 404, respuestaSunat: data }
@@ -161,6 +175,7 @@ const descargarComprobanteCpe = async ({
   }
 
   const { contenido, nombre, anidado } = extraerDesdeZip(bufferZip, definicion.extension);
+  registrar(contexto, etapa, 'xml_descargado', { ...diagnostico, httpSunat: response.status, bytes: contenido.length });
 
   return {
     contenido,
@@ -172,6 +187,25 @@ const descargarComprobanteCpe = async ({
     cod_ruc: data?.codRuc || null,
     nom_archivo: data?.nomArchivo || null,
   };
+  } catch (error) {
+    const resultado = [401, 403].includes(diagnostico.httpSunat) ? 'autorizacion_rechazada' : 'fallo';
+    registrar(contexto, etapa, resultado, diagnostico);
+    const detalle = [
+      `RUC ${documentoId}`, `etapa: ${etapa === 'token' ? 'generacion del token CPE' : 'descarga del XML'}`,
+      diagnostico.credencial && `credencial: ${diagnostico.credencial}`,
+      typeof diagnostico.tokenCache === 'boolean' && `token: ${diagnostico.tokenCache ? 'cache' : 'nuevo'}`,
+      diagnostico.httpSunat && `HTTP SUNAT ${diagnostico.httpSunat}`,
+      diagnostico.codigoSunat && `codigo SUNAT: ${diagnostico.codigoSunat}`,
+      `referencia: ${contexto.referencia}`,
+    ].filter(Boolean).join('; ');
+    const mensaje = diagnostico.mensajeSunat || (etapa === 'token'
+      ? 'No se pudo obtener el token CPE. Revisa el diagnostico del backend.'
+      : 'No se pudo descargar el XML. Revisa el diagnostico del backend.');
+    error.mensajePublico = `${mensaje} (${detalle})`;
+    // El controlador tambien registra error.message en fallos 5xx.
+    error.message = error.mensajePublico;
+    throw error;
+  }
 };
 
 module.exports = {

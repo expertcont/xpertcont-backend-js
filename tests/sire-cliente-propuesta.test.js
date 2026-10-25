@@ -20,6 +20,7 @@ function cliente(html=false) {
     module,URLSearchParams,Date,require:id=>{
       if(id==='node-fetch')return fetch;
       if(id==='../../repositories/sire/sire.repository')return repository;
+      if(id==='../cpe/diagnosticoSunat')return require('../src/services/cpe/diagnosticoSunat');
       throw Error(id);
     }
   });

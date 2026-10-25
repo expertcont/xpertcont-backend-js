@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const repository = require('../../repositories/sire/sire.repository');
+const { resumirRespuesta, registrar } = require('../cpe/diagnosticoSunat');
 
 const LIBRO_SIRE_MAP = {
   '014': '140000',
@@ -70,18 +71,29 @@ const paresSol = (credenciales) => {
   return [];
 };
 
-const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError, db }) => {
+const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError, db, diagnostico }) => {
   const credenciales = await obtenerCredencialesSire({ idAnfitrion, documentoId, db });
   const clientId = limpiarTexto(credenciales.sire_id);
   const clientSecret = limpiarTexto(credenciales.sire_secret);
   const url = `https://api-seguridad.sunat.gob.pe/v1/clientessol/${clientId}/oauth2/token/`;
   const errores = [];
+  const esCpe = scope === 'https://api-cpe.sunat.gob.pe';
+  const contexto = { rucEmpresa: documentoId, scope };
+  const secretos = [clientId, clientSecret, credenciales.sunat_sol, credenciales.sunat_solpwd,
+    credenciales.sire_sol, credenciales.sire_solpwd].map(limpiarTexto);
+  if (esCpe) registrar(contexto, 'configuracion', 'evaluada', {
+    clienteIdPresente: Boolean(clientId), clienteSecretPresente: Boolean(clientSecret),
+    principalCompleto: Boolean(limpiarTexto(credenciales.sunat_sol) && limpiarTexto(credenciales.sunat_solpwd)),
+    secundarioCompleto: Boolean(limpiarTexto(credenciales.sire_sol) && limpiarTexto(credenciales.sire_solpwd)),
+  });
 
   // Reintento: si auth falla con el par principal, prueba el secundario
   // (usuario tipo MODDATOS), que es el que SUNAT permite para el API actualmente.
   // El log deja rastro (sin credenciales) de que par se uso con exito; solo se
   // emite al generar el token, no en cada llamada cacheada.
   for (const { par, sol, password } of paresSol(credenciales)) {
+    if (diagnostico) diagnostico.credencial = par;
+    if (esCpe) registrar(contexto, 'token', 'solicitando', { credencial: par });
     const body = new URLSearchParams({
       grant_type: 'password',
       scope,
@@ -103,8 +115,14 @@ const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
     const data = await response.json().catch(() => ({}));
 
     if (response.ok && data.access_token) {
+      if (esCpe) registrar(contexto, 'token', 'generado', { credencial: par, httpSunat: response.status });
       console.log(`[SUNAT] token ${scope.includes('api-sire') ? 'SIRE' : 'CPE'} generado con credencial ${par} para ${documentoId}`);
       return data.access_token;
+    }
+    if (esCpe) {
+      const resumen = resumirRespuesta(data, secretos);
+      Object.assign(diagnostico || {}, resumen, { httpSunat: response.status });
+      registrar(contexto, 'token', 'rechazado', { credencial: par, httpSunat: response.status, ...resumen });
     }
     errores.push(data.error_description || data.error || mensajeError);
   }
@@ -114,19 +132,28 @@ const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
 
 // Devuelve el token del cache si existe; si no, lo genera una sola vez y lo
 // comparte con las llamadas concurrentes hasta su vencimiento.
-const obtenerTokenSunat = ({ idAnfitrion, documentoId, scope, mensajeError, db }) => {
+const obtenerTokenSunat = ({ idAnfitrion, documentoId, scope, mensajeError, db, diagnostico }) => {
   const clave = `${idAnfitrion}|${documentoId}|${scope}`;
   const cacheado = tokensEnCache.get(clave);
-  if (cacheado) return cacheado;
-  const promesa = generarTokenSunat({ idAnfitrion, documentoId, scope, mensajeError, db }).then((token) => {
+  const entregar = (promesa, cache) => promesa.then(token => {
+    if (diagnostico) Object.assign(diagnostico, promesa.diagnostico, { tokenCache: cache });
+    return token;
+  }, error => {
+    if (diagnostico) Object.assign(diagnostico, promesa.diagnostico, { tokenCache: cache });
+    throw error;
+  });
+  if (cacheado) return entregar(cacheado, true);
+  const detalleToken = {};
+  const promesa = generarTokenSunat({ idAnfitrion, documentoId, scope, mensajeError, db, diagnostico: detalleToken }).then((token) => {
     const expiracion = decodificarJwt(token)?.exp;
     const msVigencia = expiracion ? Math.max(0, (expiracion - MARGEN_TOKEN_SEG) * 1000 - Date.now()) : 0;
     if (msVigencia > 0) setTimeout(() => tokensEnCache.delete(clave), msVigencia).unref();
     return token;
   });
+  promesa.diagnostico = detalleToken;
   tokensEnCache.set(clave, promesa);
   promesa.catch(() => tokensEnCache.delete(clave));
-  return promesa;
+  return entregar(promesa, false);
 };
 
 const obtenerTokenSire = (args) =>
