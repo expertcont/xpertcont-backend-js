@@ -46,40 +46,70 @@ const decodificarJwt = (token = '') => {
   try { return JSON.parse(Buffer.from(String(token).split('.')[1], 'base64').toString('utf8')); } catch { return null; }
 };
 
+// Credenciales de usuario SOL para el API SUNAT. Importante (verificado
+// empiricamente en produccion con descargas reales): SUNAT habilita el acceso
+// al API con el usuario SOL SECUNDARIO (tipo MODDATOS/NASESTEE asociado al
+// RUC), no con el usuario principal; parece politica actual de SUNAT.
+// En la BD conviven dos pares: principal = sunat_sol/sunat_solpwd (historico,
+// no siempre valido para API) y secundario = sire_sol/sire_solpwd (el que
+// funciona). Reglas:
+//   1) Se usa SIEMPRE una pareja completa; nunca se mezcla el usuario de una
+//      con el password de la otra.
+//   2) Si el par principal esta completo se intenta primero, y si la
+//      autenticacion falla se prueba el secundario.
+//   3) Si el principal esta incompleto o null, se usa directamente el
+//      secundario.
+const paresSol = (credenciales) => {
+  const principal = [limpiarTexto(credenciales.sunat_sol), limpiarTexto(credenciales.sunat_solpwd)];
+  const secundario = [limpiarTexto(credenciales.sire_sol), limpiarTexto(credenciales.sire_solpwd)];
+  if (principal[0] && principal[1]) return [{ par: 'principal', sol: principal[0], password: principal[1] }];
+  if (secundario[0] && secundario[1]) return [{ par: 'secundario', sol: secundario[0], password: secundario[1] }];
+  if (principal[0] || principal[1] || secundario[0] || secundario[1]) {
+    return [{ par: 'incompleto', sol: principal[0] || secundario[0], password: principal[1] || secundario[1] }];
+  }
+  return [];
+};
+
 const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError, db }) => {
   const credenciales = await obtenerCredencialesSire({ idAnfitrion, documentoId, db });
   const clientId = limpiarTexto(credenciales.sire_id);
   const clientSecret = limpiarTexto(credenciales.sire_secret);
-  const usuarioSol = limpiarTexto(credenciales.sunat_sol) || limpiarTexto(credenciales.sire_sol);
-  const username = obtenerUsuarioSolSire({ documentoId, sol: usuarioSol });
-  const password = limpiarTexto(credenciales.sunat_solpwd) || limpiarTexto(credenciales.sire_solpwd);
-
   const url = `https://api-seguridad.sunat.gob.pe/v1/clientessol/${clientId}/oauth2/token/`;
-  const body = new URLSearchParams({
-    grant_type: 'password',
-    scope,
-    client_id: clientId,
-    client_secret: clientSecret,
-    username,
-    password,
-  });
+  const errores = [];
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body,
-    timeout: 30000,
-  });
+  // Reintento: si auth falla con el par principal, prueba el secundario
+  // (usuario tipo MODDATOS), que es el que SUNAT permite para el API actualmente.
+  // El log deja rastro (sin credenciales) de que par se uso con exito; solo se
+  // emite al generar el token, no en cada llamada cacheada.
+  for (const { par, sol, password } of paresSol(credenciales)) {
+    const body = new URLSearchParams({
+      grant_type: 'password',
+      scope,
+      client_id: clientId,
+      client_secret: clientSecret,
+      username: obtenerUsuarioSolSire({ documentoId, sol }),
+      password,
+    });
 
-  const data = await response.json();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+      timeout: 30000,
+    });
 
-  if (!response.ok || !data.access_token) {
-    throw new Error(data.error_description || data.error || mensajeError);
+    const data = await response.json().catch(() => ({}));
+
+    if (response.ok && data.access_token) {
+      console.log(`[SUNAT] token ${scope.includes('api-sire') ? 'SIRE' : 'CPE'} generado con credencial ${par} para ${documentoId}`);
+      return data.access_token;
+    }
+    errores.push(data.error_description || data.error || mensajeError);
   }
 
-  return data.access_token;
+  throw new Error(errores.join(' | '));
 };
 
 // Devuelve el token del cache si existe; si no, lo genera una sola vez y lo
