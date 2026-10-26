@@ -226,7 +226,7 @@ const descargarComprobanteCpe = async ({
     const resultado = [401, 403].includes(diagnostico.httpSunat) ? 'autorizacion_rechazada' : 'fallo';
     registrar(contexto, etapa, resultado, diagnostico);
     const detalle = [
-      `RUC ${documentoId}`, `etapa: ${etapa === 'token' ? 'generacion del token CPE' : 'descarga del XML'}`,
+      `RUC ${documentoId}`, `etapa: ${etapa === 'token' ? 'generacion del token CPE' : etapa === 'token_portal' ? 'login del portal (fallback)' : 'descarga del XML'}`,
       diagnostico.credencial && `credencial: ${diagnostico.credencial}`,
       typeof diagnostico.tokenCache === 'boolean' && `token: ${diagnostico.tokenCache ? 'cache' : 'nuevo'}`,
       diagnostico.httpSunat && `HTTP SUNAT ${diagnostico.httpSunat}`,
