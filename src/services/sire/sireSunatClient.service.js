@@ -92,7 +92,11 @@ const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
   // El log deja rastro (sin credenciales) de que par se uso con exito; solo se
   // emite al generar el token, no en cada llamada cacheada.
   for (const { par, sol, password } of paresSol(credenciales)) {
-    if (diagnostico) diagnostico.credencial = par;
+    if (diagnostico) Object.assign(diagnostico, {
+      credencial: par, camposSol: par === 'principal' ? 'sunat_sol/sunat_solpwd'
+        : par === 'secundario' ? 'sire_sol/sire_solpwd' : 'incompletos',
+      grantSolicitado: 'password',
+    });
     if (esCpe) registrar(contexto, 'token', 'solicitando', { credencial: par });
     const body = new URLSearchParams({
       grant_type: 'password',

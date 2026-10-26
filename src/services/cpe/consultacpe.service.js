@@ -2,7 +2,7 @@ const AdmZip = require('adm-zip');
 const fetch = require('node-fetch');
 const { obtenerTokenSunat } = require('../sire/sireSunatClient.service');
 const { randomUUID } = require('crypto');
-const { resumirRespuesta, registrar } = require('./diagnosticoSunat');
+const { resumirRespuesta, registrar, resumirToken } = require('./diagnosticoSunat');
 
 // ------------------------------------------------------------------
 // Servicio de consulta de comprobantes de pago (consultacpe).
@@ -119,12 +119,10 @@ const descargarComprobanteCpe = async ({
   // archivo como segmento final separado (verificado contra el trafico real).
   const url = `${CPE_BASE}/${llave}/${definicion.sufijo}`;
 
-  // Diagnostico: decodifica el JWT para verificar si el token incluye el
-  // recurso consultacpe. NO muestra el token completo ni credenciales.
-  const fragmentoJwt = token.split('.')[1];
-  const jwt = (() => { try { return JSON.parse(Buffer.from(fragmentoJwt, 'base64').toString('utf8')); } catch { return null; } })();
+  // Solo declaraciones seleccionadas para comparar emisiones; no valida la firma.
+  const resumenToken = resumirToken(token, documentoId);
   registrar(contexto, etapa, 'solicitando', {
-    ...diagnostico, audiencia: jwt?.aud ?? null, expiracion: jwt?.exp ?? null,
+    ...diagnostico, ...resumenToken,
   });
 
   const response = await fetch(url, {

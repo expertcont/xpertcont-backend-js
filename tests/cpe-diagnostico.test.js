@@ -3,11 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { resumirRespuesta } = require('../src/services/cpe/diagnosticoSunat');
+const { resumirRespuesta, resumirToken } = require('../src/services/cpe/diagnosticoSunat');
 
 function entorno({ tokenRechazado = false, descargaRechazada = false } = {}) {
   const logs = [];
-  const logger = { registrar: (...args) => logs.push(args), resumirRespuesta };
+  const logger = { registrar: (...args) => logs.push(args), resumirRespuesta, resumirToken };
   const cargar = (archivo, dependencias) => {
     const module = { exports: {} };
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/services', archivo), 'utf8'), {
@@ -90,4 +90,37 @@ test('token valido y recurso rechazado informa etapa de descarga y codigo SUNAT'
     return true;
   });
   assert.equal(e.logs.at(-1)[2], 'autorizacion_rechazada');
+});
+
+test('resume declaraciones del token sin exponer datos de sesion ni identificadores de aplicacion', () => {
+  const claims = { sub: params.documentoId, grantType: 'authorization_token',
+    iss: 'https://api-seguridad.sunat.gob.pe/v1/clientessol/CLIENTE_PRIVADO/oauth2/token/',
+    clientId: 'CLIENTE_PRIVADO', userdata: { ticket: 'TICKET_PRIVADO', login: 'USUARIO_PRIVADO' },
+    iat: 1000, nbf: 1000, exp: 4600,
+    aud: JSON.stringify([{ api: 'https://api-cpe.sunat.gob.pe', recurso: [
+      { id: '/v1/contribuyente/consultacpe', indicador: '1', gt: '100100', secreto: 'DATO_PRIVADO' },
+    ] }]),
+  };
+  const token = `cabecera.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.firma`;
+  const r = resumirToken(token, params.documentoId, 2000 * 1000);
+  assert.equal(r.grantType, 'authorization_token');
+  assert.equal(r.emisorHost, 'api-seguridad.sunat.gob.pe');
+  assert.equal(r.consultacpeDeclarado, true);
+  assert.equal(r.rucTokenCoincide, true);
+  assert.equal(r.segundosRestantes, 2600);
+  assert.equal(r.tokenVencido, false);
+  assert.equal(r.recursosCpe[0].gt, '100100');
+  assert.doesNotMatch(JSON.stringify(r), /PRIVADO|cabecera|firma/);
+  assert.equal(resumirToken(token, '20999999999', 4600 * 1000).rucTokenCoincide, false);
+  assert.equal(resumirToken(token, params.documentoId, 4600 * 1000).tokenVencido, true);
+});
+
+test('distingue recurso ausente, deshabilitado y audiencia no interpretable', () => {
+  const resumen = aud => resumirToken(`h.${Buffer.from(JSON.stringify({ aud })).toString('base64url')}.f`, params.documentoId);
+  assert.equal(resumen([]).consultacpeDeclarado, false);
+  assert.equal(resumen([{ api: 'https://api-cpe.sunat.gob.pe', recurso: [
+    { id: '/v1/contribuyente/consultacpe', indicador: '0' },
+  ] }]).consultacpeDeclarado, false);
+  assert.equal(resumen('otra-audiencia').consultacpeDeclarado, null);
+  assert.equal(resumirToken('no-es-jwt', params.documentoId).jwtDecodificable, false);
 });
