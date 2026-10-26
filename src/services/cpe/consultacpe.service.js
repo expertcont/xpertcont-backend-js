@@ -1,6 +1,7 @@
 const AdmZip = require('adm-zip');
 const fetch = require('node-fetch');
 const { obtenerTokenSunat } = require('../sire/sireSunatClient.service');
+const { obtenerTokenPortalCpe } = require('./loginPortalSunat.service');
 const { randomUUID } = require('crypto');
 const { resumirRespuesta, registrar, resumirToken } = require('./diagnosticoSunat');
 
@@ -120,7 +121,43 @@ const descargarComprobanteCpe = async ({
   const url = `${CPE_BASE}/${llave}/${definicion.sufijo}`;
 
   // Solo declaraciones seleccionadas para comparar emisiones; no valida la firma.
+  let tokenUsado = token;
   const resumenToken = resumirToken(token, documentoId);
+  // El permiso se otorga a la APLICACION (client_id), no al token: si el aud
+  // no declara consultacpe con indicador activo, ninguna llamada pasa y SUNAT
+  // responde 401 generico. Fallback: obtener el token como el PORTAL e-factura
+  // lo hace (login por HTTP con la app interna de SUNAT que SI declara
+  // consultacpe para cualquier usuario SOL), tal como hace el usuario al
+  // consultar manualmente en el portal. Ver loginPortalSunat.service.js.
+  if (resumenToken.consultacpeDeclarado === false) {
+    registrar(contexto, etapa, 'permiso_faltante', resumenToken);
+    Object.assign(diagnostico, { recursoFaltante: '/v1/contribuyente/consultacpe' });
+    etapa = 'token_portal';
+    try {
+      tokenUsado = await obtenerTokenPortalCpe({ idAnfitrion, documentoId, db, diagnostico });
+      const resumenPortal = resumirToken(tokenUsado, documentoId);
+      if (resumenPortal.consultacpeDeclarado === false) {
+        throw Object.assign(
+          new Error('Ni la aplicacion propia ni el login portal entregaron el recurso consultacpe.'),
+          { statusCode: 403 }
+        );
+      }
+      console.log(`[SUNAT CPE] recurso consultacpe ausente en la app propia: usando LOGIN PORTAL para ${documentoId}`);
+      registrar(contexto, etapa, 'disponible', diagnostico);
+      etapa = 'descarga';
+      delete diagnostico.httpSunat;
+    } catch (portalError) {
+      const aviso = [
+        'La aplicacion SUNAT de esta empresa no tiene habilitado el recurso /v1/contribuyente/consultacpe (el token no lo declara).',
+        'El intento por login del portal tambien fallo:',
+        portalError.message,
+        'Habilita el recurso en las credenciales API SUNAT de esa empresa y reingenta.',
+      ].join(' ');
+      registrar(contexto, etapa, 'fallback_portal_fallo', { mensajePortal: portalError.message });
+      Object.assign(diagnostico, { mensajeSunat: aviso });
+      throw Object.assign(new Error(aviso), { statusCode: 403 });
+    }
+  }
   registrar(contexto, etapa, 'solicitando', {
     ...diagnostico, ...resumenToken,
   });
@@ -128,7 +165,7 @@ const descargarComprobanteCpe = async ({
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${tokenUsado}`,
       Accept: 'application/json',
       // El WAF de SUNAT corta la conexion (socket hang up) si el request no parece navegador.
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
