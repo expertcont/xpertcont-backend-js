@@ -43,6 +43,11 @@ const resumirToken = (token, rucEmpresa, ahora = Date.now()) => {
     .filter(r => typeof r?.id === 'string')
     .slice(0, 50)
     .map(r => ({ id: limpiar(r.id), indicador: limpiar(r.indicador), gt: limpiar(r.gt) })) : [];
+  const recursosSire = audienciaInterpretable ? audiencia
+    .filter(a => a?.api === 'https://api-sire.sunat.gob.pe')
+    .flatMap(a => Array.isArray(a.recurso) ? a.recurso : [])
+    .filter(r => typeof r?.id === 'string')
+    .map(r => limpiar(r.id)) : [];
   const segundosAhora = Math.floor(ahora / 1000);
   const fecha = valor => typeof valor === 'number' && Number.isFinite(valor) ? valor : null;
   const expiracion = fecha(jwt.exp);
@@ -64,6 +69,10 @@ const resumirToken = (token, rucEmpresa, ahora = Date.now()) => {
     consultacpeDeclarado: audienciaInterpretable ? recursosCpe.some(r =>
       r.id === '/v1/contribuyente/consultacpe' && r.indicador === '1') : null,
     recursosCpe,
+    // Lado SIRE: la app de la empresa debe declarar los recursos de
+    // migiegv (libros, propuesta) para que el API del SIReg los acepte.
+    migeigvDeclarado: audienciaInterpretable ? recursosSire.some(id => id.includes('migeigv')) : null,
+    recursosSire,
   };
 };
 

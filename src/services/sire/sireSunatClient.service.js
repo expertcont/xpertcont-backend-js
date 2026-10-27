@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 const repository = require('../../repositories/sire/sire.repository');
-const { resumirRespuesta, registrar } = require('../cpe/diagnosticoSunat');
+const { resumirRespuesta, registrar, resumirToken } = require('../cpe/diagnosticoSunat');
 
 const LIBRO_SIRE_MAP = {
   '014': '140000',
@@ -123,12 +123,14 @@ const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
       console.log(`[SUNAT] token ${scope.includes('api-sire') ? 'SIRE' : 'CPE'} generado con credencial ${par} para ${documentoId}`);
       return data.access_token;
     }
-    if (esCpe) {
-      const resumen = resumirRespuesta(data, secretos);
-      Object.assign(diagnostico || {}, resumen, { httpSunat: response.status });
-      registrar(contexto, 'token', 'rechazado', { credencial: par, httpSunat: response.status, ...resumen });
-    }
-    errores.push(data.error_description || data.error || mensajeError);
+    // Rechazo de la generacion del token: se registra para AMBOS scopes
+    // (antes solo CPE llevaba diagnostico; los fallos de SIRE quedaban
+    // ciegos y el usuario veia solo "fallo en autenticacion").
+    const resumen = resumirRespuesta(data, secretos);
+    Object.assign(diagnostico || {}, resumen, { httpSunat: response.status });
+    Object.assign(contexto, { credencial: par });
+    registrar(contexto, 'token', 'rechazado', { httpSunat: response.status, ...resumen });
+    errores.push(resumen.mensajeSunat || data.error_description || data.error || mensajeError);
   }
 
   throw new Error(errores.join(' | '));
@@ -216,7 +218,28 @@ const generarTicketPropuestaSire = async ({
   }
 
   if (!response.ok || !data?.numTicket) {
-    throw new Error(data?.msg || data?.message || data?.error || 'SUNAT no devolvio ticket de propuesta SIRe.');
+    // El API de SIRE rechaza el token con el generico "fallo en
+    // autenticacion": registrar el detalle real (cod de SUNAT, HTTP y si el
+    // token estaba vigente y declaraba el recurso migiegv del SIRE) para
+    // distinguir entre credencial invalida, vencida o recurso no habilitado.
+    const resumen = resumirRespuesta(data);
+    const detalleToken = resumirToken(token, documentoId);
+    registrar({ rucEmpresa: documentoId, scope: SCOPE_SIRE }, 'sire', 'ticket_rechazado', {
+      httpSunat: response.status,
+      ...resumen,
+      jwtDecodificable: detalleToken.jwtDecodificable,
+      tokenVencido: detalleToken.tokenVencido,
+      credencial: detalleToken.grantType,
+      migeigvDeclarado: detalleToken.migeigvDeclarado,
+    });
+    const pistaToken = detalleToken.jwtDecodificable
+      ? ` (token ${detalleToken.tokenVencido ? 'VENCIDO' : 'vigente'}; recurso SIRE declarado: ${detalleToken.migeigvDeclarado}).`
+      : '.';
+    const mensaje = `${resumen.mensajeSunat || data?.message || data?.error || 'SUNAT no devolvio ticket de propuesta SIRe.'}${pistaToken}`;
+    throw Object.assign(new Error(mensaje), {
+      statusCode: response.status >= 400 && response.status < 500 ? response.status : 502,
+      mensajePublico: mensaje,
+    });
   }
 
   const fechaGeneracion = new Date().toISOString();
