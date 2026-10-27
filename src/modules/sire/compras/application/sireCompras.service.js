@@ -84,6 +84,18 @@ const descargar = async (entrada) => {
 // Solo diagnostico: devuelve el token SUNAT con scope api-cpe para pruebas manuales.
 // Este token NO debe persistirse ni mostrarse en produccion.
 const SCOPE_CPE = 'https://api-cpe.sunat.gob.pe';
+// Vigencia real del token segun su JWT (propiedad exp, epoch en segundos).
+// Sirve para el contador de operatividad como el de cpe-go: muestra cuanto
+// le queda al token cacheado antes de que la proxima llamada regenere.
+const vigenciaToken = (token) => {
+  try {
+    const jwt = JSON.parse(Buffer.from(String(token).split('.')[1], 'base64').toString('utf8'));
+    const exp = Number(jwt.exp) || 0;
+    if (!exp) return null;
+    const segundosRestantes = Math.max(0, exp - Math.floor(Date.now() / 1000));
+    return { expiraSeg: Math.floor(exp * 1000), segundosRestantes, expiraEn: new Date(exp * 1000).toISOString() };
+  } catch { return null; }
+};
 const generarToken = async (entrada) => {
   const p = validar(entrada);
   try {
@@ -101,7 +113,9 @@ const generarTokenPortal = async (entrada) => {
   try {
     const diagnostico = {};
     const token = await obtenerTokenPortalCpe({ idAnfitrion: p.idAnfitrion, documentoId: p.documentoId, db: p.db, diagnostico });
-    return { token, longitud: token.length, via: 'portal', diagnostico };
+    // vigencia: contador de operatividad del token (estilo cpe-go: la UI
+    // puede mostrar los segundosRestantes que le quedan antes de expirar).
+    return { token, longitud: token.length, via: 'portal', diagnostico, vigencia: vigenciaToken(token) };
   } catch (error) {
     throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: `SUNAT no entrego el token por el login portal: ${error.message}` });
   }

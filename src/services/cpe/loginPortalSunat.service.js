@@ -127,43 +127,52 @@ const seguirHastaFinal = async ({ urlInicio, cuerpo = null, urlReferer = null, j
 
 const RE_JWT = /\b(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,})\b/;
 
-// Canje directo del authorization-code contra el endpoint de tokens de
-// SUNAT (el iss del JWT del portal apunta aca). Se prueban ambas formas
-// de nombrar el grant y con/sin slash final, porque SUNAT usa nombres
-// propios no documentados (el JWT real declaraba grantType
-// "authorization_token").
+// Canje directo del authorization-code (que SUNAT entrega como JWT en la
+// URL de aterrizaje) contra el endpoint de tokens de SUNAT (el iss del
+// JWT del portal apunta aca). El hallazgo de produccion (oct 2026) es que
+// SUNAT redirige a SU PROPIA RAIZ (api-seguridad.sunat.gob.pe/?state=..&code=..)
+// e ignora el redirect_uri solicitado, asi que el canje se prueba con
+// TODAS las combinaciones: grant authorization_token/authorization_code
+// (SUNAT usa nombres propios; el JWT real declaraba "authorization_token"),
+// con/sin slash final del endpoint y las dos uri de retorno plausibles.
+// Cada intento queda logueado con el cuerpo de error de SUNAT para afinar.
 const canjearCodePortal = async ({ code, contexto }) => {
   const urlTokenBase = `${HOST_SEGURIDAD}/v1/clientessol/${CLIENTE_PORTAL_CONSULTACPE}/oauth2/token`;
+  const urisRetorno = [HOST_SEGURIDAD + '/', URI_RETORNO_PORTAL];
   const intentos = [];
   for (const sufijo of ['', '/']) {
     for (const grant of ['authorization_token', 'authorization_code']) {
-      const urlToken = urlTokenBase + sufijo;
-      try {
-        const respuesta = await fetch(urlToken, {
-          method: 'POST',
-          headers: {
-            'User-Agent': UA_NAVEGADOR,
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Accept: 'application/json',
-          },
-          body: new URLSearchParams({
-            grant_type: grant,
-            code,
-            redirect_uri: URI_RETORNO_PORTAL,
-            client_id: CLIENTE_PORTAL_CONSULTACPE,
-          }),
-          redirect: 'manual',
-          timeout: 30000,
-        });
-        const data = await respuesta.json().catch(() => null);
-        intentos.push(`${grant}${sufijo}: HTTP ${respuesta.status}`);
-        registrar(contexto, 'portal', 'canje_intento', {
-          httpSunat: respuesta.status,
-          mensajeSunat: `grant=${grant}${sufijo ? ' con-slash' : ''}`,
-        });
-        if (respuesta.ok && data?.access_token) return { token: data.access_token, via: `${grant}${sufijo || '/'}` };
-      } catch (error) {
-        intentos.push(`${grant}${sufijo}: ${error.message}`);
+      for (const redirect_uri of urisRetorno) {
+        const urlToken = urlTokenBase + sufijo;
+        try {
+          const respuesta = await fetch(urlToken, {
+            method: 'POST',
+            headers: {
+              'User-Agent': UA_NAVEGADOR,
+              'Content-Type': 'application/x-www-form-urlencoded',
+              Accept: 'application/json',
+            },
+            body: new URLSearchParams({
+              grant_type: grant,
+              code,
+              redirect_uri,
+              client_id: CLIENTE_PORTAL_CONSULTACPE,
+            }),
+            redirect: 'manual',
+            timeout: 30000,
+          });
+          const data = await respuesta.json().catch(() => null);
+          const cuerpo = data ? JSON.stringify(data).slice(0, 200) : '';
+          const etiqueta = `${grant}${sufijo ? '/' : ''} uri=${new URL(redirect_uri).host}`;
+          intentos.push(`${etiqueta}: HTTP ${respuesta.status}${cuerpo ? ` ${cuerpo}` : ''}`);
+          registrar(contexto, 'portal', 'canje_intento', {
+            httpSunat: respuesta.status,
+            mensajeSunat: `${etiqueta} | sunat: ${cuerpo || '(sin cuerpo)'}`,
+          });
+          if (respuesta.ok && data?.access_token) return { token: data.access_token, via: etiqueta };
+        } catch (error) {
+          intentos.push(`${grant}${sufijo}: ${error.message}`);
+        }
       }
     }
   }
@@ -359,5 +368,8 @@ const obtenerTokenPortalCpe = async ({ idAnfitrion, documentoId, db, diagnostico
 
 module.exports = {
   CLIENTE_PORTAL_CONSULTACPE,
+  HOST_SEGURIDAD,
+  URI_RETORNO_PORTAL,
+  canjearCodePortal,
   obtenerTokenPortalCpe,
 };

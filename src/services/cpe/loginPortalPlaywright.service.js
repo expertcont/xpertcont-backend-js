@@ -84,16 +84,33 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
     await pagina.fill('#txtContrasena', limpiarTexto(password));
     await pagina.click('#btnAceptar');
 
-    // 3) sondear el resultado: token en sessionStorage O aterrizaje con
-    //    ?code= (para el canje directo O un mensaje de error visible.
+    // 3) sondear el resultado. El login aterriza en la RAIZ de
+    //    api-seguridad ("Bienvenido a SUNAT") con ?state=&code=eyJ.. : esa
+    //    pagina continua el flujo solo dentro del navegador real, asi que
+    //    NO se corta al ver el code: se espera el token hasta el techo y
+    //    solo si tras ~25 seg sigue sin token se intenta el canje directo.
     let tokenApi = '';
     let urlAterrizaje = '';
-    for (let i = 0; i < 90; i += 1) {
+    let primeraVezCode = 0;
+    let paginaEstableDesde = Date.now();
+    for (let i = 0; i < 150; i += 1) {
       await new Promise((r) => setTimeout(r, 500));
       tokenApi = await pagina.evaluate(() => sessionStorage.getItem('SUNAT.token') || '').catch(() => '');
       if (tokenApi) break;
-      urlAterrizaje = pagina.url();
-      if (/[?&]code=/.test(urlAterrizaje)) break;
+      const url = pagina.url();
+      if (url !== urlAterrizaje) {
+        if (urlAterrizaje) registrar(contexto, 'portal', 'playwright_navegacion', { mensajeSunat: `${urlAterrizaje.slice(0, 160)} -> ${url.slice(0, 160)}` });
+        urlAterrizaje = url;
+        paginaEstableDesde = Date.now();
+      }
+      const tieneCode = /[?&]code=/.test(url || '');
+      if (tieneCode && !primeraVezCode) primeraVezCode = Date.now();
+      // Si ni siquiera hay code tras ~45 seg, cortar para diagnosticar
+      // (captcha visible, credenciales rechazadas o pagina atorada).
+      if (!primeraVezCode && i > 90) break;
+      // Salir a intentar el canje solo si la pagina lleva >=25 seg estable
+      // con el code y sin token (el navegador real suele resolverlo antes).
+      if (primeraVezCode && Date.now() - paginaEstableDesde > 25000) break;
     }
 
     if (tokenApi) {
