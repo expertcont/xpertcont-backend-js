@@ -292,6 +292,15 @@ const loginPortalUnaSesion = async ({ documentoId, sol, password, contexto }) =>
     jarras,
   });
   const htmlFinal = respuestaFinal ? await respuestaFinal.text().catch(() => '') : '';
+  // Congestion detectada por el propio mensaje de SUNAT: cortar sin seguir
+  // insistiendo ni canjear (git ignorar la carga del servicio saturado).
+  if (/no se puede acceder/i.test(htmlFinal || '')) {
+    registrar(contexto, 'portal', 'sunat_congestionado', { mensajeSunat: 'SUNAT reporto "disculpe la molestia" tras el login.' });
+    throw Object.assign(
+      new Error('SUNAT esta congestionado (el portal no esta entregando sesiones ahora). Reintenta en unos 5 minutos.'),
+      { statusCode: 503 }
+    );
+  }
   const tokenHallado = RE_JWT.exec(htmlFinal || '');
   if (tokenHallado) {
     const token = tokenHallado[1];
@@ -318,12 +327,25 @@ const loginPortalUnaSesion = async ({ documentoId, sol, password, contexto }) =>
 // Token CPE via login portal, con cache por empresa (margen 5 min) para
 // no afectar el limite de logins en masa de SUNAT: 1 login portal por
 // hora por empresa.
+// Cooldown anti-congestion: si SUNAT reporta saturacion (503), las
+// llamadas siguientes de esa empresa fallan rapido y sin tocar SUNAT
+// durante unos minutos, para no agravar la cola del servicio.
+const ENFRIAMIENTO_CONGESTION = new Map();
+const ENFRIAMIENTO_MS = 5 * 60 * 1000;
 const obtenerTokenPortalCpe = async ({ idAnfitrion, documentoId, db, diagnostico }) => {
   const clave = `portal|${idAnfitrion}|${documentoId}`;
   const cacheado = PORTALES_EN_CACHE.get(clave);
   if (cacheado) {
     if (diagnostico) Object.assign(diagnostico, { viaPortal: true, tokenCache: true });
     return cacheado;
+  }
+  const frioHasta = ENFRIAMIENTO_CONGESTION.get(clave);
+  if (frioHasta && Date.now() < frioHasta) {
+    const minutos = Math.max(1, Math.ceil((frioHasta - Date.now()) / 60000));
+    throw Object.assign(
+      new Error(`SUNAT esta congestionado (el portal no esta entregando sesiones ahora). Reintenta en ~${minutos} min.`),
+      { statusCode: 503 }
+    );
   }
 
   const credenciales = await obtenerCredencialesSire({ idAnfitrion, documentoId, db });
@@ -360,6 +382,21 @@ const obtenerTokenPortalCpe = async ({ idAnfitrion, documentoId, db, diagnostico
         return token;
       } catch (error) {
         errores.push(`[${metodo.nombre}] ${error.message}`);
+        // Congestion de SUNAT: activar cooldown y cortar TODO al instante;
+        // siguiente llamada de esta empresa fallara rapido (sin tocar a
+        // SUNAT) hasta que expire el enfriamiento.
+        if (error.statusCode === 503) {
+          ENFRIAMIENTO_CONGESTION.set(clave, Date.now() + ENFRIAMIENTO_MS);
+          console.log(`[SUNAT] portal congestionado para ${documentoId}: enfriamiento ${ENFRIAMIENTO_MS / 60000} min (sin mas intentos)`);
+          throw error;
+        }
+        // Falta del MECANISMO (no de credenciales): el diagnostico ya esta
+        // completo con ese intento; repetir para el otro par o con el otro
+        // metodo solo agrega minutos a la espera del usuario para nada.
+        // 501 = playwright ausente (si aplica el metodo siguiente);
+        // 401/423 = credenciales rechazadas o captcha (si aplica reintentar
+        // con la otra credencial).
+        if (error.statusCode === 502 || error.status === 502) throw error;
       }
     }
   }
