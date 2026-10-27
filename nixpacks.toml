@@ -1,0 +1,13 @@
+# Build de Railway (Nixpacks) para el backend.
+# Ademas de npm install, baja el navegador Chromium que Playwright usa para
+# el login portal SUNAT (obtencion del token CPE cuando la app de la empresa
+# no declara el recurso /v1/contribuyente/consultacpe).
+# Nota: Start Command no se redefine (Nixpacks usa "npm start" -> node app.js).
+[phases.install]
+cmds = ["npm install", "npx playwright install --with-deps chromium"]
+
+# --- Respaldo (solo si el build falla por permisos de apt-get en Railway) ---
+# Algunos repos usan el driver de Playwright como paquete Nix, sin apt:
+# descomentar y QUITAR --with-deps del comando de arriba:
+# [phases.setup]
+# nixPkgs = ["...", "playwright-driver"]

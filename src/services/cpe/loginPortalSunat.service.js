@@ -15,22 +15,25 @@
 //      oauth2/authen (formulario WebSphere j_security_check), el code
 //      vuelve al e-factura y el SERVIDOR del portal canjea el token,
 //      que llega al navegador dentro del HTML (sessionStorage
-//      "SUNAT.token"). No se requiere captcha en el primer intento
-//      (verificaFails esta deshabilitado; el captcha solo aparece tras
-//      3 fallos en la misma sesion).
+//      "SUNAT.token"; el SPA solo lo LEE, nunca lo canjea). No se
+//      requiere captcha en el primer intento (verificaFails esta
+//      deshabilitado; el captcha solo aparece tras 3 fallos).
 //   3) Con ese token, GET api-cpe.sunat.gob.pe/v1/contribuyente/
 //      consultacpe/... responde 200 para el comprobante de cualquier
 //      emisor (probado exitosamente con IP extranjera y comprobante
 //      20295458551-01-FA03-174509-2).
 //
-// Por eso este modulo replica el login portal por HTTP puro. IMPORTANTE:
-// todas las etapas comienzan con redirecciones (cookies de sesion), por
-// lo que cada llamada IVA con redirecciones manuales y se siguen todos
-// los saltos acumulando Set-Cookie por dominio:
-//   a) GET authen (cadena de redirecciones hasta el formulario)
-//   b) POST j_security_check con las credenciales
-//      (j_username = usuario SOL, custom_ruc = RUC, j_password = clave)
-//   c) se siguen las redirecciones hasta el HTML final y se extrae el JWT
+// Estrategia (v3, tras el primer ensayo real en produccion):
+//   a) GET authen siguiendo TODAS sus redirecciones (cookies por dominio).
+//   b) POST j_security_check; si la Location trae ?code=... ANTES de
+//      seguir la cadena se intenta el CANJE nosotros mismos contra el
+//      endpoint de tokens (grant_type=authorization_token y
+//      authorization_code; con y sin slash final). El canje por cadena
+//      del BFF puede no entregar el token en la pagina final (el SPA no
+//      tiene canje propio), asi que el canje directo es la via preferente.
+//   c) Si el canje directo no funciona, se sigue la cadena completa y se
+//      busca el JWT en el HTML final; si no aparece, la traza completa
+//      (URLs y HTTP de cada salto) se registra para ajustar el flujo.
 // ------------------------------------------------------------------
 
 const fetch = require('node-fetch');
@@ -74,27 +77,17 @@ const absorberCookies = (jarra, respuesta) => {
 };
 const headerCookie = (jarra) => (jarra.length ? jarra.join('; ') : undefined);
 
-// Resuelve relativos contra el URL anterior (las Location de SUNAT suelen
-// traer path absoluto de otro host).
 const resolverUrl = (url, base) => {
   if (url.startsWith('http')) return url;
   return new URL(url, base).toString();
 };
 
 // Sigue redirecciones manualmente acumulando Set-Cookie por DOMINIO
-// (api-seguridad y e-factura tienen sesiones distintas). Devuelve la
-// respuesta final no-redireccional, con una traza [{url, status}].
-const seguirHastaFinal = async ({
-  urlInicio,
-  metodo = 'GET',
-  cuerpo = null,
-  urlReferer = null,
-  jarras = {},
-  maxSaltos = 12,
-}) => {
+// (api-seguridad y e-factura tienen sesiones distintas).
+const seguirHastaFinal = async ({ urlInicio, cuerpo = null, urlReferer = null, jarras = {}, maxSaltos = 12 }) => {
   const traza = [];
   let url = urlInicio;
-  let metodoActual = metodo;
+  let metodoActual = cuerpo ? 'POST' : 'GET';
   let cuerpoActual = cuerpo;
   let respuestaFinal = null;
   for (let salto = 0; salto < maxSaltos && url; salto += 1) {
@@ -106,8 +99,7 @@ const seguirHastaFinal = async ({
       body: cuerpoActual,
       headers: {
         'User-Agent': UA_NAVEGADOR,
-        // Accept de navegador: api-cpe rechaza connection sin apariencia web.
-        Accept: metodoActual === 'POST' ? 'text/html,application/xhtml+xml' : 'text/html',
+        Accept: 'text/html',
         'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
         Referer: urlReferer || undefined,
         Cookie: headerCookie(jarra) || '',
@@ -116,12 +108,11 @@ const seguirHastaFinal = async ({
       timeout: 30000,
     });
     absorberCookies(jarra, respuesta);
-    traza.push({ url: destino, status: respuesta.status });
+    traza.push({ url: destino.slice(0, 160), status: respuesta.status });
     if (respuesta.status >= 300 && respuesta.status < 400) {
       const siguiente = respuesta.headers.get('location');
       url = siguiente ? resolverUrl(siguiente, destino) : null;
-      // Tras la redireccion del POST el navegador hace GET (303; y 302 tras
-      // POST se trata como GET en el flujo de login de SUNAT).
+      // Tras la redireccion del POST el navegador hace GET.
       if (metodoActual === 'POST') {
         metodoActual = 'GET';
         cuerpoActual = null;
@@ -135,6 +126,50 @@ const seguirHastaFinal = async ({
 };
 
 const RE_JWT = /\b(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,})\b/;
+
+// Canje directo del authorization-code contra el endpoint de tokens de
+// SUNAT (el iss del JWT del portal apunta aca). Se prueban ambas formas
+// de nombrar el grant y con/sin slash final, porque SUNAT usa nombres
+// propios no documentados (el JWT real declaraba grantType
+// "authorization_token").
+const canjearCodePortal = async ({ code, contexto }) => {
+  const urlTokenBase = `${HOST_SEGURIDAD}/v1/clientessol/${CLIENTE_PORTAL_CONSULTACPE}/oauth2/token`;
+  const intentos = [];
+  for (const sufijo of ['', '/']) {
+    for (const grant of ['authorization_token', 'authorization_code']) {
+      const urlToken = urlTokenBase + sufijo;
+      try {
+        const respuesta = await fetch(urlToken, {
+          method: 'POST',
+          headers: {
+            'User-Agent': UA_NAVEGADOR,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json',
+          },
+          body: new URLSearchParams({
+            grant_type: grant,
+            code,
+            redirect_uri: URI_RETORNO_PORTAL,
+            client_id: CLIENTE_PORTAL_CONSULTACPE,
+          }),
+          redirect: 'manual',
+          timeout: 30000,
+        });
+        const data = await respuesta.json().catch(() => null);
+        intentos.push(`${grant}${sufijo}: HTTP ${respuesta.status}`);
+        registrar(contexto, 'portal', 'canje_intento', {
+          httpSunat: respuesta.status,
+          mensajeSunat: `grant=${grant}${sufijo ? ' con-slash' : ''}`,
+        });
+        if (respuesta.ok && data?.access_token) return { token: data.access_token, via: `${grant}${sufijo || '/'}` };
+      } catch (error) {
+        intentos.push(`${grant}${sufijo}: ${error.message}`);
+      }
+    }
+  }
+  registrar(contexto, 'portal', 'canje_fallo', { mensajeSunat: intentos.join(' | ').slice(0, 300) });
+  return null;
+};
 
 const loginPortalUnaSesion = async ({ documentoId, sol, password, contexto }) => {
   const ruc = obtenerRuc(documentoId);
@@ -151,19 +186,19 @@ const loginPortalUnaSesion = async ({ documentoId, sol, password, contexto }) =>
   });
   const htmlAuthen = respuestaAuthen ? await respuestaAuthen.text().catch(() => '') : '';
   if (!respuestaAuthen?.ok || !htmlAuthen.includes('LoginForm')) {
+    const trail = trazaAuthen.map((t) => t.status).join('->') || 'sin-traza';
     registrar(contexto, 'portal', 'authen_no_formulario', {
       httpSunat: respuestaAuthen?.status ?? 'sin-respuesta',
-      mensajeSunat: `La pagina de login no termino en el formulario. Trazas: ${JSON.stringify(trazaAuthen)}`,
+      mensajeSunat: `Trazas: ${JSON.stringify(trazaAuthen).slice(0, 400)}`,
     });
     throw Object.assign(
-      new Error(`La pagina de login del portal SUNAT no respondio el formulario (traza: ${trazaAuthen.map(t => t.status).join('->')}).`),
+      new Error(`La pagina de login del portal SUNAT no respondio el formulario (traza: ${trail}).`),
       { statusCode: 502 }
     );
   }
 
-  // b) POST j_security_check. La action del formulario es relativa; WebSphere
-  // resuelve j_security_check a nivel del directorio de la pagina (oauth2/).
-  // Se prueban las dos variantes por si SUNAT cambia el layout.
+  // b) POST j_security_check (manual, sin seguir por defecto para poder
+  // capturar el code de la primera Location antes de gastarlo).
   const cuerpo = new URLSearchParams({
     tipo: '2',
     dni: '',
@@ -174,76 +209,101 @@ const loginPortalUnaSesion = async ({ documentoId, sol, password, contexto }) =>
     originalUrl: '',
     state,
   });
-  // Del formulario original, la Location tipo /oauth2/xxxxx/*varia; se cubren
-  // las dos rutas posibles relativas a /oauth2 y a /oauth2/authen.
   const urlsPost = [
     `${HOST_SEGURIDAD}/v1/clientessol/${CLIENTE_PORTAL_CONSULTACPE}/oauth2/j_security_check`,
     `${HOST_SEGURIDAD}/v1/clientessol/${CLIENTE_PORTAL_CONSULTACPE}/oauth2/authen/j_security_check`,
   ];
-  let envio = null;
+  let primerPost = null;
   for (const urlPost of urlsPost) {
-    const intento = await seguirHastaFinal({
-      urlInicio: urlPost,
-      metodo: 'POST',
-      cuerpo,
-      urlReferer: authenUrl,
-      jarras,
+    const respuesta = await fetch(urlPost, {
+      method: 'POST',
+      headers: {
+        'User-Agent': UA_NAVEGADOR,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'text/html',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        Referer: authenUrl,
+        Cookie: headerCookie(jarras[HOST_SEGURIDAD] || (jarras[HOST_SEGURIDAD] = [])) || '',
+      },
+      body: cuerpo,
+      redirect: 'manual',
+      timeout: 30000,
     });
-    const primer = intento.traza[0] || { status: 0 };
-    // Si la ubicas (404) se intenta la siguiente variante.
-    if (primer.status === 404) continue;
-    envio = intento;
+    absorberCookies(jarras[HOST_SEGURIDAD], respuesta);
+    if (respuesta.status === 404) continue;
+    primerPost = { respuesta, urlPost };
     break;
   }
-  if (!envio) {
+  if (!primerPost) {
     registrar(contexto, 'portal', 'post_sin_ruta', { mensajeSunat: 'Ninguna ruta de j_security_check respondio.' });
     throw Object.assign(new Error('No se encontro la ruta de login del portal SUNAT.'), { statusCode: 502 });
   }
 
-  // Detecta credenciales rechazadas: el resultado final vuelve al formulario
-  // con el mensaje de error (status HTTP 200, pero con el mensaje visible).
-  const htmlPost = envio.respuestaFinal ? await envio.respuestaFinal.text().catch(() => '') : '';
-  const credRechazadas = htmlPost.includes('LoginForm')
-    && /usuario|contras|invalido|incorrect/i.test(htmlPost);
-  if (credRechazadas) {
+  const { respuesta: respuestaPost, urlPost: urlPostUsada } = primerPost;
+  const statusPost = respuestaPost.status;
+  const locationPost = respuestaPost.headers.get('location') || '';
+
+  // Credenciales rechazadas: vuelve al formulario (200) con mensaje de error.
+  if (statusPost !== 302 && statusPost !== 303) {
+    const texto = await respuestaPost.text().catch(() => '');
+    const credRechazadas = texto.includes('LoginForm') && /usuario|contrase|invalido|incorrect/i.test(texto);
     registrar(contexto, 'portal', 'login_rechazado', {
-      mensajeSunat: 'El portal rechazo las credenciales enviadas.',
-      httpSunat: envio.traza.map((t) => t.status).join('->'),
+      httpSunat: statusPost,
+      mensajeSunat: credRechazadas
+        ? 'El portal rechazo las credenciales enviadas.'
+        : `POST ${urlPostUsada.slice(0, 120)} respondio ${statusPost}.`,
     });
     throw Object.assign(
-      new Error('El portal SUNAT rechazo las credenciales de esta empresa (verifica usuario/clave SOL).'),
-      { statusCode: 401 }
-    );
-  }
-  if (!envio.respuestaFinal || !envio.respuestaFinal.ok) {
-    registrar(contexto, 'portal', 'post_inesperado', {
-      httpSunat: envio.traza.map((t) => t.status).join('->'),
-      mensajeSunat: 'La cadena del POST j_security_check no retorno la pagina del portal.',
-    });
-    throw Object.assign(
-      new Error(`Respuesta inesperada del login portal (traza: ${envio.traza.map((t) => t.status).join('->')}).`),
-      { statusCode: 502 }
+      new Error(credRechazadas
+        ? 'El portal SUNAT rechazo las credenciales de esta empresa (verifica usuario/clave SOL).'
+        : `Respuesta inesperada del login portal (HTTP ${statusPost}.).`),
+      { statusCode: credRechazadas ? 401 : 502 }
     );
   }
 
-  const tokenHallado = RE_JWT.exec(htmlPost || '');
-  if (!tokenHallado) {
-    registrar(contexto, 'portal', 'token_no_inyectado', {
-      mensajeSunat: 'El HTML final del portal no contiene el token (SUNAT.token).',
-      bytes: htmlPost.length,
+  // b2) Canje DIRECTO preferente: si la Location trae el code.
+  const hallazgoCode = /[?&]code=([^&]+)/.exec(locationPost);
+  if (hallazgoCode) {
+    const code = decodeURIComponent(hallazgoCode[1]);
+    const canje = await canjearCodePortal({ code, contexto });
+    if (canje?.token) {
+      registrar(contexto, 'portal', 'login_completo', { httpSunat: 200, mensajeSunat: `canje directo via ${canje.via}` });
+      return canje.token;
+    }
+  } else {
+    registrar(contexto, 'portal', 'sin_code_inmediato', {
+      mensajeSunat: `Location del POST: ${locationPost.slice(0, 200) || '(vacia)'}`,
     });
-    throw Object.assign(
-      new Error('El portal SUNAT no entrego el token tras el login (revisar trafico).'),
-      { statusCode: 502 }
-    );
   }
-  const token = tokenHallado[1];
-  const jwt = decodificarJwt(token);
-  registrar(contexto, 'portal', 'login_completo', {
-    httpSunat: 200,
-    loginPortal: limpiarTexto(jwt?.userdata?.login) || 'ok',
+
+  // c) Fallback: seguir la cadena completa y buscar el JWT en el HTML final.
+  const { respuestaFinal, traza } = await seguirHastaFinal({
+    urlInicio: locationPost || authenUrl,
+    urlReferer: authenUrl,
+    jarras,
   });
-  return token;
+  const htmlFinal = respuestaFinal ? await respuestaFinal.text().catch(() => '') : '';
+  const tokenHallado = RE_JWT.exec(htmlFinal || '');
+  if (tokenHallado) {
+    const token = tokenHallado[1];
+    const jwt = decodificarJwt(token);
+    registrar(contexto, 'portal', 'login_completo', {
+      httpSunat: 200,
+      mensajeSunat: 'token inyectado en el HTML final',
+      loginPortal: limpiarTexto(jwt?.userdata?.login) || 'ok',
+    });
+    return token;
+  }
+
+  registrar(contexto, 'portal', 'token_no_inyectado', {
+    httpSunat: respuestaFinal?.status ?? 'sin-respuesta',
+    bytes: htmlFinal.length,
+    mensajeSunat: `Trazas: ${JSON.stringify(traza).slice(0, 500)} | HTML inicio: ${htmlFinal.slice(0, 250).replace(/\s+/g, ' ')}`,
+  });
+  throw Object.assign(
+    new Error(`El portal SUNAT no entrego el token tras el login (traza: ${traza.map((t) => t.status).join('->')}; html ${htmlFinal.length} bytes).`),
+    { statusCode: 502 }
+  );
 };
 
 // Token CPE via login portal, con cache por empresa (margen 5 min) para
@@ -264,18 +324,34 @@ const obtenerTokenPortalCpe = async ({ idAnfitrion, documentoId, db, diagnostico
   }
   const contexto = { rucEmpresa: documentoId, scope: 'cpe-portal' };
   const errores = [];
+  // Via primaria: navegador real (Playwright), el MISMO login del portal.
+  // Via de respaldo: replicacion HTTP pura del login portal.
+  const metodos = [];
+  try {
+    const { loginPortalPlaywrightCpe } = require('./loginPortalPlaywright.service');
+    metodos.push({ nombre: 'playwright', invocar: (par) =>
+      loginPortalPlaywrightCpe({ documentoId, sol: par.sol, password: par.password, contexto }) });
+  } catch (error) {
+    // require dentro de try aunque el modulo es internamente tolerante:
+    // cualquier problema de carga de playwright cae al metodo HTTP.
+  }
+  metodos.push({ nombre: 'http', invocar: (par) =>
+    loginPortalUnaSesion({ documentoId, sol: par.sol, password: par.password, contexto }) });
+
   for (const par of pares) {
-    try {
-      const token = await loginPortalUnaSesion({ documentoId, sol: par.sol, password: par.password, contexto });
-      const expiracion = decodificarJwt(token)?.exp;
-      const msVigencia = expiracion ? Math.max(0, (expiracion - MARGEN_TOKEN_SEG) * 1000 - Date.now()) : 0;
-      if (msVigencia > 0) setTimeout(() => PORTALES_EN_CACHE.delete(clave), msVigencia).unref();
-      PORTALES_EN_CACHE.set(clave, token);
-      if (diagnostico) Object.assign(diagnostico, { viaPortal: true, credencialPortal: par.par, tokenCache: false });
-      console.log(`[SUNAT] token CPE obtenido via LOGIN PORTAL (credencial ${par.par}) para ${documentoId}`);
-      return token;
-    } catch (error) {
-      errores.push(error.message);
+    for (const metodo of metodos) {
+      try {
+        const token = await metodo.invocar(par);
+        const expiracion = decodificarJwt(token)?.exp;
+        const msVigencia = expiracion ? Math.max(0, (expiracion - MARGEN_TOKEN_SEG) * 1000 - Date.now()) : 0;
+        if (msVigencia > 0) setTimeout(() => PORTALES_EN_CACHE.delete(clave), msVigencia).unref();
+        PORTALES_EN_CACHE.set(clave, token);
+        if (diagnostico) Object.assign(diagnostico, { viaPortal: true, viaPortalMetodo: metodo.nombre, credencialPortal: par.par, tokenCache: false });
+        console.log(`[SUNAT] token CPE obtenido via LOGIN PORTAL (${metodo.nombre}, credencial ${par.par}) para ${documentoId}`);
+        return token;
+      } catch (error) {
+        errores.push(`[${metodo.nombre}] ${error.message}`);
+      }
     }
   }
   throw new Error(errores.join(' | ') || 'El login portal SUNAT no se concreto.');

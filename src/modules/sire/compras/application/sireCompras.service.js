@@ -1,6 +1,7 @@
 const { parsearTextoCompras, compararCompras } = require('../domain/compras');
 const { validarCompra } = require('../domain/personalizada');
 const { descargarComprobanteCpe } = require('../../../../services/cpe/consultacpe.service');
+const { obtenerTokenPortalCpe } = require('../../../../services/cpe/loginPortalSunat.service');
 // Puertos inyectados: la aplicacion no conoce Express, PostgreSQL ni Comercial.
 module.exports = ({ propuestas: repo, comprasSistema, tickets, sunat, leerArchivo }) => {
 const fallo = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
@@ -93,6 +94,19 @@ const generarToken = async (entrada) => {
   }
 };
 
+// Solo diagnostico: token via LOGIN PORTAL (Playwright o HTTP), util para
+// verificar el fallback con el recurso faltante sin pasar por una descarga.
+const generarTokenPortal = async (entrada) => {
+  const p = validar(entrada);
+  try {
+    const diagnostico = {};
+    const token = await obtenerTokenPortalCpe({ idAnfitrion: p.idAnfitrion, documentoId: p.documentoId, db: p.db, diagnostico });
+    return { token, longitud: token.length, via: 'portal', diagnostico };
+  } catch (error) {
+    throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: `SUNAT no entrego el token por el login portal: ${error.message}` });
+  }
+};
+
 // Descarga XML individual via consultacpe: el token se obtiene dentro del
 // backend (scope api-cpe) con las credenciales de la BD y nunca viaja al navegador.
 // La API consultacpe exige el RUC del EMISOR (proveedor) y que sea distinto
@@ -119,5 +133,5 @@ const descargarXmlComprobante = async (entrada) => {
     throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: error.mensajePublico || `SUNAT no devolvio el XML del comprobante: ${error.message}` });
   }
 };
-return { recuperar, generarTicket, consultar, descargar, generarToken, descargarXmlComprobante, validar };
+return { recuperar, generarTicket, consultar, descargar, generarToken, generarTokenPortal, descargarXmlComprobante, validar };
 };
