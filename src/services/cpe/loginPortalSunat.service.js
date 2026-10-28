@@ -363,8 +363,12 @@ const obtenerTokenPortalCpe = async ({ idAnfitrion, documentoId, db, diagnostico
     metodos.push({ nombre: 'playwright', invocar: (par) =>
       loginPortalPlaywrightCpe({ documentoId, sol: par.sol, password: par.password, contexto }) });
   } catch (error) {
-    // require dentro de try aunque el modulo es internamente tolerante:
-    // cualquier problema de carga de playwright cae al metodo HTTP.
+    // La carga del modulo de navegador fallo (playwright ausente/roto en la
+    // imagen): VISIBILIZAR en el log en lugar de caer callado al metodo HTTP,
+    // que era indistinguible de "Playwright ni siquiera se intento".
+    registrar(contexto, 'portal', 'playwright_carga_fallo', {
+      mensajeSunat: String(error?.message || error).replace(/\s+/g, ' ').slice(0, 200),
+    });
   }
   metodos.push({ nombre: 'http', invocar: (par) =>
     loginPortalUnaSesion({ documentoId, sol: par.sol, password: par.password, contexto }) });

@@ -85,7 +85,16 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
 
   let navegador;
   try {
-    navegador = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+    // Registrar la apertura del navegador: si los binarios de Chromium no
+    // estan en la imagen (paso "npx playwright install" del build), launch
+    // truena aqui y ANTES moria en silencio, dejando el log sin ningun
+    // evento playwright_* y ocultando la causa real.
+    navegador = await chromium.launch({ headless: true, args: ['--no-sandbox'] }).catch((error) => {
+      registrar(contexto, 'portal', 'playwright_lanzador_fallo', {
+        mensajeSunat: String(error?.message || error).replace(/\s+/g, ' ').slice(0, 300),
+      });
+      throw Object.assign(new Error(`El navegador de Playwright no pudo arrancar en el servidor: ${String(error?.message || error).slice(0, 160)}`), { statusCode: 501 });
+    });
     const contextoNavegador = await navegador.newContext({ viewport: { width: 1280, height: 800 } });
     let pagina = await contextoNavegador.newPage();
     pagina.setDefaultTimeout(45000);
