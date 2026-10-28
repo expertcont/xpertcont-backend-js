@@ -130,14 +130,31 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
     await pagina.fill('#txtContrasena', limpiarTexto(password));
     await (await pagina.$('#btnAceptar')).click();
 
-    // 3) SONDEO: token en la pagina (sessionStorage) o en la red; en
-    //    paralelo, cuando aparece la interfaz del menu, abrir la app de
-    //    consulta CPE (link del catalogo o acceso directo a la SPA con
-    //    la sesion SSO ya viva).
+    // 3) SONDEO: token en la pagina (sessionStorage), en los FRAMES de la
+    //    app (el menu abre las apps en iframe cross-origin; Playwright lee
+    //    el sessionStorage de cualquier frame) o en la red. Cuando el
+    //    catalogo del menu aparece, abrir la app de consulta CPE con su
+    //    mecanismo real: los links del menu no son <a href>, son
+    //    ejecuta('MenuInternet.htm?action=iconExecute&code=X.Y.Z.W')
+    //    (dossier de crafter-research/sunat-cli, 2026).
     let tokenApi = '';
+    let tokenFrame = '';
     let appAbierta = false;
+    const leerTokenDeFrames = async () => {
+      for (const marco of pagina.frames()) {
+        const t = await marco.evaluate(() => sessionStorage.getItem('SUNAT.token') || '').catch(() => '');
+        if (t) return { token: t, url: marco.url() };
+      }
+      return null;
+    };
     for (let i = 0; i < 120; i += 1) {
       await new Promise((r) => setTimeout(r, 600));
+      const hallado = await leerTokenDeFrames();
+      if (hallado) {
+        tokenFrame = hallado.token;
+        registrar(contexto, 'portal', 'playwright_token_frame', { mensajeSunat: `token en el frame: ${hallado.url.slice(0, 150)}` });
+        break;
+      }
       tokenApi = await pagina.evaluate(() => sessionStorage.getItem('SUNAT.token') || '').catch(() => '');
       if (tokenApi) break;
       const capturo = sesion.verTokenDeRed();
@@ -148,15 +165,19 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
       const enMenu = /e-menu\.sunat\.gob\.pe/.test(url) && !conFormulario;
       if (enMenu && !appAbierta && i > 6) {
         appAbierta = true;
-        const linkApp = await pagina.$('a[href*="contribuyentems"]');
-        if (linkApp) {
-          registrar(contexto, 'portal', 'playwright_menu_app', { mensajeSunat: 'link de la app en el catalogo; abriendo..' });
-          await Promise.race([
-            linkApp.click().then(() => pagina.waitForLoadState('domcontentloaded').catch(() => {})),
-            new Promise((r) => setTimeout(r, 8000)),
-          ]);
+        // Catalogo del menu: los items son onclick="ejecuta('...')". Se
+        // mapean (diagnostico) y se dispara el de la app de comprobantes.
+        const arbol = await pagina.evaluate(() => [...document.querySelectorAll('a[onclick]')]
+          .map((a) => ({ texto: (a.innerText || '').trim(), onclick: (a.getAttribute('onclick') || '').slice(0, 220) }))
+          .filter(it => it.onclick.includes('ejecuta'))
+          .slice(0, 60));
+        registrar(contexto, 'portal', 'playwright_menu_arbol', { mensajeSunat: arbol.map(it => `${it.texto || '(sin texto)'} :: ${it.onclick.split("'")[1] || ''}`).join(' | ').slice(0, 1600) });
+        const objetivo = arbol.find(it => /comprobante/i.test(`${it.texto} ${it.onclick}`));
+        if (objetivo) {
+          registrar(contexto, 'portal', 'playwright_menu_app', { mensajeSunat: `ejecutando item del catalogo: ${objetivo.texto || objetivo.onclick.slice(0, 120)}` });
+          await pagina.evaluate((codigo) => { const el = document.querySelector(`a[onclick*="${codigo}"]`); if (el) el.click(); }, objetivo.onclick.split("'")[1] || '').catch(() => {});
         } else {
-          registrar(contexto, 'portal', 'playwright_menu_sin_link', { mensajeSunat: 'catalogo sin link directo; abriendo la app con la sesion SSO.' });
+          registrar(contexto, 'portal', 'playwright_menu_sin_link', { mensajeSunat: 'catalogo sin item de comprobantes; abriendo la app con la sesion SSO.' });
           await pagina.goto(URI_APP_CONSULTACPE, { waitUntil: 'domcontentloaded' }).catch(() => {});
         }
       }
@@ -174,7 +195,7 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
       }
     }
 
-    const tokenFinal = tokenApi || sesion.verTokenDeRed();
+    const tokenFinal = tokenApi || tokenFrame || sesion.verTokenDeRed();
     if (tokenFinal) {
       registrar(contexto, 'portal', 'playwright_login_completo', { httpSunat: 200, mensajeSunat: 'token del portal capturado en el navegador.' });
       return tokenFinal;

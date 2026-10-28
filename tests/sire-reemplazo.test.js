@@ -216,7 +216,8 @@ function cliente(respuestas) {
     './sireSunatClient.service': { obtenerTokenSire: async () => 'TOKEN_SIMULADO' },
   });
   const guardadas = [];
-  const params = { ...p, buffer: Buffer.from('ZIP'), nombreArchivo: nombre.replace('.txt', '.zip'),
+  const params = { ...p, idLibro: '140000',
+    buffer: Buffer.from('ZIP'), nombreArchivo: nombre.replace('.txt', '.zip'),
     guardarCarga: async (url) => { guardadas.push(url); assert.equal(calls.length, 1); } };
   return { service, params, calls, guardadas };
 }
@@ -270,6 +271,7 @@ test('repositorio conserva binario y contexto; lecturas publicas excluyen archiv
   const db = { query: async (sql, params) => { calls.push({ sql, params }); return { rows: [{ id_reemplazo: id }] }; } };
   const repo = cargar('../src/repositories/sire/sireReemplazo.repository.js', {
     '../../db': db, './sireAceptacion.repository': {},
+    './sirePropuestaDatos.repository': {}, './sireVentasFuente.repository': {},
   });
   await repo.obtenerUltimo(p);
   assert.doesNotMatch(calls[0].sql, /archivo_zip|respuesta_sunat|url_carga/);

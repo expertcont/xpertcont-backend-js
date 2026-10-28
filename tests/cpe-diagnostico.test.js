@@ -38,6 +38,7 @@ function entorno({ tokenRechazado = false, descargaRechazada = false } = {}) {
     './diagnosticoSunat': logger,
     crypto: { randomUUID: () => 'REF-PRUEBA' },
     '../sire/sireSunatClient.service': sunat,
+    './loginPortalSunat.service': { obtenerTokenPortalCpe: async () => { throw new Error('portal no simulado'); } },
     'adm-zip': class {
       getEntries() { return [{ entryName: 'comprobante.xml', header: { size: 6 } }]; }
       readFile() { return Buffer.from('<xml/>'); }

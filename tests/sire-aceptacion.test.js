@@ -8,7 +8,7 @@ function cargar(file, deps) {
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), {
     module, exports: module.exports, Date, Intl, URLSearchParams,
-    console: { error: () => {} },
+    console: { error: () => {}, log: () => {} },
     require: (n) => {
       if (!(n in deps)) throw new Error('Dependencia no simulada: ' + n);
       return deps[n];
@@ -184,6 +184,7 @@ function clienteConFetch(fetch) {
     '../../repositories/sire/sire.repository': {
       obtenerCredencialesSire: async () => ({ sire_id: 'ID', sire_secret: 'SECRET', sunat_sol: 'SOL', sunat_solpwd: 'PWD' }),
     },
+    '../cpe/diagnosticoSunat': { registrar: () => {}, resumirRespuesta: () => '', resumirToken: (t) => ({ token: t }) },
   });
 }
 const respuesta = (data, status = 200) => ({
@@ -281,7 +282,11 @@ test('propuesta y credenciales pueden consultarse en la conexion que sostiene el
   const queries = [];
   const db = { query: async (sql) => { queries.push(sql); return { rows: [] }; } };
   const pool = { query: () => { throw Error('No se debe tomar otra conexion del pool'); } };
-  const propuestas = cargar('../src/repositories/transporte/sire.repository.js', { '../../db': pool });
+  const propuestas = cargar('../src/repositories/transporte/sire.repository.js', {
+    '../../db': pool,
+    '../sire/sireVentasFuente.repository': { obtenerFuenteVentas: async () => ({}) },
+    '../../utils/sireVentaDocumento.utils': { expresionesVenta: () => ({}) },
+  });
   const tickets = cargar('../src/repositories/sire/sire.repository.js', { '../../db': pool });
   await propuestas.obtenerPropuestaGuardadaSireTransporteQuery({ ...parametros, ticket: '' }, db);
   await tickets.obtenerCredencialesSire(parametros, db);
