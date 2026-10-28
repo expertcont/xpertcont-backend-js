@@ -3,20 +3,15 @@
 # el login portal SUNAT (obtencion del token CPE cuando la app de la empresa
 # no declara el recurso /v1/contribuyente/consultacpe).
 # SUNAT corta la conexion del Chrome headless (ERR_CONNECTION_RESET): el
-# navegador debe correr REAL, con una pantalla virtual X (xvfb). Por eso
-# xvfb entra al sistema y el Start Command se ejecuta bajo xvfb-run -a.
-# Ajustar en Railway la variable PLAYWRIGHT_HEADLESS=0 para forzarlo.
-[phases.setup]
-nixPkgs = ["...", "xvfb"]
-
+# navegador debe correr REAL, con una pantalla virtual X (xvfb). xvfb entra
+# por apt-get (el mismo canal de sistema que usa "playwright install
+# --with-deps"); el Start Command corre bajo xvfb-run -a.
 [phases.install]
-cmds = ["npm install", "npx playwright install --with-deps chromium"]
+cmds = [
+  "apt-get update && apt-get install -y xvfb",
+  "npm install",
+  "npx playwright install --with-deps chromium",
+]
 
 [start]
 cmd = "xvfb-run -a npm start"
-
-# --- Respaldo (solo si el build falla por permisos de apt-get en Railway) ---
-# Algunos repos usan el driver de Playwright como paquete Nix, sin apt:
-# descomentar y QUITAR --with-deps del comando de arriba:
-# [phases.setup]
-# nixPkgs = ["...", "playwright-driver"]
