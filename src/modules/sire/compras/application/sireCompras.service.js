@@ -2,6 +2,7 @@ const { parsearTextoCompras, compararCompras } = require('../domain/compras');
 const { validarCompra } = require('../domain/personalizada');
 const { descargarComprobanteCpe } = require('../../../../services/cpe/consultacpe.service');
 const { obtenerTokenPortalCpe } = require('../../../../services/cpe/loginPortalSunat.service');
+const { resumirToken } = require('../../../../services/cpe/diagnosticoSunat');
 // Puertos inyectados: la aplicacion no conoce Express, PostgreSQL ni Comercial.
 module.exports = ({ propuestas: repo, comprasSistema, tickets, sunat, leerArchivo }) => {
 const fallo = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
@@ -106,6 +107,33 @@ const generarToken = async (entrada) => {
   }
 };
 
+// Diagnostico del token SIRE: genera el token con el password grant de las
+// credenciales de la empresa y devuelve SOLO el resumen del JWT (nunca el
+// token). Sirve para distinguir el fallo "autenticacion" del API cuando el
+// registro de la app no declara los recursos migiegv (alcance Web/Desktop).
+// Intento nuevo, sin cache.
+const SCOPE_SIRE = 'https://api-sire.sunat.gob.pe';
+const generarTokenSire = async (entrada) => {
+  const p = validar(entrada);
+  try {
+    const token = await sunat.obtenerTokenSunat({ ...p, scope: SCOPE_SIRE, mensajeError: 'SUNAT no devolvio token SIRE.' });
+    const resumen = resumirToken(token, p.documentoId);
+    return {
+      via: 'sire',
+      scope: SCOPE_SIRE,
+      longitud: token.length,
+      vigencia: vigenciaToken(token),
+      jwtDecodificable: resumen.jwtDecodificable,
+      tokenVencido: resumen.tokenVencido,
+      migeigvDeclarado: resumen.migeigvDeclarado,
+      recursosSire: resumen.recursosSire || [],
+      audienciaInterpretable: resumen.audienciaInterpretable,
+    };
+  } catch (error) {
+    throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: `SUNAT rechazo la generacion del token SIRE: ${error.message}` });
+  }
+};
+
 // Solo diagnostico: token via LOGIN PORTAL (Playwright o HTTP), util para
 // verificar el fallback con el recurso faltante sin pasar por una descarga.
 const generarTokenPortal = async (entrada) => {
@@ -147,5 +175,5 @@ const descargarXmlComprobante = async (entrada) => {
     throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: error.mensajePublico || `SUNAT no devolvio el XML del comprobante: ${error.message}` });
   }
 };
-return { recuperar, generarTicket, consultar, descargar, generarToken, generarTokenPortal, descargarXmlComprobante, validar };
+return { recuperar, generarTicket, consultar, descargar, generarToken, generarTokenSire, generarTokenPortal, descargarXmlComprobante, validar };
 };
