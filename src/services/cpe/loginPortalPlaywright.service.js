@@ -27,6 +27,7 @@
 // ------------------------------------------------------------------
 
 const { registrar } = require('./diagnosticoSunat');
+const { prepararPantalla } = require('./pantallaVirtual.service');
 
 const MENU_PORTAL_SOL = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
 const URI_APP_CONSULTACPE =
@@ -84,20 +85,18 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
   }
 
   let navegador;
+  let pantalla;
   try {
     // Registrar la apertura del navegador: si los binarios de Chromium no
     // estan en la imagen (paso "npx playwright install" del build), launch
     // truena aqui y ANTES moria en silencio, dejando el log sin ningun
     // evento playwright_* y ocultando la causa real.
-    // SUNAT corta la conexion del Chrome headless (ERR_CONNECTION_RESET
-    // verificado local y produccion: ni headless-shell ni el headless nuevo
-    // pasan; solo navegador real). Regla: PLAYWRIGHT_HEADLESS=1 fuerza
-    // headless; 0 fuerza navegador real; sin la variable se auto-detecta
-    // pantalla (Linux con DISPLAY via xvfb-run, o Windows local).
-    const pantallaDisponible = process.platform === 'win32' || Boolean(process.env.DISPLAY);
-    const modoReal = process.env.PLAYWRIGHT_HEADLESS !== '1' && pantallaDisponible
-      || process.env.PLAYWRIGHT_HEADLESS === '0';
-    navegador = await chromium.launch({ headless: !modoReal, args: ['--no-sandbox'] }).catch((error) => {
+    // El navegador con interfaz conserva el recorrido SOL existente. En Linux,
+    // Xvfb se prepara aqui, nunca como requisito para iniciar toda la API.
+    // PLAYWRIGHT_HEADLESS=1 permite ejecutar sin pantalla cuando se solicite.
+    pantalla = await prepararPantalla({ contexto });
+    registrar(contexto, 'portal', 'playwright_iniciando', { headless: pantalla.headless, timeoutMs: 30000 });
+    navegador = await chromium.launch({ headless: pantalla.headless, env: pantalla.env, timeout: 30000, args: ['--no-sandbox'] }).catch((error) => {
       registrar(contexto, 'portal', 'playwright_lanzador_fallo', {
         mensajeSunat: String(error?.message || error).replace(/\s+/g, ' ').slice(0, 300),
       });
@@ -303,7 +302,11 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
       { statusCode: captchaRequerido ? 423 : 502 }
     );
   } finally {
-    if (navegador) await navegador.close().catch(() => {});
+    try {
+      if (navegador) await navegador.close().catch(() => {});
+    } finally {
+      if (pantalla) await pantalla.cerrar();
+    }
   }
 };
 

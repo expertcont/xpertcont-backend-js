@@ -1,3 +1,4 @@
+console.log('[Inicio API] Node iniciado; cargando dependencias y rutas.');
 const express = require('express');
 const res = require('express/lib/response');
 const morgan = require('morgan');
@@ -31,6 +32,7 @@ const dispositivoRoutes = require('./src/routes/dispositivo.routes');
 const contabilidadRoutes = require('./src/routes/contabilidad.routes');
 const cuentaRoutes = require('./src/routes/cuenta.routes');
 const tsunatRoutes = require('./src/routes/tsunat.routes');
+console.log('[Inicio API] Dependencias y rutas cargadas.');
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -75,5 +77,9 @@ app.use((err, req, res, next) => {
     })
 })
 
-app.listen(port);
-console.log("Servidor puerto ", port);
+app.listen(port, '0.0.0.0', () => {
+    console.log('[Inicio API] Escuchando en 0.0.0.0:' + port);
+}).on('error', (error) => {
+    console.error('[Inicio API] No se pudo abrir el puerto:', error.code || error.message);
+    process.exit(1);
+});

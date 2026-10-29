@@ -2,10 +2,8 @@
 # Ademas de npm install, baja el navegador Chromium que Playwright usa para
 # el login portal SUNAT (obtencion del token CPE cuando la app de la empresa
 # no declara el recurso /v1/contribuyente/consultacpe).
-# SUNAT corta la conexion del Chrome headless (ERR_CONNECTION_RESET): el
-# navegador debe correr REAL, con una pantalla virtual X (xvfb). xvfb entra
-# por apt-get (el mismo canal de sistema que usa "playwright install
-# --with-deps"); el Start Command corre bajo xvfb-run -a.
+# El login con interfaz usa Xvfb bajo demanda desde Node. La API arranca
+# directamente: un problema de pantalla no debe impedir abrir el puerto HTTP.
 [phases.install]
 cmds = [
   "apt-get update && apt-get install -y xvfb",
@@ -14,4 +12,4 @@ cmds = [
 ]
 
 [start]
-cmd = "xvfb-run -a npm start"
+cmd = "node app.js"

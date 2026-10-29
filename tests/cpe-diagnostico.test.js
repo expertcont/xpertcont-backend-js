@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { resumirRespuesta, resumirToken } = require('../src/services/cpe/diagnosticoSunat');
 
-function entorno({ tokenRechazado = false, descargaRechazada = false } = {}) {
+function entorno({ tokenRechazado = false, descargaRechazada = false, usarPortal = false, errorPortal } = {}) {
   const logs = [];
   const logger = { registrar: (...args) => logs.push(args), resumirRespuesta, resumirToken };
   const cargar = (archivo, dependencias) => {
@@ -20,6 +20,10 @@ function entorno({ tokenRechazado = false, descargaRechazada = false } = {}) {
     return module.exports;
   };
   let solicitudesToken = 0;
+  let autorizacionUsada;
+  const claimsPortal = { sub: '20111111111', grantType: 'authorization_token', exp: Math.floor(Date.now()/1000) + 3600,
+    aud: [{ api: 'https://api-cpe.sunat.gob.pe', recurso: [{ id: '/v1/contribuyente/consultacpe', indicador: '1', gt: '100100' }] }] };
+  const tokenPortal = `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify(claimsPortal)).toString('base64url')}.firma`;
   const sunat = cargar('sire/sireSunatClient.service.js', {
     '../cpe/diagnosticoSunat': logger,
     '../../repositories/sire/sire.repository': {
@@ -31,25 +35,33 @@ function entorno({ tokenRechazado = false, descargaRechazada = false } = {}) {
       return { ok: !tokenRechazado, status: tokenRechazado ? 401 : 200,
         json: async () => tokenRechazado
           ? { error: 'invalid_grant', error_description: 'Rechazo USER_SOL SECRET_PASSWORD SECRET_CLIENT' }
-          : { access_token: `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now()/1000) + 3600 })).toString('base64url')}.firma` } };
+          : { access_token: `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now()/1000) + 3600, ...(usarPortal ? { aud: [] } : {}) })).toString('base64url')}.firma` } };
     },
   });
   const cpe = cargar('cpe/consultacpe.service.js', {
     './diagnosticoSunat': logger,
     crypto: { randomUUID: () => 'REF-PRUEBA' },
     '../sire/sireSunatClient.service': sunat,
-    './loginPortalSunat.service': { obtenerTokenPortalCpe: async () => { throw new Error('portal no simulado'); } },
+    './loginPortalSunat.service': { obtenerTokenPortalCpe: async ({ diagnostico }) => {
+      if (errorPortal) throw errorPortal;
+      if (!usarPortal) throw new Error('portal no simulado');
+      Object.assign(diagnostico, { viaPortal: true, viaPortalMetodo: 'playwright' });
+      return tokenPortal;
+    } },
     'adm-zip': class {
       getEntries() { return [{ entryName: 'comprobante.xml', header: { size: 6 } }]; }
       readFile() { return Buffer.from('<xml/>'); }
     },
-    'node-fetch': async () => ({ ok: !descargaRechazada, status: descargaRechazada ? 403 : 200,
+    'node-fetch': async (url, opciones) => {
+      autorizacionUsada = opciones.headers.Authorization;
+      return { ok: !descargaRechazada, status: descargaRechazada ? 403 : 200,
       text: async () => JSON.stringify(descargaRechazada
         ? { errors: [{ codError: '104', desError: 'No autorizado' }] }
         : { valArchivo: Buffer.from('PK-zip-simulado').toString('base64') }),
-    }),
+      };
+    },
   });
-  return { cpe, logs, solicitudesToken: () => solicitudesToken };
+  return { cpe, logs, solicitudesToken: () => solicitudesToken, tokenPortal, autorizacionUsada: () => autorizacionUsada };
 }
 const params = { idAnfitrion: 'HOST', documentoId: '20111111111', ruc: '20222222222', tipo: '01', serie: 'F001', numero: '123' };
 
@@ -91,6 +103,28 @@ test('token valido y recurso rechazado informa etapa de descarga y codigo SUNAT'
     return true;
   });
   assert.equal(e.logs.at(-1)[2], 'autorizacion_rechazada');
+});
+
+test('fallback usa el token portal para descargar y diagnostica ese mismo token', async () => {
+  const e = entorno({ usarPortal: true });
+  await e.cpe.descargarComprobanteCpe(params);
+  assert.equal(e.autorizacionUsada(), `Bearer ${e.tokenPortal}`);
+  const evento = e.logs.find(log => log[1] === 'descarga' && log[2] === 'solicitando');
+  assert.equal(evento[3].grantType, 'authorization_token');
+  assert.equal(evento[3].consultacpeDeclarado, true);
+  assert.equal(evento[3].viaPortalMetodo, 'playwright');
+  assert.doesNotMatch(JSON.stringify(e.logs), /eyJhbG/);
+});
+
+test('fallo de pantalla en el portal conserva el HTTP tecnico en vez de convertirlo a 403', async () => {
+  const e = entorno({ usarPortal: true, errorPortal: Object.assign(new Error('Xvfb no disponible'), { statusCode: 501 }) });
+  await assert.rejects(e.cpe.descargarComprobanteCpe(params), error => {
+    assert.equal(error.statusCode, 501);
+    assert.match(error.mensajePublico, /Xvfb no disponible/);
+    assert.doesNotMatch(error.mensajePublico, /Habilita el recurso/);
+    return true;
+  });
+  assert.equal(e.autorizacionUsada(), undefined);
 });
 
 test('resume declaraciones del token sin exponer datos de sesion ni identificadores de aplicacion', () => {

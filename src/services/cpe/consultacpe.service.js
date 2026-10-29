@@ -122,7 +122,7 @@ const descargarComprobanteCpe = async ({
 
   // Solo declaraciones seleccionadas para comparar emisiones; no valida la firma.
   let tokenUsado = token;
-  const resumenToken = resumirToken(token, documentoId);
+  let resumenToken = resumirToken(token, documentoId);
   // El permiso se otorga a la APLICACION (client_id), no al token: si el aud
   // no declara consultacpe con indicador activo, ninguna llamada pasa y SUNAT
   // responde 401 generico. Fallback: obtener el token como el PORTAL e-factura
@@ -142,6 +142,7 @@ const descargarComprobanteCpe = async ({
           { statusCode: 403 }
         );
       }
+      resumenToken = resumenPortal;
       console.log(`[SUNAT CPE] recurso consultacpe ausente en la app propia: usando LOGIN PORTAL para ${documentoId}`);
       registrar(contexto, etapa, 'disponible', diagnostico);
       etapa = 'descarga';
@@ -151,11 +152,10 @@ const descargarComprobanteCpe = async ({
         'La aplicacion SUNAT de esta empresa no tiene habilitado el recurso /v1/contribuyente/consultacpe (el token no lo declara).',
         'El intento por login del portal tambien fallo:',
         portalError.message,
-        'Habilita el recurso en las credenciales API SUNAT de esa empresa y reingenta.',
       ].join(' ');
       registrar(contexto, etapa, 'fallback_portal_fallo', { mensajePortal: portalError.message });
       Object.assign(diagnostico, { mensajeSunat: aviso });
-      throw Object.assign(new Error(aviso), { statusCode: 403 });
+      throw Object.assign(new Error(aviso), { statusCode: portalError.statusCode || 502 });
     }
   }
   registrar(contexto, etapa, 'solicitando', {
@@ -184,7 +184,7 @@ const descargarComprobanteCpe = async ({
   }
 
   if (!response.ok) {
-    Object.assign(diagnostico, { httpSunat: response.status }, resumirRespuesta(data, [token]));
+    Object.assign(diagnostico, { httpSunat: response.status }, resumirRespuesta(data, [token, tokenUsado]));
     const detalles = Array.isArray(data?.errors) && data.errors.length
       ? data.errors.map((e) => e.desError || e.msg).filter(Boolean).join(' ') : '';
     const mensaje =
@@ -197,7 +197,7 @@ const descargarComprobanteCpe = async ({
 
   const base64Archivo = data?.valArchivo || '';
   if (!base64Archivo) {
-    Object.assign(diagnostico, { httpSunat: response.status }, resumirRespuesta(data, [token]));
+    Object.assign(diagnostico, { httpSunat: response.status }, resumirRespuesta(data, [token, tokenUsado]));
     throw Object.assign(
       new Error(data?.msg || data?.message || 'SUNAT no devolvio archivo para el comprobante solicitado.'),
       { statusCode: 404, respuestaSunat: data }
