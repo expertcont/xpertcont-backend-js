@@ -332,12 +332,18 @@ const loginPortalUnaSesion = async ({ documentoId, sol, password, contexto }) =>
 // durante unos minutos, para no agravar la cola del servicio.
 const ENFRIAMIENTO_CONGESTION = new Map();
 const ENFRIAMIENTO_MS = 5 * 60 * 1000;
-const obtenerTokenPortalCpe = async ({ idAnfitrion, documentoId, db, diagnostico }) => {
+const obtenerTokenPortalCpe = async ({ idAnfitrion, documentoId, db, diagnostico, soloCache = false }) => {
   const clave = `portal|${idAnfitrion}|${documentoId}`;
   const cacheado = PORTALES_EN_CACHE.get(clave);
   if (cacheado) {
     if (diagnostico) Object.assign(diagnostico, { viaPortal: true, tokenCache: true });
     return cacheado;
+  }
+  if (soloCache) {
+    throw Object.assign(
+      new Error('No hay un token portal vigente en memoria. Genera primero el Token portal SUNAT; esta descarga no inicia Playwright.'),
+      { statusCode: 409 }
+    );
   }
   const frioHasta = ENFRIAMIENTO_CONGESTION.get(clave);
   if (frioHasta && Date.now() < frioHasta) {

@@ -97,6 +97,8 @@ const descargarComprobanteCpe = async ({
   idAnfitrion,
   documentoId,
   db,
+  tokenAutorizacion,
+  origenToken,
   timeout = 30000,
 }) => {
   const definicion = FORMATOS[sinEspacios(formato).toLowerCase()];
@@ -110,7 +112,8 @@ const descargarComprobanteCpe = async ({
   let etapa = 'token';
   registrar(contexto, etapa, 'inicio');
   try {
-  const token = await obtenerTokenCpe({ idAnfitrion, documentoId, db, diagnostico });
+  const token = tokenAutorizacion || await obtenerTokenCpe({ idAnfitrion, documentoId, db, diagnostico });
+  if (tokenAutorizacion) Object.assign(diagnostico, { credencial: origenToken || 'externo', tokenCache: true });
   registrar(contexto, etapa, 'disponible', diagnostico);
   etapa = 'descarga';
   // El HTTP del token no describe la siguiente llamada al recurso CPE.

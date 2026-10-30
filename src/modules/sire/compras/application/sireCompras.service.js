@@ -199,5 +199,42 @@ const descargarXmlComprobante = async (entrada) => {
     throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: error.mensajePublico || `SUNAT no devolvio el XML del comprobante: ${error.message}` });
   }
 };
-return { recuperar, generarTicket, consultar, descargar, generarToken, generarTokenSire, generarTokenLegacy, generarTokenPortal, descargarXmlComprobante, validar };
+// Descarga manual usando EXCLUSIVAMENTE el token portal que ya esta en cache.
+// No recibe el JWT del navegador, no inicia Playwright y no genera otro token.
+const descargarXmlComprobantePortal = async (entrada) => {
+  const p = validar(entrada);
+  const rucEmisor = String(entrada.ruc_emisor || '').replace(/\D/g, '');
+  if (rucEmisor.length !== 11 || rucEmisor === p.documentoId) {
+    throw fallo('La compra no tiene registrado un RUC de emisor distinto al RUC de la empresa. Revisa el registro en Compras por declarar.', 400);
+  }
+  try {
+    const diagnostico = {};
+    const tokenPortal = await obtenerTokenPortalCpe({
+      idAnfitrion: p.idAnfitrion,
+      documentoId: p.documentoId,
+      db: p.db,
+      diagnostico,
+      soloCache: true,
+    });
+    const resumen = resumirToken(tokenPortal, p.documentoId);
+    if (resumen.consultacpeDeclarado === false) {
+      throw fallo('El token portal vigente no declara consultacpe; genera uno nuevo para diagnosticarlo.', 403);
+    }
+    const resultado = await descargarComprobanteCpe({
+      ruc: rucEmisor,
+      tipo: entrada.tipo_comprobante,
+      serie: entrada.serie,
+      numero: entrada.numero,
+      formato: 'xml',
+      idAnfitrion: p.idAnfitrion,
+      documentoId: p.documentoId,
+      tokenAutorizacion: tokenPortal,
+      origenToken: 'portal_cache',
+    });
+    return { nombre_archivo: resultado.nombre_archivo, archivo: resultado.contenido };
+  } catch (error) {
+    throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: error.mensajePublico || `SUNAT no devolvio el XML con el token portal: ${error.message}` });
+  }
+};
+return { recuperar, generarTicket, consultar, descargar, generarToken, generarTokenSire, generarTokenLegacy, generarTokenPortal, descargarXmlComprobante, descargarXmlComprobantePortal, validar };
 };
