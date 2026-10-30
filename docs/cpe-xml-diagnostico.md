@@ -19,6 +19,14 @@ Actualizacion 29/10/2026: cada solicitud usa una sola pareja, sin reintentos con
 
 Los botones Token SIRE primario y Token SIRE secundario fuerzan una emision nueva (forzarNuevo=true), releen mad_usuariocontabilidad y devuelven solo el resumen del token y el diagnostico. No leen, escriben ni sustituyen la cache normal. La pantalla limpia resultados anteriores antes del intento y al cambiar de empresa o periodo. Las operaciones habituales siguen reutilizando cache. Esto permite pruebas separadas; no demuestra por si solo la causa de un rechazo de SUNAT para un RUC real.
 
+## Prueba Token legacy
+
+El historial confirma que el commit c917545, del 23/10/2026, sustituyo el uso exclusivo de sire_sol/sire_solpwd por la prioridad a sunat_sol/sunat_solpwd en el controlador de Contabilidad. La prueba legacy reproduce el bloque de autenticacion anterior a ese commit, no el controlador ya modificado.
+
+El boton Token legacy llama a POST /sire/compras/propuesta/token-legacy. Usa sireLegacyToken.service.js, independiente de sireSunatClient.service.js: consulta directamente sire_id, sire_secret, sire_sol y sire_solpwd; concatena documentoId + sire_sol literalmente y conserva los valores de ID, secreto y password sin trim ni normalizacion. Usa password grant, scope api-sire y el mismo endpoint y Content-Type originales.
+
+Cada clic relee la BD y envia una sola solicitud. No usa cache, Playwright, pareja primaria ni operaciones de ticket. Las diferencias operativas respecto del bloque historico son validacion de datos presentes, timeout de 30 segundos y manejo de errores sin secretos. El navegador recibe solo resumen de vigencia/recursos y diagnostico, nunca el access_token legacy.
+
 ## Documentacion consultada y limites
 
 - Manual oficial SIRE Compras v28, seccion 5.1: documenta POST clientessol/{clientId}/oauth2/token/ con grant_type=password, scope api-sire, ID/secreto y RUC+usuario/clave SOL. Es consistente con el flujo SIRE implementado, pero no documenta consultacpe ni demuestra acceso general a ese recurso con scope api-cpe.

@@ -3,6 +3,7 @@ const { validarCompra } = require('../domain/personalizada');
 const { descargarComprobanteCpe } = require('../../../../services/cpe/consultacpe.service');
 const { obtenerTokenPortalCpe } = require('../../../../services/cpe/loginPortalSunat.service');
 const { resumirToken } = require('../../../../services/cpe/diagnosticoSunat');
+const { obtenerTokenSireLegacy } = require('../../../../services/sire/sireLegacyToken.service');
 // Puertos inyectados: la aplicacion no conoce Express, PostgreSQL ni Comercial.
 module.exports = ({ propuestas: repo, comprasSistema, tickets, sunat, leerArchivo }) => {
 const fallo = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
@@ -141,6 +142,22 @@ const generarTokenSire = async (entrada) => {
   }
 };
 
+const generarTokenLegacy = async (entrada) => {
+  const p = validar(entrada);
+  try {
+    const { token, diagnostico } = await obtenerTokenSireLegacy({ idAnfitrion: p.idAnfitrion, documentoId: p.documentoId });
+    const resumen = resumirToken(token, p.documentoId);
+    return { via: 'sire', modo: 'legacy', pareja_sol: 'secundario', documento_id: p.documentoId,
+      diagnostico, scope: SCOPE_SIRE, longitud: token.length, vigencia: vigenciaToken(token),
+      jwtDecodificable: resumen.jwtDecodificable, tokenVencido: resumen.tokenVencido,
+      migeigvDeclarado: resumen.migeigvDeclarado, recursosSire: resumen.recursosSire || [],
+      audienciaInterpretable: resumen.audienciaInterpretable };
+  } catch (error) {
+    throw Object.assign(error, { statusCode: error.statusCode || 502,
+      mensajePublico: `SUNAT rechazo la generacion del token legacy: ${error.message}` });
+  }
+};
+
 // Solo diagnostico: token via LOGIN PORTAL (Playwright o HTTP), util para
 // verificar el fallback con el recurso faltante sin pasar por una descarga.
 const generarTokenPortal = async (entrada) => {
@@ -182,5 +199,5 @@ const descargarXmlComprobante = async (entrada) => {
     throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: error.mensajePublico || `SUNAT no devolvio el XML del comprobante: ${error.message}` });
   }
 };
-return { recuperar, generarTicket, consultar, descargar, generarToken, generarTokenSire, generarTokenPortal, descargarXmlComprobante, validar };
+return { recuperar, generarTicket, consultar, descargar, generarToken, generarTokenSire, generarTokenLegacy, generarTokenPortal, descargarXmlComprobante, validar };
 };
