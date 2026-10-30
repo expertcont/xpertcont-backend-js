@@ -15,6 +15,10 @@ El token del portal aportado declara grantType=authorization_token. El backend s
 
 Los nombres principal/secundario de los logs describen campos de BD, no el tipo real de usuario en SUNAT: principal corresponde a sunat_sol/sunat_solpwd y secundario a sire_sol/sire_solpwd.
 
+Actualizacion 29/10/2026: cada solicitud usa una sola pareja, sin reintentos con otra. Las pruebas manuales seleccionan explicitamente principal (sunat_sol/sunat_solpwd) o secundario (sire_sol/sire_solpwd). Si falta algun campo de la pareja elegida, no se llama a SUNAT ni se sustituye por otra. Los rechazos muestran los campos utilizados, HTTP y codigo SUNAT, sin valores de credenciales.
+
+Los botones Token SIRE primario y Token SIRE secundario fuerzan una emision nueva (forzarNuevo=true), releen mad_usuariocontabilidad y devuelven solo el resumen del token y el diagnostico. No leen, escriben ni sustituyen la cache normal. La pantalla limpia resultados anteriores antes del intento y al cambiar de empresa o periodo. Las operaciones habituales siguen reutilizando cache. Esto permite pruebas separadas; no demuestra por si solo la causa de un rechazo de SUNAT para un RUC real.
+
 ## Documentacion consultada y limites
 
 - Manual oficial SIRE Compras v28, seccion 5.1: documenta POST clientessol/{clientId}/oauth2/token/ con grant_type=password, scope api-sire, ID/secreto y RUC+usuario/clave SOL. Es consistente con el flujo SIRE implementado, pero no documenta consultacpe ni demuestra acceso general a ese recurso con scope api-cpe.

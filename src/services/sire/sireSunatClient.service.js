@@ -47,57 +47,53 @@ const decodificarJwt = (token = '') => {
   try { return JSON.parse(Buffer.from(String(token).split('.')[1], 'base64').toString('utf8')); } catch { return null; }
 };
 
-// Credenciales de usuario SOL para el API SUNAT. Importante (verificado
-// empiricamente en produccion con descargas reales): SUNAT habilita el acceso
-// al API con el usuario SOL SECUNDARIO (tipo MODDATOS/NASESTEE asociado al
-// RUC), no con el usuario principal; parece politica actual de SUNAT.
-// En la BD conviven dos pares: principal = sunat_sol/sunat_solpwd (historico,
-// no siempre valido para API) y secundario = sire_sol/sire_solpwd (el que
-// funciona). Reglas:
-//   1) Se usa SIEMPRE una pareja completa; nunca se mezcla el usuario de una
-//      con el password de la otra.
-//   2) Si el par principal esta completo se intenta primero, y si la
-//      autenticacion falla se prueba el secundario.
-//   3) Si el principal esta incompleto o null, se usa directamente el
-//      secundario.
-const paresSol = (credenciales) => {
+// Las etiquetas indican columnas de BD, no el tipo real de usuario en SUNAT.
+// Una sola pareja por solicitud. Las pruebas manuales seleccionan la pareja
+// explicitamente; la operacion habitual usa la primera completa, sin reintentos.
+const paresSol = (credenciales, parejaSol = 'preferida') => {
   const principal = [limpiarTexto(credenciales.sunat_sol), limpiarTexto(credenciales.sunat_solpwd)];
   const secundario = [limpiarTexto(credenciales.sire_sol), limpiarTexto(credenciales.sire_solpwd)];
+  if (parejaSol === 'principal') return principal[0] && principal[1]
+    ? [{ par: 'principal', sol: principal[0], password: principal[1] }] : [];
+  if (parejaSol === 'secundario') return secundario[0] && secundario[1]
+    ? [{ par: 'secundario', sol: secundario[0], password: secundario[1] }] : [];
+  if (parejaSol !== 'preferida') throw Object.assign(new Error('Seleccion de pareja SOL invalida.'), { statusCode: 400 });
   if (principal[0] && principal[1]) return [{ par: 'principal', sol: principal[0], password: principal[1] }];
   if (secundario[0] && secundario[1]) return [{ par: 'secundario', sol: secundario[0], password: secundario[1] }];
-  if (principal[0] || principal[1] || secundario[0] || secundario[1]) {
-    return [{ par: 'incompleto', sol: principal[0] || secundario[0], password: principal[1] || secundario[1] }];
-  }
   return [];
 };
 
-const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError, db, diagnostico }) => {
+const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError, db, diagnostico, parejaSol }) => {
   const credenciales = await obtenerCredencialesSire({ idAnfitrion, documentoId, db });
   const clientId = limpiarTexto(credenciales.sire_id);
   const clientSecret = limpiarTexto(credenciales.sire_secret);
   const url = `https://api-seguridad.sunat.gob.pe/v1/clientessol/${clientId}/oauth2/token/`;
   const errores = [];
-  const esCpe = scope === 'https://api-cpe.sunat.gob.pe';
-  const contexto = { rucEmpresa: documentoId, scope };
+  const contexto = { rucEmpresa: documentoId, scope, servicio: scope === SCOPE_SIRE ? 'SIRE' : 'CPE' };
   const secretos = [clientId, clientSecret, credenciales.sunat_sol, credenciales.sunat_solpwd,
     credenciales.sire_sol, credenciales.sire_solpwd].map(limpiarTexto);
-  if (esCpe) registrar(contexto, 'configuracion', 'evaluada', {
+  registrar(contexto, 'configuracion', 'evaluada', {
     clienteIdPresente: Boolean(clientId), clienteSecretPresente: Boolean(clientSecret),
     principalCompleto: Boolean(limpiarTexto(credenciales.sunat_sol) && limpiarTexto(credenciales.sunat_solpwd)),
     secundarioCompleto: Boolean(limpiarTexto(credenciales.sire_sol) && limpiarTexto(credenciales.sire_solpwd)),
   });
+  const pares = paresSol(credenciales, parejaSol);
+  if (!clientId || !clientSecret || !pares.length) {
+    const campos = parejaSol === 'principal' ? 'sunat_sol/sunat_solpwd'
+      : parejaSol === 'secundario' ? 'sire_sol/sire_solpwd' : 'una pareja SOL completa';
+    throw Object.assign(new Error(`Faltan ID/secreto API o ${campos} completos en mad_usuariocontabilidad. No se intento otra pareja.`), { statusCode: 400 });
+  }
+  const intentos = [];
+  if (diagnostico) diagnostico.intentos = intentos;
 
-  // Reintento: si auth falla con el par principal, prueba el secundario
-  // (usuario tipo MODDATOS), que es el que SUNAT permite para el API actualmente.
-  // El log deja rastro (sin credenciales) de que par se uso con exito; solo se
-  // emite al generar el token, no en cada llamada cacheada.
-  for (const { par, sol, password } of paresSol(credenciales)) {
+  // Nunca sustituir la pareja elegida por otra, aunque SUNAT la rechace.
+  for (const { par, sol, password } of pares) {
+    const camposSol = par === 'principal' ? 'sunat_sol/sunat_solpwd' : 'sire_sol/sire_solpwd';
     if (diagnostico) Object.assign(diagnostico, {
-      credencial: par, camposSol: par === 'principal' ? 'sunat_sol/sunat_solpwd'
-        : par === 'secundario' ? 'sire_sol/sire_solpwd' : 'incompletos',
+      credencial: par, camposSol,
       grantSolicitado: 'password',
     });
-    if (esCpe) registrar(contexto, 'token', 'solicitando', { credencial: par });
+    registrar(contexto, 'token', 'solicitando', { credencial: par, camposSol, numeroIntento: intentos.length + 1 });
     const body = new URLSearchParams({
       grant_type: 'password',
       scope,
@@ -119,7 +115,9 @@ const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
     const data = await response.json().catch(() => ({}));
 
     if (response.ok && data.access_token) {
-      if (esCpe) registrar(contexto, 'token', 'generado', { credencial: par, httpSunat: response.status });
+      intentos.push({ camposSol, httpSunat: response.status, resultado: 'generado' });
+      Object.assign(diagnostico || {}, { httpSunat: response.status, codigoSunat: '', mensajeSunat: '' });
+      registrar(contexto, 'token', 'generado', { credencial: par, camposSol, httpSunat: response.status });
       console.log(`[SUNAT] token ${scope.includes('api-sire') ? 'SIRE' : 'CPE'} generado con credencial ${par} para ${documentoId}`);
       return data.access_token;
     }
@@ -127,10 +125,11 @@ const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
     // (antes solo CPE llevaba diagnostico; los fallos de SIRE quedaban
     // ciegos y el usuario veia solo "fallo en autenticacion").
     const resumen = resumirRespuesta(data, secretos);
+    intentos.push({ camposSol, httpSunat: response.status, resultado: 'rechazado', ...resumen });
     Object.assign(diagnostico || {}, resumen, { httpSunat: response.status });
     Object.assign(contexto, { credencial: par });
-    registrar(contexto, 'token', 'rechazado', { httpSunat: response.status, ...resumen });
-    errores.push(resumen.mensajeSunat || data.error_description || data.error || mensajeError);
+    registrar(contexto, 'token', 'rechazado', { camposSol, httpSunat: response.status, ...resumen });
+    errores.push(`${camposSol} (HTTP ${response.status}${resumen.codigoSunat ? ', ' + resumen.codigoSunat : ''}): ${resumen.mensajeSunat || mensajeError || 'SUNAT no devolvio token.'}`);
   }
 
   throw new Error(errores.join(' | '));
@@ -138,8 +137,8 @@ const generarTokenSunat = async ({ idAnfitrion, documentoId, scope, mensajeError
 
 // Devuelve el token del cache si existe; si no, lo genera una sola vez y lo
 // comparte con las llamadas concurrentes hasta su vencimiento.
-const obtenerTokenSunat = ({ idAnfitrion, documentoId, scope, mensajeError, db, diagnostico }) => {
-  const clave = `${idAnfitrion}|${documentoId}|${scope}`;
+const obtenerTokenSunat = ({ idAnfitrion, documentoId, scope, mensajeError, db, diagnostico, forzarNuevo = false, parejaSol = 'preferida' }) => {
+  const clave = `${idAnfitrion}|${documentoId}|${scope}|${parejaSol}`;
   const cacheado = tokensEnCache.get(clave);
   const entregar = (promesa, cache) => promesa.then(token => {
     if (diagnostico) Object.assign(diagnostico, promesa.diagnostico, { tokenCache: cache });
@@ -148,17 +147,22 @@ const obtenerTokenSunat = ({ idAnfitrion, documentoId, scope, mensajeError, db, 
     if (diagnostico) Object.assign(diagnostico, promesa.diagnostico, { tokenCache: cache });
     throw error;
   });
-  if (cacheado) return entregar(cacheado, true);
+  if (!forzarNuevo && cacheado) return entregar(cacheado, true);
   const detalleToken = {};
-  const promesa = generarTokenSunat({ idAnfitrion, documentoId, scope, mensajeError, db, diagnostico: detalleToken }).then((token) => {
+  const promesa = generarTokenSunat({ idAnfitrion, documentoId, scope, mensajeError, db, parejaSol, diagnostico: detalleToken }).then((token) => {
     const expiracion = decodificarJwt(token)?.exp;
     const msVigencia = expiracion ? Math.max(0, (expiracion - MARGEN_TOKEN_SEG) * 1000 - Date.now()) : 0;
-    if (msVigencia > 0) setTimeout(() => tokensEnCache.delete(clave), msVigencia).unref();
+    if (!forzarNuevo && msVigencia > 0) setTimeout(() => {
+      if (tokensEnCache.get(clave) === promesa) tokensEnCache.delete(clave);
+    }, msVigencia).unref();
     return token;
   });
   promesa.diagnostico = detalleToken;
-  tokensEnCache.set(clave, promesa);
-  promesa.catch(() => tokensEnCache.delete(clave));
+  // La prueba manual no lee, escribe ni sustituye la cache de operaciones habituales.
+  if (!forzarNuevo) tokensEnCache.set(clave, promesa);
+  promesa.catch(() => {
+    if (tokensEnCache.get(clave) === promesa) tokensEnCache.delete(clave);
+  });
   return entregar(promesa, false);
 };
 

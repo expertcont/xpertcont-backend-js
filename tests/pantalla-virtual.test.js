@@ -89,7 +89,7 @@ test('Xvfb que no confirma pantalla vence y se termina sin bloquear el event loo
   assert.deepEqual(e.hijos[0].senales, ['SIGTERM']);
 });
 
-function cargarLogin({ fallaLanzamiento = false } = {}) {
+function cargarLogin({ fallaLanzamiento = false, retornoIncompleto = false, retornoRaiz = false } = {}) {
   const eventos = [], acciones = [];
   let cerrados = 0, pantallasCerradas = 0, vuelta = 0;
   const pagina = {
@@ -98,10 +98,13 @@ function cargarLogin({ fallaLanzamiento = false } = {}) {
     waitForSelector: async selector => acciones.push(['selector', selector]),
     $: async selector => selector === '#btnAceptar' ? { click: async () => acciones.push(['submit']) } : null,
     fill: async selector => acciones.push(['fill', selector]),
-    url: () => 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm',
+    url: () => retornoRaiz && vuelta > 0 ? 'https://api-seguridad.sunat.gob.pe/?state=&code=CODE_PRIVADO'
+      : 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm',
     frames: () => [],
     locator: () => ({ first: () => ({ click: async () => acciones.push(['menu']) }) }),
     evaluate: async funcion => {
+      if (funcion.name === 'prepararRetornoLogin') return { retornoListo: !retornoIncompleto,
+        originalUrlPresente: !retornoIncompleto, statePresente: !retornoIncompleto, retornoMenuValido: !retornoIncompleto };
       const codigo = funcion.toString();
       if (codigo.includes('sessionStorage')) return vuelta >= 9 ? 'TOKEN-SIMULADO' : '';
       if (codigo.includes('Boolean(document.querySelector')) return false;
@@ -116,7 +119,7 @@ function cargarLogin({ fallaLanzamiento = false } = {}) {
   };
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/services/cpe/loginPortalPlaywright.service.js'), 'utf8'), {
-    module, setTimeout: callback => { vuelta++; queueMicrotask(callback); },
+    module, URL, URLSearchParams, setTimeout: callback => { vuelta++; queueMicrotask(callback); },
     require: id => {
       if (id === './diagnosticoSunat') return { registrar: (...args) => eventos.push(args) };
       if (id === './pantallaVirtual.service') return { prepararPantalla: async () => ({
@@ -131,7 +134,7 @@ function cargarLogin({ fallaLanzamiento = false } = {}) {
     },
   });
   return { login: module.exports.loginPortalPlaywrightCpe, acciones, eventos,
-    cierres: () => ({ navegador: cerrados, pantalla: pantallasCerradas }) };
+    cierres: () => ({ navegador: cerrados, pantalla: pantallasCerradas }), vueltas: () => vuelta };
 }
 
 test('login conserva formulario SOL, apertura del menu y captura del token; cierra ambos procesos', async () => {
@@ -153,4 +156,45 @@ test('fallo al abrir Chromium libera la pantalla y registra el error', async () 
   await assert.rejects(e.login({ contexto: {} }), /Chromium no disponible/);
   assert.deepEqual(e.cierres(), { navegador: 0, pantalla: 1 });
   assert.ok(e.eventos.some(ev => ev[2] === 'playwright_lanzador_fallo'));
+});
+
+test('retorno perdido corta en la primera vuelta, cierra recursos y no publica el code', async () => {
+  const e = cargarLogin({ retornoRaiz: true });
+  await assert.rejects(e.login({ contexto: {} }), error => {
+    assert.equal(error.codigo, 'PORTAL_RETORNO_PERDIDO');
+    assert.doesNotMatch(error.message, /CODE_PRIVADO|state=|code=/);
+    return true;
+  });
+  assert.equal(e.vueltas(), 1);
+  assert.deepEqual(e.cierres(), { navegador: 1, pantalla: 1 });
+  assert.doesNotMatch(JSON.stringify(e.eventos), /CODE_PRIVADO|state=|code=/);
+});
+
+test('no envia el login si faltan los parametros de retorno', async () => {
+  const e = cargarLogin({ retornoIncompleto: true });
+  await assert.rejects(e.login({ contexto: {} }), error => error.codigo === 'PORTAL_RETORNO_INCOMPLETO');
+  assert.equal(e.acciones.some(a => a[0] === 'submit'), false);
+  assert.equal(e.vueltas(), 0);
+  assert.deepEqual(e.cierres(), { navegador: 1, pantalla: 1 });
+});
+
+test('prepara campos ocultos antes de onload y conserva el state completo sin imprimirlo', () => {
+  const { prepararRetornoLogin, urlSinSesion } = require('../src/services/cpe/loginPortalPlaywright.service');
+  const campos = { originalUrl: { value: '' }, state: { value: '' } };
+  const retorno = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/AutenticaMenuInternet.htm';
+  const state = 'STATE_PRIVADO==';
+  const ejecutar = search => vm.runInNewContext(`(${prepararRetornoLogin.toString()})()`, {
+    URL, URLSearchParams,
+    document: { forms: { namedItem: () => ({ elements: { namedItem: nombre => campos[nombre] } }) } },
+    window: { location: { search } },
+  });
+  const resultado = ejecutar(`?originalUrl=${encodeURIComponent(retorno)}&state=${encodeURIComponent(state)}`);
+  assert.equal(resultado.retornoListo, true);
+  assert.equal(resultado.camposRestaurados, 2);
+  assert.equal(campos.originalUrl.value, retorno);
+  assert.equal(campos.state.value, state);
+  assert.doesNotMatch(JSON.stringify(resultado), /STATE_PRIVADO/);
+  const invalido = ejecutar('?originalUrl=https%3A%2F%2Fejemplo.com%2F&state=x');
+  assert.equal(invalido.retornoListo, false);
+  assert.equal(urlSinSesion('https://api-seguridad.sunat.gob.pe/?code=PRIVADO#token'), 'https://api-seguridad.sunat.gob.pe/');
 });

@@ -23,3 +23,11 @@ PLAYWRIGHT_HEADLESS=1 permite ejecutar sin interfaz y sin Xvfb. En Linux, sin es
 5. Ante error buscar `xvfb_fallo` o `playwright_lanzador_fallo`. Un error de infraestructura del login conserva su estado tecnico y no se convierte automaticamente en falta de permisos HTTP 403.
 
 Las pruebas locales simulan procesos y pagina SOL. No sustituyen la prueba de Xvfb/Chromium reales en Linux ni confirman que el portal entregue el token en Railway.
+
+## Retorno del formulario SOL
+
+El HTML publico de loginMenuSol, inspeccionado sin credenciales el 29/10/2026, tiene body.onload=url2Fields(). Esa funcion copia originalUrl y state desde la query a campos ocultos. Esperar solo a que #txtRuc sea visible no garantiza que onload haya ocurrido.
+
+Antes de enviar el login se completan esos dos campos desde la query y se valida que el retorno sea AutenticaMenuInternet.htm en e-menu.sunat.gob.pe. El evento playwright_retorno_login expone solo indicadores booleanos y cuantos campos se completaron; no expone sus valores.
+
+Si despues del login se llega a la raiz de api-seguridad con code/state, el intento termina en la primera vuelta de sondeo con PORTAL_RETORNO_PERDIDO, en lugar de esperar 120 vueltas buscando un token. El code de autorizacion no se trata como access_token ni se imprime en URLs de diagnostico.

@@ -34,6 +34,45 @@ const URI_APP_CONSULTACPE =
   'https://e-factura.sunat.gob.pe/app/contribuyentems/servicio/consultacpe/consulta/nuevaconsulta/1.0.0/';
 
 const limpiarTexto = (value = '') => String(value ?? '').trim();
+const urlSinSesion = (valor) => {
+  try { const url = new URL(valor); return url.origin + url.pathname; }
+  catch { return '(URL no disponible)'; }
+};
+
+// Se ejecuta dentro del navegador. El formulario publico llena estos campos
+// en body.onload (url2Fields), que puede ocurrir despues de mostrarse #txtRuc.
+// Leer la query preserva el state completo, incluidos sus signos '=' finales.
+const prepararRetornoLogin = () => {
+  const formulario = document.forms.namedItem('LoginForm');
+  const parametros = new URLSearchParams(window.location.search);
+  let camposRestaurados = 0;
+  for (const nombre of ['originalUrl', 'state']) {
+    const campo = formulario?.elements.namedItem(nombre);
+    const valor = parametros.get(nombre);
+    if (campo && valor && campo.value !== valor) {
+      campo.value = valor;
+      camposRestaurados++;
+    }
+  }
+  const originalUrl = formulario?.elements.namedItem('originalUrl')?.value || '';
+  const state = formulario?.elements.namedItem('state')?.value || '';
+  let retornoMenuValido = false;
+  try {
+    const destino = new URL(originalUrl);
+    retornoMenuValido = destino.origin === 'https://e-menu.sunat.gob.pe'
+      && destino.pathname === '/cl-ti-itmenu/AutenticaMenuInternet.htm';
+  } catch { /* Retorno ausente o invalido: no enviar credenciales. */ }
+  return { originalUrlPresente: Boolean(originalUrl), statePresente: Boolean(state),
+    retornoMenuValido, camposRestaurados, retornoListo: retornoMenuValido && Boolean(state) };
+};
+
+const retornoPerdido = (valor) => {
+  try {
+    const url = new URL(valor);
+    return url.origin === 'https://api-seguridad.sunat.gob.pe' && url.pathname === '/'
+      && (url.searchParams.has('code') || url.searchParams.has('state'));
+  } catch { return false; }
+};
 
 // Escucha la red de una pagina: registra peticiones SUNAT (excluye ruido
 // Dynatrace/estaticos) y captura el token si viaja en alguna respuesta.
@@ -62,7 +101,7 @@ const instrumentar = (pagina, contexto) => {
       } else if (/token|seguridad|olog|cashm|authen/i.test(u) && urlsVistas.size < 40) {
         registrar(contexto, 'portal', 'playwright_red', {
           httpSunat: `${respuesta.status()} ${respuesta.request().method()}`,
-          mensajeSunat: `${u.slice(0, 200)} | resp: ${cuerpo.slice(0, 160).replace(/\s+/g, ' ')}`,
+          mensajeSunat: `${urlSinSesion(u)} | respuesta de ${cuerpo.length} caracteres`,
         });
       }
     } catch { /* respuesta consumida o vacia: ignorar */ }
@@ -146,6 +185,12 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
     await pagina.fill('#txtRuc', limpiarTexto(documentoId).replace(/\D/g, ''));
     await pagina.fill('#txtUsuario', limpiarTexto(sol));
     await pagina.fill('#txtContrasena', limpiarTexto(password));
+    const retorno = await pagina.evaluate(prepararRetornoLogin);
+    registrar(contexto, 'portal', 'playwright_retorno_login', retorno);
+    if (!retorno.retornoListo) {
+      throw Object.assign(new Error('El formulario SOL no tiene un retorno valido al menu y state completo. No se enviaron las credenciales.'),
+        { statusCode: 502, codigo: 'PORTAL_RETORNO_INCOMPLETO' });
+    }
     await (await pagina.$('#btnAceptar')).click();
 
     // 3) SONDEO: token en la pagina (sessionStorage), en los FRAMES de la
@@ -176,10 +221,18 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
     };
     for (let i = 0; i < 120; i += 1) {
       await new Promise((r) => setTimeout(r, 600));
+      if (retornoPerdido(pagina.url())) {
+        registrar(contexto, 'portal', 'playwright_retorno_perdido', {
+          mensajeSunat: 'SUNAT volvio a la raiz de seguridad en vez del menu SOL; se interrumpe la espera.',
+          url: urlSinSesion(pagina.url()),
+        });
+        throw Object.assign(new Error('SUNAT no retorno al menu SOL despues del login. Se detuvo el intento sin esperar el token.'),
+          { statusCode: 502, codigo: 'PORTAL_RETORNO_PERDIDO' });
+      }
       const hallado = await leerTokenDeTodo();
       if (hallado) {
         tokenFrame = hallado.token;
-        registrar(contexto, 'portal', 'playwright_token_frame', { mensajeSunat: `token en el frame: ${hallado.url.slice(0, 150)}` });
+        registrar(contexto, 'portal', 'playwright_token_frame', { mensajeSunat: `token en el frame: ${urlSinSesion(hallado.url)}` });
         break;
       }
       tokenApi = await pagina.evaluate(() => sessionStorage.getItem('SUNAT.token') || '').catch(() => '');
@@ -292,13 +345,13 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
     const listadoFrames = contextoNavegador.pages().map((p) =>
       [...p.frames().map((f) => f.url().split('?')[0].slice(0, 90))].join(' , ')).join(' | ');
     registrar(contexto, 'portal', 'playwright_sin_token', {
-      mensajeSunat: `url final: ${(pagina.url() || '').slice(0, 200)} | frames: ${listadoFrames.slice(0, 500)} | pagina: ${textoPagina}`,
+      mensajeSunat: `url final: ${urlSinSesion(pagina.url())} | frames: ${listadoFrames.slice(0, 500)}`,
     });
     const captchaRequerido = /captcha|valor que aparece/i.test(textoPagina);
     throw Object.assign(
       new Error(captchaRequerido
         ? 'El portal SUNAT pidio captcha para esta empresa (esperar unos minutos o revisar el portal manualmente).'
-        : `El portal SUNAT no entrego el token por el navegador (final: ${(pagina.url() || '').slice(0, 120)}).`),
+        : `El portal SUNAT no entrego el token por el navegador (final: ${urlSinSesion(pagina.url())}).`),
       { statusCode: captchaRequerido ? 423 : 502 }
     );
   } finally {
@@ -310,4 +363,5 @@ const loginPortalPlaywrightCpe = async ({ documentoId, sol, password, contexto }
   }
 };
 
-module.exports = { loginPortalPlaywrightCpe, MENU_PORTAL_SOL, URI_APP_CONSULTACPE };
+module.exports = { loginPortalPlaywrightCpe, MENU_PORTAL_SOL, URI_APP_CONSULTACPE,
+  prepararRetornoLogin, retornoPerdido, urlSinSesion };

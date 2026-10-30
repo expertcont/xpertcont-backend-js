@@ -115,11 +115,18 @@ const generarToken = async (entrada) => {
 const SCOPE_SIRE = 'https://api-sire.sunat.gob.pe';
 const generarTokenSire = async (entrada) => {
   const p = validar(entrada);
+  const parejaSol = entrada.pareja_sol ?? 'principal';
+  if (!['principal', 'secundario'].includes(parejaSol)) throw fallo('Selecciona la pareja SOL primaria o secundaria.');
   try {
-    const token = await sunat.obtenerTokenSunat({ ...p, scope: SCOPE_SIRE, mensajeError: 'SUNAT no devolvio token SIRE.' });
+    const diagnostico = {};
+    const token = await sunat.obtenerTokenSunat({ ...p, scope: SCOPE_SIRE, forzarNuevo: true, parejaSol,
+      diagnostico, mensajeError: 'SUNAT no devolvio token SIRE.' });
     const resumen = resumirToken(token, p.documentoId);
     return {
       via: 'sire',
+      pareja_sol: parejaSol,
+      documento_id: p.documentoId,
+      diagnostico,
       scope: SCOPE_SIRE,
       longitud: token.length,
       vigencia: vigenciaToken(token),
