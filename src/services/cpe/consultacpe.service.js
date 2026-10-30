@@ -1,7 +1,6 @@
 const AdmZip = require('adm-zip');
 const fetch = require('node-fetch');
 const { obtenerTokenSunat } = require('../sire/sireSunatClient.service');
-const { obtenerTokenPortalCpe } = require('./loginPortalSunat.service');
 const { randomUUID } = require('crypto');
 const { resumirRespuesta, registrar, resumirToken } = require('./diagnosticoSunat');
 
@@ -123,40 +122,16 @@ const descargarComprobanteCpe = async ({
   // Solo declaraciones seleccionadas para comparar emisiones; no valida la firma.
   let tokenUsado = token;
   let resumenToken = resumirToken(token, documentoId);
-  // El permiso se otorga a la APLICACION (client_id), no al token: si el aud
-  // no declara consultacpe con indicador activo, ninguna llamada pasa y SUNAT
-  // responde 401 generico. Fallback: obtener el token como el PORTAL e-factura
-  // lo hace (login por HTTP con la app interna de SUNAT que SI declara
-  // consultacpe para cualquier usuario SOL), tal como hace el usuario al
-  // consultar manualmente en el portal. Ver loginPortalSunat.service.js.
+  // El permiso se otorga a la aplicacion (client_id). Para mantener este
+  // proceso determinista, la descarga solo usa el token CPE de la aplicacion
+  // registrada: no inicia sesion ni usa Playwright como fallback.
   if (resumenToken.consultacpeDeclarado === false) {
     registrar(contexto, etapa, 'permiso_faltante', resumenToken);
-    Object.assign(diagnostico, { recursoFaltante: '/v1/contribuyente/consultacpe' });
-    etapa = 'token_portal';
-    try {
-      tokenUsado = await obtenerTokenPortalCpe({ idAnfitrion, documentoId, db, diagnostico });
-      const resumenPortal = resumirToken(tokenUsado, documentoId);
-      if (resumenPortal.consultacpeDeclarado === false) {
-        throw Object.assign(
-          new Error('Ni la aplicacion propia ni el login portal entregaron el recurso consultacpe.'),
-          { statusCode: 403 }
-        );
-      }
-      resumenToken = resumenPortal;
-      console.log(`[SUNAT CPE] recurso consultacpe ausente en la app propia: usando LOGIN PORTAL para ${documentoId}`);
-      registrar(contexto, etapa, 'disponible', diagnostico);
-      etapa = 'descarga';
-      delete diagnostico.httpSunat;
-    } catch (portalError) {
-      const aviso = [
-        'La aplicacion SUNAT de esta empresa no tiene habilitado el recurso /v1/contribuyente/consultacpe (el token no lo declara).',
-        'El intento por login del portal tambien fallo:',
-        portalError.message,
-      ].join(' ');
-      registrar(contexto, etapa, 'fallback_portal_fallo', { mensajePortal: portalError.message });
-      Object.assign(diagnostico, { mensajeSunat: aviso });
-      throw Object.assign(new Error(aviso), { statusCode: portalError.statusCode || 502 });
-    }
+    Object.assign(diagnostico, {
+      recursoFaltante: '/v1/contribuyente/consultacpe',
+      mensajeSunat: 'El token CPE de esta aplicacion no declara el recurso consultacpe. La descarga por navegador esta desactivada.',
+    });
+    throw Object.assign(new Error(diagnostico.mensajeSunat), { statusCode: 403 });
   }
   registrar(contexto, etapa, 'solicitando', {
     ...diagnostico, ...resumenToken,
