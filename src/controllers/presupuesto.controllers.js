@@ -240,7 +240,20 @@ const obtenerPresupuestos = async (req, res) => {
                      json_build_object(
                        'servicio', ms.servicio,
                        'descripcion', ms.descripcion,
-                       'especificacion', ms.especificacion
+                       'especificacion', ms.especificacion,
+                       'r_monto_total', ms.r_monto_total,
+                       'detalles_count', (
+                         SELECT COUNT(*)::integer
+                           FROM mve_ventaservdet msd
+                          WHERE msd.periodo = ms.periodo
+                            AND msd.id_usuario = ms.id_usuario
+                            AND msd.documento_id = ms.documento_id
+                            AND msd.r_cod = ms.r_cod
+                            AND msd.r_serie = ms.r_serie
+                            AND msd.r_numero = ms.r_numero
+                            AND msd.elemento = ms.elemento
+                            AND msd.servicio = ms.servicio
+                       )
                      )
                      ORDER BY ms.servicio
                    ),
