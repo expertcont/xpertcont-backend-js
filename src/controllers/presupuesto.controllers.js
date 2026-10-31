@@ -195,17 +195,8 @@ const obtenerPresupuestos = async (req, res) => {
              COALESCE(mvf.r_vfirmado, mvff.r_vfirmado) AS fact_r_vfirmado,
              COALESCE(mvf.cdr_pendiente, mvff.cdr_pendiente) AS fact_cdr_pendiente,
              COALESCE(mvf.cdr_nivel, mvff.cdr_nivel) AS fact_cdr_nivel,
-             (
-               SELECT COUNT(*)::integer
-                 FROM mve_ventaserv ms
-                WHERE ms.periodo = mv.periodo
-                  AND ms.id_usuario = mv.id_usuario
-                  AND ms.documento_id = mv.documento_id
-                  AND ms.r_cod = mv.r_cod
-                  AND ms.r_serie = mv.r_serie
-                 AND ms.r_numero = mv.r_numero
-                  AND ms.elemento = mv.elemento
-             ) AS servicios_count
+             COALESCE(servicios.servicios_count, 0)::integer AS servicios_count,
+             COALESCE(servicios.servicios, '[]'::json) AS servicios
         FROM mve_venta mv
         LEFT JOIN mve_venta mvf
           ON mvf.periodo = mv.periodo
@@ -242,6 +233,28 @@ const obtenerPresupuestos = async (req, res) => {
            ORDER BY mvfb.ctrl_crea DESC
            LIMIT 1
         ) mvff ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::integer AS servicios_count,
+                 COALESCE(
+                   json_agg(
+                     json_build_object(
+                       'servicio', ms.servicio,
+                       'descripcion', ms.descripcion,
+                       'especificacion', ms.especificacion
+                     )
+                     ORDER BY ms.servicio
+                   ),
+                   '[]'::json
+                 ) AS servicios
+            FROM mve_ventaserv ms
+           WHERE ms.periodo = mv.periodo
+             AND ms.id_usuario = mv.id_usuario
+             AND ms.documento_id = mv.documento_id
+             AND ms.r_cod = mv.r_cod
+             AND ms.r_serie = mv.r_serie
+             AND ms.r_numero = mv.r_numero
+             AND ms.elemento = mv.elemento
+        ) servicios ON true
        WHERE mv.periodo = $1
          AND mv.id_usuario = $2
          AND mv.documento_id = $3
