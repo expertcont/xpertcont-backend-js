@@ -148,6 +148,75 @@ const obtenerPresupuestos = async (req, res) => {
 
   try {
     let query = `
+      WITH detalles_por_servicio AS (
+        SELECT msd.periodo,
+               msd.id_usuario,
+               msd.documento_id,
+               msd.r_cod,
+               msd.r_serie,
+               msd.r_numero,
+               msd.elemento,
+               msd.servicio,
+               COUNT(*)::integer AS detalles_count
+          FROM mve_ventaservdet msd
+         WHERE msd.periodo = $1
+           AND msd.id_usuario = $2
+           AND msd.documento_id = $3
+           AND msd.r_cod = 'NV'
+         GROUP BY msd.periodo,
+                  msd.id_usuario,
+                  msd.documento_id,
+                  msd.r_cod,
+                  msd.r_serie,
+                  msd.r_numero,
+                  msd.elemento,
+                  msd.servicio
+      ), servicios_presupuesto AS (
+        SELECT ms.periodo,
+               ms.id_usuario,
+               ms.documento_id,
+               ms.r_cod,
+               ms.r_serie,
+               ms.r_numero,
+               ms.elemento,
+               COUNT(*)::integer AS servicios_count,
+               COALESCE(
+                 json_agg(
+                   json_build_object(
+                     'servicio', ms.servicio,
+                     'descripcion', ms.descripcion,
+                     'r_monto_total', ms.r_monto_total,
+                     'detalles_count', COALESCE(msd.detalles_count, 0)
+                   ) ORDER BY ms.servicio
+                 ),
+                 '[]'::json
+               ) AS servicios,
+               STRING_AGG(
+                 CONCAT_WS(' ', ms.servicio, ms.descripcion, ms.especificacion),
+                 ' ' ORDER BY ms.servicio
+               ) AS trabajos_busqueda
+          FROM mve_ventaserv ms
+          LEFT JOIN detalles_por_servicio msd
+            ON msd.periodo = ms.periodo
+           AND msd.id_usuario = ms.id_usuario
+           AND msd.documento_id = ms.documento_id
+           AND msd.r_cod = ms.r_cod
+           AND msd.r_serie = ms.r_serie
+           AND msd.r_numero = ms.r_numero
+           AND msd.elemento = ms.elemento
+           AND msd.servicio = ms.servicio
+         WHERE ms.periodo = $1
+           AND ms.id_usuario = $2
+           AND ms.documento_id = $3
+           AND ms.r_cod = 'NV'
+         GROUP BY ms.periodo,
+                  ms.id_usuario,
+                  ms.documento_id,
+                  ms.r_cod,
+                  ms.r_serie,
+                  ms.r_numero,
+                  ms.elemento
+      )
       SELECT CAST(mv.r_fecemi AS VARCHAR(50)) AS r_fecemi,
              CAST(mv.r_fecvcto AS VARCHAR(50)) AS r_fecvcto,
              mv.r_cod,
@@ -196,7 +265,8 @@ const obtenerPresupuestos = async (req, res) => {
              COALESCE(mvf.cdr_pendiente, mvff.cdr_pendiente) AS fact_cdr_pendiente,
              COALESCE(mvf.cdr_nivel, mvff.cdr_nivel) AS fact_cdr_nivel,
              COALESCE(servicios.servicios_count, 0)::integer AS servicios_count,
-             COALESCE(servicios.servicios, '[]'::json) AS servicios
+             COALESCE(servicios.servicios, '[]'::json) AS servicios,
+             COALESCE(servicios.trabajos_busqueda, '') AS trabajos_busqueda
         FROM mve_venta mv
         LEFT JOIN mve_venta mvf
           ON mvf.periodo = mv.periodo
@@ -233,41 +303,14 @@ const obtenerPresupuestos = async (req, res) => {
            ORDER BY mvfb.ctrl_crea DESC
            LIMIT 1
         ) mvff ON true
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*)::integer AS servicios_count,
-                 COALESCE(
-                   json_agg(
-                     json_build_object(
-                       'servicio', ms.servicio,
-                       'descripcion', ms.descripcion,
-                       'especificacion', ms.especificacion,
-                       'r_monto_total', ms.r_monto_total,
-                       'detalles_count', (
-                         SELECT COUNT(*)::integer
-                           FROM mve_ventaservdet msd
-                          WHERE msd.periodo = ms.periodo
-                            AND msd.id_usuario = ms.id_usuario
-                            AND msd.documento_id = ms.documento_id
-                            AND msd.r_cod = ms.r_cod
-                            AND msd.r_serie = ms.r_serie
-                            AND msd.r_numero = ms.r_numero
-                            AND msd.elemento = ms.elemento
-                            AND msd.servicio = ms.servicio
-                       )
-                     )
-                     ORDER BY ms.servicio
-                   ),
-                   '[]'::json
-                 ) AS servicios
-            FROM mve_ventaserv ms
-           WHERE ms.periodo = mv.periodo
-             AND ms.id_usuario = mv.id_usuario
-             AND ms.documento_id = mv.documento_id
-             AND ms.r_cod = mv.r_cod
-             AND ms.r_serie = mv.r_serie
-             AND ms.r_numero = mv.r_numero
-             AND ms.elemento = mv.elemento
-        ) servicios ON true
+        LEFT JOIN servicios_presupuesto servicios
+          ON servicios.periodo = mv.periodo
+         AND servicios.id_usuario = mv.id_usuario
+         AND servicios.documento_id = mv.documento_id
+         AND servicios.r_cod = mv.r_cod
+         AND servicios.r_serie = mv.r_serie
+         AND servicios.r_numero = mv.r_numero
+         AND servicios.elemento = mv.elemento
        WHERE mv.periodo = $1
          AND mv.id_usuario = $2
          AND mv.documento_id = $3
