@@ -83,6 +83,36 @@ const descargar = async (entrada) => {
   if (!propuesta) throw fallo('Consulta e importa la propuesta antes de descargar su archivo.', 404);
   return propuesta;
 };
+// Descarga el archivo original de SUNAT sin parsearlo ni guardarlo. Es útil
+// para diagnosticar una fila que el importador no puede interpretar.
+const descargarArchivoCrudo = async (entrada) => {
+  const p = validar(entrada);
+  const datos = await tickets.obtenerDatosTicketPropuestaSire(p);
+  const ticket = datos?.sire_tpropuesta;
+  if (!ticket) throw fallo('Primero genera el ticket de la propuesta de compras.');
+  const respuesta = await sunat.consultarEstadoTicketSire({ ...p, ticket });
+  const registro = (respuesta.registros || []).find(r => String(r.numTicket) === String(ticket)
+    && String(r.perTributario) === p.periodo.replace('-', '') && Number(r.codProceso) === 10
+    && (!r.codLibro || String(r.codLibro) === p.idLibro));
+  if (!registro) throw fallo('SUNAT aun no devuelve el ticket de compras solicitado.', 404);
+  const lista = valor => Array.isArray(valor) ? valor : valor ? [valor] : [];
+  const detalles = lista(registro.detalleTicket).filter(r => !r.numTicket || String(r.numTicket) === String(ticket));
+  const codigo = valor => String(valor ?? '').padStart(2, '0');
+  if ([registro.codEstadoProceso, ...detalles.map(r => r.codEstadoEnvio)].map(codigo).includes('03')) {
+    throw fallo('SUNAT rechazo la descarga de la propuesta de compras.', 422);
+  }
+  const reporte = lista(registro.archivoReporte).find(r => r.nomArchivoReporte)
+    || detalles.find(r => r.nomArchivoReporte);
+  const nombreArchivo = reporte?.nomArchivoReporte;
+  const estado = codigo(registro.codEstadoProceso ?? detalles[0]?.codEstadoEnvio);
+  if (!['04', '06'].includes(estado) || !nombreArchivo) {
+    throw fallo(registro.desEstadoProceso || 'La propuesta de compras sigue en proceso.', 409);
+  }
+  const tipoArchivo = reporte.codTipoArchivoReporte !== undefined
+    ? reporte.codTipoArchivoReporte : reporte.codTipoAchivoReporte;
+  const archivo = await sunat.descargarPropuestaSire({ ...p, ticket, nombreArchivo, codTipoArchivoReporte: tipoArchivo });
+  return { nombre_archivo: nombreArchivo, archivo: archivo.buffer };
+};
 // Solo diagnostico: devuelve el token SUNAT con scope api-cpe para pruebas manuales.
 // Este token NO debe persistirse ni mostrarse en produccion.
 const SCOPE_CPE = 'https://api-cpe.sunat.gob.pe';
@@ -236,5 +266,5 @@ const descargarXmlComprobantePortal = async (entrada) => {
     throw Object.assign(error, { statusCode: error.statusCode || 502, mensajePublico: error.mensajePublico || `SUNAT no devolvio el XML con el token portal: ${error.message}` });
   }
 };
-return { recuperar, generarTicket, consultar, descargar, generarToken, generarTokenSire, generarTokenLegacy, generarTokenPortal, descargarXmlComprobante, descargarXmlComprobantePortal, validar };
+return { recuperar, generarTicket, consultar, descargar, descargarArchivoCrudo, generarToken, generarTokenSire, generarTokenLegacy, generarTokenPortal, descargarXmlComprobante, descargarXmlComprobantePortal, validar };
 };

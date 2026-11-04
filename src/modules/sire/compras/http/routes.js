@@ -18,6 +18,7 @@ module.exports = (controller) => {
   router.post('/propuesta/token-portal', controller.generarTokenPortal);
   router.post('/propuesta/xml', controller.descargarXmlComprobante);
   router.post('/propuesta/xml-portal', controller.descargarXmlComprobantePortal);
+  router.post('/propuesta/archivo-crudo', controller.descargarArchivoCrudo);
   router.post('/propuesta/consultar', controller.consultar);
   router.get('/propuesta/archivo/:periodo/:id_anfitrion/:documento_id', controller.descargar);
   router.get('/personalizada/:periodo/:id_anfitrion/:documento_id', controller.listarPersonalizada);
