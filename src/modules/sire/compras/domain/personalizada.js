@@ -19,7 +19,11 @@ function validarCompra(entrada,periodo){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(s) || !Number.isFinite(d.getTime()) || d.toISOString().slice(0,10)!==s)throw fallo('La fecha '+campo+' debe ser valida.');
  }
  if(r.fecha_emision.slice(0,7)>periodo)throw fallo('La fecha de emision no puede ser posterior al periodo de trabajo.');
- if(!/^\d{2}$/.test(r.tipo_comprobante) || !r.numero || !r.tipo_doc_proveedor || !r.documento_proveedor || !r.proveedor || !/^[A-Z]{3}$/.test(r.moneda))throw fallo('Completa tipo, numero, documento y nombre del proveedor, y moneda.');
+ // SUNAT permite operaciones tipo 54 con tipo de documento 0 y sin número de
+ // documento del proveedor; se preservan para que la propuesta RCE no pierda
+ // esa operación. Todo otro comprobante sigue requiriendo el documento.
+ const sinDocumentoProveedor=r.tipo_comprobante==='54' && r.tipo_doc_proveedor==='0';
+ if(!/^\d{2}$/.test(r.tipo_comprobante) || !r.numero || !r.tipo_doc_proveedor || (!r.documento_proveedor && !sinDocumentoProveedor) || !r.proveedor || !/^[A-Z]{3}$/.test(r.moneda))throw fallo('Completa tipo, numero, documento y nombre del proveedor, y moneda.');
  if(r.tipo_doc_proveedor==='6' && !/^\d{11}$/.test(r.documento_proveedor))throw fallo('El RUC del proveedor debe tener 11 digitos.');
  if(Number(r.tipo_cambio)<0)throw fallo('El tipo de cambio no puede ser negativo.');
  r.datos_adicionales=entrada.datos_adicionales && typeof entrada.datos_adicionales==='object' && !Array.isArray(entrada.datos_adicionales)?entrada.datos_adicionales:{};

@@ -74,7 +74,13 @@ function camposFaltantes(fila) {
   const faltantes = [];
   if (!/^\d{2}$/.test(fila[COLUMNA.TIPO_COMPROBANTE])) faltantes.push('tipo de comprobante');
   if (!fila[COLUMNA.NUMERO]) faltantes.push('número de comprobante');
-  if (!fila[COLUMNA.DOCUMENTO_PROVEEDOR]) faltantes.push('documento del proveedor');
+  // SUNAT usa tipo 54 junto con tipo de documento 0 para operaciones sin
+  // documento del proveedor. El archivo puede traer el campo vacío o "0".
+  const sinDocumentoProveedor = fila[COLUMNA.TIPO_COMPROBANTE] === '54'
+    && fila[COLUMNA.TIPO_DOCUMENTO_PROVEEDOR] === '0';
+  if (!fila[COLUMNA.DOCUMENTO_PROVEEDOR] && !sinDocumentoProveedor) {
+    faltantes.push('documento del proveedor');
+  }
   return faltantes;
 }
 

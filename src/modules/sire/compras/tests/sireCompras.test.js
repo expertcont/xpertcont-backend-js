@@ -64,6 +64,12 @@ test('RCE rechaza archivo de otro RUC o periodo, fecha inexistente y montos inva
   }
   assert.throws(() => parsear(Buffer.from(linea())), /cabecera/);
 });
+test('RCE conserva operaciones SUNAT tipo 54 sin documento de proveedor', () => {
+  const [registro] = parsear(archivo({ 6: '54', 11: '0', 12: '' }));
+  assert.equal(registro.tipo_comprobante, '54');
+  assert.equal(registro.tipo_doc_proveedor, '0');
+  assert.equal(registro.documento_proveedor, '');
+});
 test('comparacion normaliza ceros del correlativo y detecta diferencias de un centimo', () => {
   const [a] = parsear();
   assert.equal(compararCompras([a], [{ ...a, numero: '123' }])[0].resultado, 'COINCIDE');
