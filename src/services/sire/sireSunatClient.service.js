@@ -167,7 +167,10 @@ const obtenerTokenSunat = ({ idAnfitrion, documentoId, scope, mensajeError, db, 
 };
 
 const obtenerTokenSire = (args) =>
-  obtenerTokenSunat({ ...args, scope: SCOPE_SIRE, mensajeError: 'SUNAT no devolvio token SIRe.' });
+  // El flujo operativo SIRE conserva el comportamiento historico de
+  // Contabilidad: usa exclusivamente sire_sol / sire_solpwd. Los botones de
+  // diagnostico pueden elegir la pareja principal o secundaria por separado.
+  obtenerTokenSunat({ ...args, scope: SCOPE_SIRE, parejaSol: 'secundario', mensajeError: 'SUNAT no devolvio token SIRe.' });
 
 const generarTicketPropuestaSire = async ({
   idAnfitrion,
